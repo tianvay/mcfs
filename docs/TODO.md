@@ -50,7 +50,9 @@ Stand: 2026-10-26
       `xampp-linux-x64-8.2.12-0-installer.run` (160 MB) braucht der Server nicht.
 - [ ] **Sunny** kann erst Operator werden, nachdem Sunny einmal verbunden war.
 - [ ] **Reproduzierbarer Aufbau** für den echten Server (Plan: `docs/04-reproduzierbarer-aufbau.md`):
-      `provision/setup.sh`, `import-players.sh`, `verify.sh`; Umstieg auf `/opt/minecraft` am Stichtag.
+      R1–R5 erledigt (26.10.), `/opt/minecraft/bedrock` ist vorbereitet. Offen: **R6 Stichtag** – vorher
+      Entscheidungen (Welt-/Servername, Seed, Spieleinstellungen, Whitelist übernehmen, Portal-Daten
+      archivieren, Auto-Events, Termin); `--switch` in `setup.sh` für die Umstellung bauen.
 - [ ] Später: **Web-Konsole** und **Log-Ansicht**.
 - [ ] Prüfen, ob ein Spieler, der gerade online ist, Operator-Rechte durch `permission reload` sofort bekommt.
 
