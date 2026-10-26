@@ -1,6 +1,6 @@
 # Timed Events – Paket 1 (Plan, Änderung M11)
 
-Stand: 2026-10-26 · Status: **E1–E4 gebaut** (Packs, Erfolge, Portal), E5 (Installation) offen · nur stabile Script-API (`@minecraft/server` 2.10.0), keine Experimente
+Stand: 2026-10-26 · Status: **installiert** 2026-10-26 15:34 (Portal, Events-Pack 1.0.0, Erfolge-Pack 1.1.0) · nur stabile Script-API (`@minecraft/server` 2.10.0), keine Experimente
 
 ## Ziel
 
@@ -158,6 +158,15 @@ Nach jedem Schritt zeige ich das Ergebnis; installiert wird erst in E5 (mit dein
 - **Getestet:** 5 Python-Tests (Zustand/Verlauf/Teilnahmen, kein Doppelzählen nach Neustart, nur feste Befehle,
   nur bei laufendem Server, Abfrage höchstens alle 30 s); lokal mit simuliertem Events-Pack auf PC und Handy:
   Start, Beenden mit Rückfrage, Verlauf, Protokoll.
+
+## E5 – installiert (2026-10-26 15:34)
+
+- `install.sh` (Portal), dann `NO_RESTART=1 world-pack.sh mcportal_events apply` und
+  `world-pack.sh mcportal_achievements apply` – ein Neustart. Sicherungen:
+  `~/mcportal-backups/2026-10-26_15-33-14_pre_mcportal_events` und `…_pre_mcportal_achievements`.
+- Alle vier Behavior Packs laufen ohne Script-Fehler; Events-Pack meldet Automatik an, drei Events, nächstes in
+  ca. 180 Online-Minuten; Portal-Kachel zeigt es, die 7 Event-Erfolge stehen im Katalog. Startprüfung: Port 19132
+  war nach dem schnellen Neustart noch belegt (TIME-WAIT) – 60 s gewartet, dann OK (M8 wirkt).
 
 ## Was sich auf dem Server ändert
 

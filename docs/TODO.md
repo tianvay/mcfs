@@ -4,8 +4,9 @@ Stand: 2026-10-26
 
 ## Offen
 
-- [ ] **Timed Events Paket 1** (Grundgerüst, Bau-Register, Portal-Kachel, Mining Rush, Unwetter, Glückstag,
-      Event-Erfolge): Plan `docs/09-events.md`, Schritte E1–E5.
+- [ ] **Events im Spiel prüfen** (über die Kachel „Events“ starten): Titel/Chat/Sound, Unwetter mit Blitzen
+      (nicht bei Bauten), Mining Rush (Erze doppelt, mit Glück; Silk Touch einfach), Glückstag (Erfahrung doppelt),
+      Restzeit in der Aktionsleiste, Erfolge „Mittendrin…“ usw. nach dem 5. Event.
 - [ ] Idee **Meta-Erfolge**: Erfolge, die Kategorien zusammenfassen, z. B. „Mob-Events“ (alle Nachtgefahren),
       „Natur/Welt“ (Unwetter, Meteorit, Sternschnuppen …), „Ressourcen“ (Mining Rush, Glückstag, Schatzsuche),
       „Community“ (Events mit 3+ Spielern gleichzeitig). Beim Bau von Paket 2/3 mit einplanen; Kategorie je
@@ -48,6 +49,7 @@ Stand: 2026-10-26
 
 ## Erledigt
 
+- [x] Timed Events Paket 1 installiert: Portal, Events-Pack 1.0.0, Erfolge-Pack 1.1.0, alle ohne Script-Fehler (2026-10-26 15:34)
 - [x] Wegpunkte 1.4.0 im Spiel bestätigt: Diamant geschützt, Bearbeiten per Antippen (2026-10-26)
 - [x] Wegpunkte 1.4.0 installiert (Diamant geschützt, Bearbeiten per Antippen), startet ohne Script-Fehler (2026-10-26 13:10)
 - [x] Karte K2 installiert: Wegpunkte + Weltspawn auf der Karte, Marker auf der Blockmitte (2026-10-26)
