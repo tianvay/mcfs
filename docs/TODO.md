@@ -4,7 +4,6 @@ Stand: 2026-10-25
 
 ## Offen
 
-- [ ] Cheats im Spiel bestätigen (`/gamemode survival` als Operator).
 - [ ] **Erfolge im Spiel prüfen**: Beitritt nach dem Neustart ok? Erfolg auslösen (z. B. sterben → „Anfängerfehler“):
       Einblendung, Sound, Chat-Nachricht, Eintrag im Portal.
 - [ ] Kosmetik: Beim Beenden des Portals protokolliert die gerade laufende Statusabfrage einen Fehler
@@ -35,6 +34,7 @@ Stand: 2026-10-25
 - [x] Korrektur „Update verfügbar“-Hinweis + Portal mit Statistik installiert (2026-10-25)
 - [x] M5 Statistik-Pack in der Welt installiert, Pack meldet sich (2026-10-25 21:19)
 - [x] M6 Statistik-Pack 2.0 in der Welt installiert, meldet sich ohne Script-Fehler (2026-10-26 06:33)
+- [x] Cheats im Spiel bestätigt: `/gamemode survival` funktioniert, Beitritt nach M8-Neustart ok (2026-10-26)
 - [x] M8 Startprüfung installiert; erster Neustart damit: 48 s auf TIME-WAIT gewartet, dann Port offen (2026-10-26 07:50)
 - [x] `allow-cheats=true` gesetzt (wirksam ab nächstem Start), bleibt bei Updates erhalten (2026-10-26)
 - [x] M7 Erfolgs-Pack 1.0 in der Welt installiert, beide Packs ohne Script-Fehler (2026-10-26 07:07)
