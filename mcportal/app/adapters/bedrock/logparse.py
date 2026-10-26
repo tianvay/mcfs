@@ -158,4 +158,4 @@ def parse_stats(line: LogLine) -> dict | None:
         data = json.loads(msg[len(_STATS_PREFIX):])
     except ValueError:
         return None
-    return data if isinstance(data, dict) and data.get("v") == 1 else None
+    return data if isinstance(data, dict) and data.get("v") in (1, 2) else None  # v2: pack 2.0

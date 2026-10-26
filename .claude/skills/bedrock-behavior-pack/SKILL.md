@@ -94,7 +94,23 @@ Follow the stats implementation:
 - Simulate the pack in `app/adapters/fake.py` so the UI can be developed locally.
 Deploying portal code needs `sudo bash ~/mcportal-src/deploy/install.sh` - the user runs it.
 
+### 7. Changing an installed pack
+
+Bump `header.version` and the module version in the manifest, then
+`bash ~/mcportal-src/deploy/m5-stats-pack.sh upgrade` (pattern for other packs: move the old
+pack into the backup, copy the new one, update the version in `world_behavior_packs.json`,
+restart, wait for the new version in the "Pack Stack" line + startup line, else roll back).
+Keep the payload backwards compatible in the portal (`parse_*` accepts old and new `v`;
+the service fills missing fields for data stored by older versions).
+
 ## Pitfalls we already hit
+
+- The version in `world_behavior_packs.json` must equal the manifest version exactly -
+  otherwise the server silently loads nothing ("Pack Stack - None"), no error.
+- Run a probe pack first to check that every event/property you plan to use exists in the
+  stable version (`Object.keys(Object.getPrototypeOf(world.afterEvents))`, getters on
+  `Player.prototype`, enums like `EntityInitializationCause`). Player-driven code paths can't
+  run on the test server - keep them defensive (`?.`, `isValid`).
 
 - `content-log-console-output-enabled=false` swallows all script output silently.
 - With `content-log-level=warning`, the server additionally logs ~6 harmless vanilla

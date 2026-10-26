@@ -135,7 +135,7 @@ class FakeAdapter:
             self._state = "active"
             if not self.broken:
                 self._log("Server started.")
-                self._log("[Scripting] [mcportal-stats] {\"v\":1,\"started\":true}")
+                self._log("[Scripting] [mcportal-stats] {\"v\":2,\"started\":true}")
                 self._log("Player connected: Steve, xuid: 2535400000000001")
                 self._online = ["Steve"]
         return True, ""
@@ -156,13 +156,27 @@ class FakeAdapter:
                 self._emit_stats()
 
     def _emit_stats(self) -> None:
-        """Like the stats behavior pack: one line with the counts of the last interval."""
+        """Like the stats behavior pack 2.0: one line with the deltas of the last interval."""
         import random
-        blocks = ["minecraft:cobblestone", "minecraft:oak_planks", "minecraft:dirt", "minecraft:glass", "minecraft:torch"]
-        players = {n: {"placed": {random.choice(blocks): random.randint(1, 20)},
-                       "broken": {random.choice(blocks): random.randint(1, 30)}} for n in self._online}
+        r = random.randint
+        blocks = ["minecraft:cobblestone", "minecraft:oak_planks", "minecraft:dirt", "minecraft:glass", "minecraft:torch",
+                  "minecraft:oak_sapling", "minecraft:birch_sapling", "minecraft:deepslate_diamond_ore"]
+        players = {}
+        for n in self._online:
+            e = {"placed": {random.choice(blocks): r(1, 20)}, "broken": {random.choice(blocks): r(1, 30)},
+                 "xp": r(0, 40), "time": 8,
+                 "dist": {random.choice(["walk", "swim", "boat", "elytra", "horse"]): r(5, 400)}}
+            if r(0, 2) == 0:
+                e["kills"] = {random.choice(["minecraft:zombie", "minecraft:creeper", "minecraft:skeleton", "minecraft:spider"]): r(1, 3)}
+            if r(0, 4) == 0:
+                e["deaths"] = {random.choice(["minecraft:creeper", "cause:lava", "cause:fall", "cause:drowning"]): 1}
+            if r(0, 2) == 0:
+                e["food"] = {random.choice(["minecraft:bread", "minecraft:cooked_beef", "minecraft:apple"]): r(1, 2)}
+            if r(0, 3) == 0:
+                e["bred"] = {random.choice(["minecraft:cow", "minecraft:sheep", "minecraft:chicken"]): 1}
+            players[n] = e
         if players:
-            self._log("[Scripting] [mcportal-stats] " + json.dumps({"v": 1, "players": players}))
+            self._log("[Scripting] [mcportal-stats] " + json.dumps({"v": 2, "players": players}))
 
     def console_available(self) -> bool:
         return self._state == "active"

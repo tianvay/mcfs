@@ -73,6 +73,40 @@ class StatsTest(unittest.TestCase):
         self.assertEqual(t["Steve"]["placed"], 6)
         self.assertEqual(tuple(t["Steve"]["top_placed"][0]), ("minecraft:stone", 5))
 
+    def test_pack_v2_all_counters_and_upgrade_from_v1(self):
+        import time as _t
+        s, mc = self.service([])
+        feed = lambda l: [fn(l) for fn in mc.line_listeners]
+        # data written by pack 1.0 (blocks only) ...
+        feed(stats_line(100.0, {"Steve": {"placed": {"minecraft:oak_sapling": 2}, "broken": {}}}))
+        # ... then pack 2.0 lines
+        now = _t.time()
+        v2 = parse_journal_line(
+            f"{now} mcserver bedrock_server[1]: [2026-10-26 10:00:00:000 WARN] [Scripting] [mcportal-stats] "
+            + json.dumps({"v": 2, "players": {"Steve": {
+                "placed": {"minecraft:birch_sapling": 1, "minecraft:stone": 5},
+                "broken": {"minecraft:deepslate_diamond_ore": 2, "minecraft:diamond_ore": 1},
+                "deaths": {"minecraft:creeper": 1, "cause:lava": 2},
+                "kills": {"minecraft:zombie": 3, "minecraft:skeleton": 1},
+                "food": {"minecraft:bread": 4, "minecraft:apple": 1},
+                "bred": {"minecraft:cow": 2},
+                "dist": {"walk": 120, "boat": 80},
+                "xp": 37, "time": 20}}}))
+        feed(v2)
+        p = s.summary()["players"][0]
+        self.assertEqual((p["deaths"], p["kills"], p["diamonds"], p["food"], p["bred"]), (3, 4, 3, 5, 2))
+        self.assertEqual((p["xp"], p["dist"], p["saplings"]), (37, 200, 3))
+        self.assertEqual(tuple(p["food_by"][0]), ("minecraft:bread", 4))
+        self.assertEqual(dict(map(tuple, p["saplings_by"])), {"minecraft:oak_sapling": 2, "minecraft:birch_sapling": 1})
+        self.assertEqual((p["time_total"], p["time_today"]), (20, 20))
+
+    def test_rejects_garbage_values(self):
+        s, mc = self.service([])
+        bad = stats_line(300.0, {"x": {"placed": {"minecraft:stone": -5, "minecraft:dirt": True}, "broken": {}}})
+        for fn in mc.line_listeners:
+            fn(bad)
+        self.assertEqual(s.summary()["players"][0]["placed"], 0)
+
     def test_same_timestamp_different_lines(self):
         a = stats_line(200.0, {"a": {"placed": {"minecraft:stone": 1}, "broken": {}}})
         b = stats_line(200.0, {"b": {"placed": {"minecraft:stone": 1}, "broken": {}}})

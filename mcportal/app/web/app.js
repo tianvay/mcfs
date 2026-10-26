@@ -249,7 +249,9 @@ $("#up-start").addEventListener("click", async () => {
 
 // ---------- statistics ----------
 
-const BLOCK_NAMES = {
+// German names for blocks, items, mobs (ids without "minecraft:"); unknown ids get a readable fallback
+const NAMES = {
+  // blocks
   stone: "Stein", cobblestone: "Bruchstein", dirt: "Erde", grass_block: "Grasblock", sand: "Sand",
   gravel: "Kies", glass: "Glas", torch: "Fackel", oak_planks: "Eichenholzbretter", spruce_planks: "Fichtenholzbretter",
   birch_planks: "Birkenholzbretter", oak_log: "Eichenstamm", spruce_log: "Fichtenstamm", birch_log: "Birkenstamm",
@@ -260,49 +262,147 @@ const BLOCK_NAMES = {
   lava: "Lava", oak_leaves: "Eichenlaub", andesite: "Andesit", diorite: "Diorit", granite: "Granit", tuff: "Tuffstein",
   white_wool: "Weiße Wolle", ladder: "Leiter", oak_door: "Eichenholztür", glass_pane: "Glasscheibe",
   farmland: "Ackerboden", wheat: "Weizen", sandstone: "Sandstein", snow_layer: "Schnee", ice: "Eis", clay: "Ton",
+  // saplings
+  oak_sapling: "Eiche", spruce_sapling: "Fichte", birch_sapling: "Birke", jungle_sapling: "Tropenbaum",
+  acacia_sapling: "Akazie", dark_oak_sapling: "Schwarzeiche", cherry_sapling: "Kirschbaum", pale_oak_sapling: "Blasseiche",
+  mangrove_propagule: "Mangrove", azalea: "Azalee", flowering_azalea: "Blühende Azalee",
+  // food
+  bread: "Brot", apple: "Apfel", golden_apple: "Goldener Apfel", enchanted_golden_apple: "Verzauberter Goldener Apfel",
+  carrot: "Karotte", golden_carrot: "Goldene Karotte", potato: "Kartoffel", baked_potato: "Ofenkartoffel",
+  beef: "Rohes Rindfleisch", cooked_beef: "Steak", porkchop: "Rohes Schweinefleisch", cooked_porkchop: "Gebratenes Schweinefleisch",
+  chicken: "Rohes Hähnchen", cooked_chicken: "Gebratenes Hähnchen", mutton: "Rohes Hammelfleisch", cooked_mutton: "Gebratenes Hammelfleisch",
+  rabbit: "Rohes Kaninchen", cooked_rabbit: "Gebratenes Kaninchen", rabbit_stew: "Kaninchenragout",
+  cod: "Roher Kabeljau", cooked_cod: "Gebratener Kabeljau", salmon: "Roher Lachs", cooked_salmon: "Gebratener Lachs",
+  cookie: "Keks", melon_slice: "Melonenscheibe", pumpkin_pie: "Kürbiskuchen", mushroom_stew: "Pilzsuppe",
+  beetroot: "Rote Bete", beetroot_soup: "Rote-Bete-Suppe", sweet_berries: "Süßbeeren", glow_berries: "Leuchtbeeren",
+  dried_kelp: "Getrockneter Seetang", rotten_flesh: "Verrottetes Fleisch", spider_eye: "Spinnenauge",
+  honey_bottle: "Honigflasche", suspicious_stew: "Seltsame Suppe", chorus_fruit: "Chorusfrucht", tropical_fish: "Tropenfisch",
+  pufferfish: "Kugelfisch",
+  // mobs and animals
+  zombie: "Zombie", husk: "Wüstenzombie", drowned: "Ertrunkener", zombie_villager: "Zombiedorfbewohner",
+  zombie_villager_v2: "Zombiedorfbewohner", skeleton: "Skelett", stray: "Eiswanderer", bogged: "Sumpfskelett",
+  wither_skeleton: "Witherskelett", creeper: "Creeper", spider: "Spinne", cave_spider: "Höhlenspinne",
+  enderman: "Enderman", endermite: "Endermite", witch: "Hexe", slime: "Schleim", magma_cube: "Magmawürfel",
+  phantom: "Phantom", silverfish: "Silberfischchen", pillager: "Plünderer", vindicator: "Diener",
+  evocation_illager: "Magier", evoker: "Magier", ravager: "Verwüster", vex: "Plagegeist", blaze: "Lohe",
+  ghast: "Ghast", piglin: "Piglin", piglin_brute: "Piglin-Barbar", zombie_pigman: "Zombifizierter Piglin",
+  zombified_piglin: "Zombifizierter Piglin", hoglin: "Hoglin", zoglin: "Zoglin", guardian: "Wächter",
+  elder_guardian: "Großer Wächter", shulker: "Shulker", warden: "Wärter", breeze: "Böe", ender_dragon: "Enderdrache",
+  wither: "Wither", cow: "Kuh", mooshroom: "Pilzkuh", pig: "Schwein", sheep: "Schaf", horse: "Pferd",
+  donkey: "Esel", mule: "Maultier", llama: "Lama", wolf: "Wolf", cat: "Katze", ocelot: "Ozelot", fox: "Fuchs",
+  bee: "Biene", goat: "Ziege", turtle: "Schildkröte", panda: "Panda", polar_bear: "Eisbär", axolotl: "Axolotl",
+  frog: "Frosch", camel: "Kamel", sniffer: "Schnüffler", armadillo: "Gürteltier", strider: "Schreiter",
+  villager: "Dorfbewohner", villager_v2: "Dorfbewohner", iron_golem: "Eisengolem", bat: "Fledermaus",
+  squid: "Tintenfisch", glow_squid: "Leuchttintenfisch", dolphin: "Delfin", parrot: "Papagei",
+  tropicalfish: "Tropenfisch", player: "Andere Spieler",
+};
+// ids that are both a mob and a food item - used for mobs
+const MOB_ALIASES = { chicken: "Huhn", rabbit: "Kaninchen", cod: "Kabeljau", salmon: "Lachs", pufferfish: "Kugelfisch" };
+
+const CAUSES = {
+  fall: "Fallschaden", lava: "Lava", fire: "Feuer", fireTick: "Verbrannt", drowning: "Ertrunken",
+  suffocation: "Erstickt", starve: "Verhungert", void: "Ins Nichts gefallen", entityExplosion: "Explosion",
+  blockExplosion: "Explosion", magic: "Magie", wither: "Wither-Effekt", freezing: "Erfroren", lightning: "Blitz",
+  contact: "Kaktus/Beerenstrauch", flyIntoWall: "Gegen die Wand geflogen", anvil: "Amboss",
+  fallingBlock: "Fallender Block", stalactite: "Tropfstein", stalagmite: "Tropfstein", sonicBoom: "Schallwelle",
+  campfire: "Lagerfeuer", magma: "Magmablock", projectile: "Geschoss", selfDestruct: "/kill",
+  temperature: "Hitze", none: "Unbekannt",
 };
 
-function blockName(id) {
+const DIST_NAMES = { walk: "Zu Fuß", swim: "Schwimmen", boat: "Boot", minecart: "Lore", horse: "Pferd",
+  ride: "Andere Reittiere", elytra: "Elytra", fly: "Fliegen" };
+
+function label(id, kind) {
+  if (id.startsWith("cause:")) return CAUSES[id.slice(6)] || id.slice(6);
+  if (kind === "dist") return DIST_NAMES[id] || id;
   const key = id.replace(/^minecraft:/, "");
-  if (BLOCK_NAMES[key]) return BLOCK_NAMES[key];
+  if (kind === "mob" && MOB_ALIASES[key]) return MOB_ALIASES[key];
+  if (NAMES[key]) return NAMES[key];
   return key.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
-const fmtNum = (n) => n.toLocaleString("de-DE");
+const fmtNum = (n) => Math.round(n).toLocaleString("de-DE");
+const fmtDist = (blocks) => (blocks >= 1000
+  ? `${(blocks / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} km`
+  : `${fmtNum(blocks)} m`);
 
-function bars(items, cls) {
+function fmtTime(sec) {
+  if (!sec) return "0 min";
+  const h = Math.floor(sec / 3600);
+  const m = Math.round((sec % 3600) / 60);
+  return h ? `${h} h ${m} min` : `${m} min`;
+}
+
+function bars(items, cls, kind, fmt = fmtNum) {
   const max = items.length ? items[0][1] : 1;
   return el("ul", { className: `bars ${cls}` }, ...items.map(([id, n]) => {
     const bar = el("span", { className: "bar" });
     bar.style.width = `${Math.max(4, (100 * n) / max)}%`;
-    return el("li", {}, bar, el("span", { textContent: blockName(id) }), el("span", { textContent: fmtNum(n) }));
+    return el("li", {}, bar, el("span", { textContent: label(id, kind) }), el("span", { textContent: fmt(n) }));
   }));
+}
+
+function tile(icon, title, value, sub) {
+  return el("div", { className: "tile" },
+    el("div", { className: "tile-label", textContent: `${icon} ${title}` }),
+    el("div", { className: "tile-value", textContent: value }),
+    sub ? el("div", { className: "tile-sub", textContent: sub }) : "");
+}
+
+function details(title, items, cls, kind, fmt) {
+  if (!items.length) return "";
+  return el("details", { className: "stat-details" }, el("summary", { textContent: title }), bars(items, cls, kind, fmt));
+}
+
+function playerCard(p) {
+  const fav = p.food_by.length ? `Lieblingsessen: ${label(p.food_by[0][0])}` : "";
+  return el("div", { className: "stat-player" },
+    el("h3", {}, el("span", { textContent: p.name }),
+      el("small", { textContent: p.last_active ? `zuletzt ${fmtDate(p.last_active)}` : "" })),
+    el("div", { className: "tiles" },
+      tile("⏱", "Spielzeit", fmtTime(p.time_total), `heute ${fmtTime(p.time_today)}`),
+      tile("💀", "Tode", fmtNum(p.deaths)),
+      tile("⚔️", "Mobs besiegt", fmtNum(p.kills)),
+      tile("💎", "Diamanten", fmtNum(p.diamonds), "Diamanterz abgebaut"),
+      tile("🍖", "Gegessen", fmtNum(p.food), fav),
+      tile("✨", "XP gesammelt", fmtNum(p.xp)),
+      tile("🌱", "Bäume gepflanzt", fmtNum(p.saplings)),
+      tile("🐣", "Tiere gezüchtet", fmtNum(p.bred)),
+      tile("🧭", "Strecke", fmtDist(p.dist)),
+      tile("▲", "Blöcke gesetzt", fmtNum(p.placed)),
+      tile("▼", "Blöcke abgebaut", fmtNum(p.broken))),
+    details("⚔️ Besiegte Mobs", p.kills_by, "placed", "mob"),
+    details("💀 Todesursachen", p.deaths_by, "broken", "mob"),
+    details("🍖 Essen", p.food_by, "placed"),
+    details("🌱 Gepflanzte Bäume", p.saplings_by, "placed"),
+    details("🐣 Gezüchtete Tiere", p.bred_by, "placed", "mob"),
+    details("🧭 Strecke nach Art", p.dist_by, "placed", "dist", fmtDist),
+    details("▲ Am meisten gesetzt", p.top_placed, "placed"),
+    details("▼ Am meisten abgebaut", p.top_broken, "broken"));
 }
 
 async function loadStats() {
   let data;
   try { data = await api("GET", "/api/stats"); } catch (e) { toast(e.message, true); return; }
+  const open = new Set([...document.querySelectorAll("#stats-list details[open]")].map((d) => d.dataset.key));
   const note = $("#stats-note");
   if (!data.pack_seen && !data.since) {
     note.textContent = "Die Statistik ist noch nicht aktiv: Das Statistik-Paket ist noch nicht in der Welt installiert.";
   } else {
     note.textContent = `Gezählt seit ${fmtDate(data.since)} · zuletzt aktualisiert ${fmtDate(data.updated)}. `
-      + "Neue Blöcke erscheinen mit bis zu 20 Sekunden Verzögerung.";
+      + "Neue Werte erscheinen mit bis zu 20 Sekunden Verzögerung.";
   }
   const list = $("#stats-list");
   if (!data.players.length) {
-    list.replaceChildren(el("p", { className: "empty", textContent: "Noch keine Blöcke gezählt." }));
+    list.replaceChildren(el("p", { className: "empty", textContent: "Noch nichts gezählt." }));
     return;
   }
-  list.replaceChildren(...data.players.map((p) => el("div", { className: "stat-player" },
-    el("h3", {}, el("span", { textContent: p.name }),
-      el("small", { textContent: p.last_active ? `zuletzt ${fmtDate(p.last_active)}` : "" })),
-    el("div", { className: "stat-totals" },
-      el("span", { className: "placed", textContent: `▲ ${fmtNum(p.placed)} gesetzt` }),
-      el("span", { className: "broken", textContent: `▼ ${fmtNum(p.broken)} abgebaut` })),
-    el("div", { className: "stat-cols" },
-      el("div", {}, el("h4", { textContent: "Am meisten gesetzt" }), bars(p.top_placed, "placed")),
-      el("div", {}, el("h4", { textContent: "Am meisten abgebaut" }), bars(p.top_broken, "broken"))))));
+  list.replaceChildren(...data.players.map(playerCard));
+  // keep opened sections open across live refreshes
+  list.querySelectorAll(".stat-player").forEach((card, i) => card.querySelectorAll("details").forEach((d) => {
+    d.dataset.key = `${data.players[i].name}|${d.querySelector("summary").textContent}`;
+    if (open.has(d.dataset.key)) d.open = true;
+  }));
 }
 
 // ---------- allowlist ----------

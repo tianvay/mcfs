@@ -1,6 +1,39 @@
-# Block-Statistik (Änderung M5)
+# Statistik (Änderungen M5 und M6)
 
-Stand: 2026-10-25
+Stand: 2026-10-26
+
+## Pack 2.0 (M6): alles in einem Statistik-Pack
+
+| Wert | Wie gezählt |
+|---|---|
+| Blöcke gesetzt/abgebaut | `playerPlaceBlock` / `playerBreakBlock`, nach Blocktyp |
+| Tode | `entityDie` eines Spielers; Ursache = beteiligtes Wesen (z. B. Creeper) oder Schadensart (Lava, Fallschaden …) |
+| Mobs besiegt | `entityDie`, wenn ein Spieler der Verursacher ist (auch per Pfeil), nach Mob-Typ |
+| Diamanten | abgebautes Diamanterz (normal + Tiefenschiefer) – aus der Block-Statistik |
+| Essen | `itemCompleteUse` von Gegenständen mit Nahrungs-Eigenschaft; Lieblingsessen = häufigstes |
+| XP gesammelt | Zunahme der Gesamt-XP, jede Sekunde gemessen; Ausgeben (Verzaubern) oder Tod zieht nichts ab |
+| Bäume gepflanzt | gesetzte Setzlinge (alle `*_sapling`, Mangroven-Keimling, Azaleen), nach Baumart |
+| Tiere gezüchtet | Jungtier geboren (`entitySpawn`, Ursache „Born“); zugerechnet dem Spieler, der in der letzten Minute ein Tier derselben Art im Umkreis von 16 Blöcken gefüttert hat (Näherung – das Spiel nennt keinen Züchter) |
+| Strecke | Position jede Sekunde; Art: zu Fuß, Schwimmen, Boot, Lore, Pferd, andere Reittiere, Elytra, Fliegen. Sprünge > 60 Blöcke/s (Teleport, Respawn) und Dimensionswechsel zählen nicht |
+| Spielzeit | Sekunden online, im Portal nach Tagen gespeichert (heute / gesamt) |
+
+Alles mit der stabilen Script-API 2.10.0; auf dem Testserver geprüft, dass jedes benutzte Ereignis und jede
+Eigenschaft vorhanden ist. Werte zählen ab der Installation von 2.0; die Block-Zahlen aus 1.0 bleiben erhalten.
+
+### Änderung M6
+
+1. **Was:** `worlds/Bedrock level/behavior_packs/mcportal_stats/` wird durch Version 2.0.0 ersetzt,
+   in `world_behavior_packs.json` wird die Version des Eintrags auf `[2,0,0]` gesetzt.
+2. **Warum:** neue Statistiken; Bedrock lädt ein Pack nur, wenn die Version im Welt-Eintrag
+   exakt der im Manifest entspricht.
+3. **Dateien:** nur diese zwei. `server.properties` bleibt unverändert.
+4. **Backup:** `~/mcportal-backups/<zeit>_pre_m6/` (alter Pack-Ordner + `world_behavior_packs.json`).
+5. **Rückgängig:** `bash ~/mcportal-src/deploy/m5-stats-pack.sh rollback-upgrade`. Meldet sich 2.0 nach
+   dem Neustart nicht, rollt das Script selbst zurück.
+
+---
+
+## Pack 1.0 (M5)
 
 ## So funktioniert es
 
