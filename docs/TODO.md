@@ -50,6 +50,7 @@ Stand: 2026-10-26
 
 ## Erledigt
 
+- [x] Events-Pack 1.1.2 installiert: verschwundener Boss kommt zurück, Spawns nur auf echtem Boden (2026-10-26)
 - [x] Events-Pack 1.1.1 installiert: Boss mit Lichtsäule, Hinweis alle 5 s mit Höhe, Y-Koordinate (2026-10-26 16:33)
 - [x] Timed Events Paket 2 installiert: Portal (Reiter Events, Wetter/Zeit), Events-Pack 1.1.0, Erfolge-Pack 1.2.0 (2026-10-26 16:19)
 - [x] Timed Events Paket 1 installiert: Portal, Events-Pack 1.0.0, Erfolge-Pack 1.1.0, alle ohne Script-Fehler (2026-10-26 15:34)
