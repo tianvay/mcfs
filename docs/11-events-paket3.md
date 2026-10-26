@@ -1,6 +1,6 @@
 # Timed Events – Paket 3: Die Welt verändert sich (Plan, Änderung M13)
 
-Stand: 2026-10-26 · Status: **W1–W2 gebaut** (Grundlage, Meteorit), W3–W7 offen · baut auf Paket 1 und 2 auf · nur stabile
+Stand: 2026-10-26 · Status: **W1–W3 gebaut** (Grundlage, Meteorit, Sternschnuppen), W4–W7 offen · baut auf Paket 1 und 2 auf · nur stabile
 Script-API, keine Experimente
 
 ## Ziel
@@ -124,6 +124,19 @@ zusätzlich mit einem Vorher/Nachher-Vergleich und dem Rückgängig-Befehl.
   nach Neustart Register erhalten; Rückgängig bei nicht geladenem Bereich abgelehnt, danach alle 215 zurück.
   Zwei Fehler dabei gefunden und behoben (Rückgängig löschte sein Protokoll bei ungeladenem Bereich; Register
   wurde nach dem Einschlag erst nach 30 s gespeichert).
+
+## W3 – gebaut (Sternschnuppen-Nacht)
+
+- Nacht-Event (wartet auf die Nacht, endet bei Sonnenaufgang, Schlafsperre wie die anderen).
+- Alle 15–30 s eine **Sternschnuppe** über jedem Spieler in der Oberwelt: Lichtspur 30–50 Blöcke lang, 45–65
+  Blöcke über ihm, in einer halben Sekunde gezeichnet.
+- Je Spieler alle 1–2 Minuten (erstes nach 30 s) ein **Sternenstück**: fällt mit Lichtspur 10–30 Blöcke entfernt
+  auf echten Boden, kleiner Knall, bleibt in einer Lichtsäule liegen. Inhalt: Glowstone-Staub 40 %,
+  Erfahrungsfläschchen 30 %, Lapis 15 %, Diamant 10 %, Netherite-Schrott 5 % (100.000 Würfe nachgezählt).
+- Aufgesammelt: Wer beim Verschwinden höchstens 3 Blöcke daneben stand, bekommt es angerechnet (Log `star`,
+  Meldung ans Erfolge-Pack für „Sterntaler“). Liegen gebliebene Stücke bleiben nach dem Event Beute.
+- **Getestet:** 19 Node-Tests (neu: Beute, Bahnen, Linienpunkte). Testserver: wartet am Tag, startet bei Nacht,
+  3 Sternenstücke 12–30 Blöcke entfernt, verfolgt; Ende bei Sonnenaufgang. Aufsammeln nur im Spiel prüfbar.
 
 ## Was sich auf dem Server ändert
 

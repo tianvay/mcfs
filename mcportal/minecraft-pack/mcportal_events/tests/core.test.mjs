@@ -7,7 +7,7 @@ import {
   isBed, isLeftover, isNight, isRushOre, lightningOffset, MIN_GAP, mobTag, newActive, newSchedule, nightStep, packSize,
   parseControl, participants, ranSeconds, ringOffset, scheduleMinute, secondsUntilDawn, secondsUntilNight,
   shouldDouble, TYPES, xpBonus, invasionLoot, invasionMob, invasionTargets, waveSize, ZOMBIES,
-  beaconColumn, isGround, BOSSES, CRATER_RADIUS, craterDepth, craterGroundOk, isCover, isMeteorReplaceable, planCrater, BOUNTY_LOOT, bossHint, bountyHunters, chooseBoss, healthBoostLevel,
+  beaconColumn, isGround, BOSSES, CRATER_RADIUS, craterDepth, craterGroundOk, isCover, isMeteorReplaceable, linePoints, planCrater, shootingStarPath, starLoot, BOUNTY_LOOT, bossHint, bountyHunters, chooseBoss, healthBoostLevel,
 } from "../scripts/core.js";
 
 test("night events: wait for the night, run until dawn", () => {
@@ -285,4 +285,25 @@ test("cover on the ground: plants and snow layers, not the ground itself", () =>
     "minecraft:red_tulip", "minecraft:dead_bush"]) assert.ok(isCover(c), c);
   for (const g of ["minecraft:grass_block", "minecraft:sand", "minecraft:stone", "minecraft:snow", "minecraft:oak_leaves",
     "minecraft:water", "minecraft:packed_ice", "minecraft:iron_ore", "minecraft:cactus"]) assert.ok(!isCover(g), g);
+});
+
+test("shooting stars: loot table, streaks in the sky", () => {
+  const seen = new Set();
+  for (let i = 0; i < 400; i++) {
+    const [id, n] = starLoot(Math.random);
+    seen.add(id);
+    assert.ok(n >= 1 && n <= 4);
+  }
+  for (const id of ["glowstone_dust", "experience_bottle", "lapis_lazuli", "diamond"]) assert.ok(seen.has(`minecraft:${id}`), id);
+  assert.deepEqual(starLoot(() => 0.99), ["minecraft:netherite_scrap", 1], "rare");
+  for (let i = 0; i < 20; i++) {
+    const { from, to } = shootingStarPath(0, 70, 0, Math.random);
+    assert.ok(from.y >= 115 && to.y < from.y, "high up and falling a bit");
+    const len = Math.hypot(to.x - from.x, to.z - from.z);
+    assert.ok(len >= 29 && len <= 51);
+  }
+  const pts = linePoints({ x: 0, y: 0, z: 0 }, { x: 10, y: 10, z: 0 }, 5);
+  assert.equal(pts.length, 6);
+  assert.deepEqual(pts[5], { x: 10, y: 10, z: 0 });
+  assert.equal(TYPES.shooting_stars.night, true);
 });

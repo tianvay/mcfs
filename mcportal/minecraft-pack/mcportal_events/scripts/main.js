@@ -6,7 +6,8 @@
 //    night events (wait for the next night, end at dawn, no sleeping meanwhile): Blutmond (wolf packs),
 //    Zombie-Invasion (waves at the villages near players, better loot, villagers protected);
 //    Kopfgeld (a named boss appears in the wild under a column of light, hints every 5 s, bounty for the hunters,
-//    escapes after 20 min); Meteorit (crater with netherrack, amethyst and diamond ore - natural ground only, undo log).
+//    escapes after 20 min); Meteorit (crater with netherrack, amethyst and diamond ore - natural ground only, undo log);
+//    Sternschnuppen-Nacht (night: shooting stars, star pieces with loot fall near players).
 //  * Mobs spawned by events carry the tag "mcfs_ev" + "mcfs_ev_<type>" and are removed when their event is over.
 //  * Build register: every chunk a player placed a block in is remembered; world-changing effects
 //    (lightning now, meteors later) stay away from it.
@@ -20,7 +21,7 @@ import {
 } from "@minecraft/server";
 import {
   activeMinute, beaconColumn, BOSSES, bossHint, BOUNTY_LOOT, CRATER_RADIUS, craterGroundOk, IMPACT_COUNTDOWN, isCover,
-  isMeteorReplaceable, planCrater, bountyHunters, chooseBoss, healthBoostLevel,
+  isMeteorReplaceable, linePoints, planCrater, shootingStarPath, STAR_TAG, starLoot, bountyHunters, chooseBoss, healthBoostLevel,
   chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, formatMinutes, invasionLoot,
   invasionMob, invasionTargets, isBed, isGround, isLeftover, isNaturalTop, isRushOre, lightningOffset, MOB_TAG, mobTag, newActive,
   newSchedule, nightStep, packSize, parseControl, participants, ranSeconds, ringOffset, scheduleMinute, shouldDouble,
@@ -140,6 +141,13 @@ const HANDLERS = {
   bounty: { start() {}, minute() {}, stop() {} },
   // target, countdown and impact are handled by the meteor interval below
   meteor: { start() {}, minute() {}, stop() {} },
+  shooting_stars: {
+    start() {},
+    minute() {},
+    night() { starsNight(); },
+    tick() { starsTick(); },
+    stop() { fallenStars.length = 0; }, // pieces lying around stay - they are loot
+  },
 };
 const IMPLEMENTED = Object.keys(HANDLERS);
 
@@ -709,6 +717,102 @@ function craterBlocks(dim, m) {
   return changeBlocks(m.undo, dim, changes);
 }
 
+// ---------- Sternschnuppen-Nacht ----------
+
+const STREAK_EVERY = [15, 30];   // seconds between shooting stars
+const PIECE_EVERY = [60, 120];   // seconds between star pieces per player
+const PICKUP_RADIUS = 3;
+let nextStreak = 0;
+const nextPiece = new Map();     // player name -> tick
+/** star pieces lying on the ground: {entity, x, y, z} */
+const fallenStars = [];
+
+const between = ([a, b]) => 20 * (a + Math.floor(Math.random() * (b - a + 1)));
+
+function starsNight() {
+  nextStreak = 0;
+  nextPiece.clear();
+  for (const p of world.getAllPlayers()) nextPiece.set(p.name, system.currentTick + 20 * 30); // first piece after 30 s
+}
+
+function starsTick() {
+  const now = system.currentTick;
+  const dim = overworld();
+  const players = world.getAllPlayers().filter((p) => p.dimension.id === "minecraft:overworld");
+  if (now >= nextStreak) {
+    nextStreak = now + between(STREAK_EVERY);
+    for (const p of players) shootingStar(dim, p.location);
+  }
+  for (const p of players) {
+    if (!nextPiece.has(p.name)) nextPiece.set(p.name, now + between(PIECE_EVERY));
+    if (now < nextPiece.get(p.name)) continue;
+    nextPiece.set(p.name, now + between(PIECE_EVERY));
+    dropStarPiece(dim, p.location);
+  }
+  // pieces on the ground: light column; gone -> picked up by whoever stood there (or despawned/unloaded)
+  for (let i = fallenStars.length - 1; i >= 0; i--) {
+    const s = fallenStars[i];
+    let alive = false;
+    try {
+      alive = s.entity.isValid;
+      if (alive) {
+        Object.assign(s, { x: s.entity.location.x, y: s.entity.location.y, z: s.entity.location.z });
+        for (const pt of beaconColumn(s, 12, 2)) dim.spawnParticle("minecraft:endrod", pt);
+      }
+    } catch { alive = false; }
+    if (alive) continue;
+    fallenStars.splice(i, 1);
+    const finder = players.find((p) => Math.hypot(p.location.x - s.x, p.location.y - s.y, p.location.z - s.z) <= PICKUP_RADIUS);
+    if (finder) {
+      log({ event: "star", player: finder.name });
+      news({ event: "star", player: finder.name });
+      try { finder.playSound("random.orb"); } catch { /* left */ }
+    }
+  }
+}
+
+/** a streak of light across the sky above `near`, drawn over half a second */
+function shootingStar(dim, near) {
+  const { from, to } = shootingStarPath(near.x, near.y, near.z, Math.random);
+  const pts = linePoints(from, to, 20);
+  for (let step = 0; step < 10; step++) {
+    system.runTimeout(() => {
+      for (const pt of pts.slice(step * 2, step * 2 + 3)) {
+        try { dim.spawnParticle("minecraft:endrod", pt); } catch { /* unloaded */ }
+      }
+    }, step);
+  }
+}
+
+/** a star piece falls 10-30 blocks from `near` onto real ground and stays there in a light column */
+function dropStarPiece(dim, near) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const spot = ringOffset(near.x, near.z, 10, 30, Math.random);
+    let g;
+    try { g = groundAt(dim, spot.x, spot.z); } catch { continue; }
+    if (!g || !isGround(g.typeId)) continue;
+    const ground = { x: spot.x + 0.5, y: g.top + 1, z: spot.z + 0.5 };
+    const trail = linePoints({ x: ground.x + 6, y: ground.y + 40, z: ground.z + 4 }, ground, 20);
+    for (let step = 0; step < 20; step++) {
+      system.runTimeout(() => {
+        try { dim.spawnParticle("minecraft:endrod", trail[step]); } catch { /* unloaded */ }
+      }, step);
+    }
+    system.runTimeout(() => {
+      try {
+        const [id, n] = starLoot(Math.random);
+        const item = dim.spawnItem(new ItemStack(id, n), ground);
+        item.addTag(STAR_TAG);
+        fallenStars.push({ entity: item, ...ground });
+        dim.spawnParticle("minecraft:huge_explosion_emitter", ground);
+        dim.playSound("firework.blast", ground, { volume: 2 });
+      } catch { /* unloaded */ }
+    }, 20);
+    return true;
+  }
+  return false;
+}
+
 // event mobs: loot and news for the achievements
 world.afterEvents.entityDie.subscribe((ev) => {
   const dead = ev.deadEntity;
@@ -823,7 +927,7 @@ world.afterEvents.entityHurt.subscribe((ev) => {
 
 const SOUNDS = { storm: "ambient.weather.thunder", mining_rush: "random.anvil_land", lucky_day: "random.levelup",
   blood_moon: "mob.wolf.growl", zombie_invasion: "mob.zombie.say", bounty: "mob.wither.spawn",
-  meteor: "ambient.weather.lightning.impact" };
+  meteor: "ambient.weather.lightning.impact", shooting_stars: "random.orb" };
 
 function start(type, by) {
   if (!HANDLERS[type] || active.some((a) => a.type === type)) return false;
@@ -917,7 +1021,7 @@ function minute() {
 system.afterEvents.scriptEventReceive.subscribe((ev) => {
   if (ev.id !== "mcfs:event" || !schedule) return;
   const fromConsole = ev.sourceType === ScriptEventSource.Server;
-  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers|boss|despawn|undo|meteor)\b/.exec(ev.message);
+  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers|boss|despawn|undo|meteor|stars)\b/.exec(ev.message);
   if (test && fromConsole) return runTest(ev.message);
   const cmd = parseControl(ev.message);
   const reply = (msg) => {
@@ -1154,6 +1258,17 @@ function runTest(message) {
       log({ event: "test", impacted: m.meteor.impacted, changed: m.meteor.changed, counts, undo: m.meteor.undo,
         center: dim.getBlock({ x: Number(a), y: y - 3, z: Number(b) })?.typeId });
     }, 100);
+  } else if (kind === "stars") {
+    // a shooting star and a star piece as if a player stood at (a, b); report the pieces lying around
+    const dim = overworld();
+    const at = { x: Number(a) + 0.5, y: dim.getTopmostBlock({ x: Number(a), z: Number(b) }).location.y + 1, z: Number(b) + 0.5 };
+    shootingStar(dim, at);
+    const ok = dropStarPiece(dim, at);
+    system.runTimeout(() => {
+      const items = dim.getEntities({ type: "minecraft:item", tags: [STAR_TAG] })
+        .map((e) => `${e.getComponent("minecraft:item").itemStack.typeId.slice(10)}@${Math.round(Math.hypot(e.location.x - at.x, e.location.z - at.z))}`);
+      log({ event: "test", dropped: ok, pieces: items, tracked: fallenStars.length });
+    }, 40);
   } else if (kind === "villagers") {
     // a small "village": 4 villagers on the ground at (a, b)
     const dim = overworld();

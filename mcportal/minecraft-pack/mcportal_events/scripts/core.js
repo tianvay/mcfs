@@ -43,7 +43,45 @@ export const TYPES = {
     name: "Meteorit", minutes: 30, color: "§c", category: "welt",
     subtitle: "§7Ein Meteor nähert sich – gleich schlägt er ein!", end: "Der Meteoritenkrater ist abgekühlt.",
   },
+  shooting_stars: {
+    name: "Sternschnuppen-Nacht", night: true, color: "§e", category: "welt",
+    subtitle: "§7Heute Nacht fallen Sterne vom Himmel!", end: "Die Sternschnuppen-Nacht ist vorbei.",
+    nightTitle: "§eSternschnuppen!", nightSubtitle: "§7Schaut nach oben – und sammelt die Sternenstücke!",
+  },
 };
+
+// ---------- Sternschnuppen-Nacht ----------
+
+export const STAR_TAG = "mcfs_star";
+
+/** one star piece: glowstone, experience, lapis - rarely a diamond or netherite scrap. [item, amount] */
+export function starLoot(rand) {
+  const r = rand();
+  const n = (min, max) => min + Math.floor(rand() * (max - min + 1));
+  if (r < 0.40) return ["minecraft:glowstone_dust", n(2, 4)];
+  if (r < 0.70) return ["minecraft:experience_bottle", n(1, 2)];
+  if (r < 0.85) return ["minecraft:lapis_lazuli", n(2, 4)];
+  if (r < 0.95) return ["minecraft:diamond", 1];
+  return ["minecraft:netherite_scrap", 1];
+}
+
+/** a shooting star high above (x, y, z): a straight streak of 30-50 blocks, slightly falling */
+export function shootingStarPath(x, y, z, rand) {
+  const angle = rand() * Math.PI * 2;
+  const len = 30 + rand() * 20;
+  const from = { x: x + (rand() - 0.5) * 60, y: y + 45 + rand() * 20, z: z + (rand() - 0.5) * 60 };
+  return { from, to: { x: from.x + Math.cos(angle) * len, y: from.y - 6 - rand() * 6, z: from.z + Math.sin(angle) * len } };
+}
+
+/** points along a line (for particle trails) */
+export function linePoints(from, to, steps) {
+  const out = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    out.push({ x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t, z: from.z + (to.z - from.z) * t });
+  }
+  return out;
+}
 
 // ---------- Meteorit ----------
 
