@@ -43,12 +43,58 @@ export const TYPES = {
     name: "Meteorit", minutes: 30, color: "§c", category: "welt",
     subtitle: "§7Ein Meteor nähert sich – gleich schlägt er ein!", end: "Der Meteoritenkrater ist abgekühlt.",
   },
+  treasure: {
+    name: "Schatzsuche", minutes: 30, color: "§6", category: "ressourcen",
+    subtitle: "§7Ein Schatz ist vergraben – folgt den Hinweisen!", end: "Der Schatz ist wieder verschwunden.",
+  },
   shooting_stars: {
     name: "Sternschnuppen-Nacht", night: true, color: "§e", category: "welt",
     subtitle: "§7Heute Nacht fallen Sterne vom Himmel!", end: "Die Sternschnuppen-Nacht ist vorbei.",
     nightTitle: "§eSternschnuppen!", nightSubtitle: "§7Schaut nach oben – und sammelt die Sternenstücke!",
   },
 };
+
+// ---------- Schatzsuche ----------
+
+export const TREASURE_DEPTH = 3;      // blocks below the surface
+export const TREASURE_DISTANCE = [150, 400];
+
+/** the treasure: always worth it, a little random. [item, amount][] */
+export function treasureLoot(rand) {
+  const n = (min, max) => min + Math.floor(rand() * (max - min + 1));
+  const loot = [["minecraft:diamond", n(2, 4)], ["minecraft:emerald", n(4, 8)], ["minecraft:gold_ingot", n(3, 6)],
+    ["minecraft:experience_bottle", n(4, 8)]];
+  const special = ["minecraft:golden_apple", "minecraft:name_tag", "minecraft:saddle", "minecraft:totem_of_undying"];
+  const r = rand();
+  loot.push([special[r < 0.4 ? 0 : r < 0.7 ? 1 : r < 0.9 ? 2 : 3], 1]);
+  return loot;
+}
+
+/** how far, roughly - the exact distance would make it too easy */
+export function distanceBand(d) {
+  if (d < 12) return "direkt hier – grabt nach!";
+  if (d < 30) return "ganz nah";
+  if (d < 100) return "nah";
+  if (d < 200) return "ein Stück entfernt";
+  return "noch weit weg";
+}
+
+/**
+ * hint for one player: compass direction, rough distance and warmer/colder than at the last hint
+ * (Minecraft: -z = north, +x = east)
+ */
+export function treasureHint(from, to, lastDist) {
+  const dx = to.x - from.x, dz = to.z - from.z;
+  const d = Math.hypot(dx, dz);
+  const sector = Math.round(Math.atan2(dz, dx) / (Math.PI / 4));
+  const dir = ["Osten", "Südosten", "Süden", "Südwesten", "Westen", "Nordwesten", "Norden", "Nordosten"][(sector + 8) % 8];
+  let trend = "";
+  if (lastDist !== undefined && d >= 12) {
+    if (d < lastDist - 2) trend = "§a wärmer§6 · ";
+    else if (d > lastDist + 2) trend = "§9 kälter§6 · ";
+  }
+  return { text: d < 12 ? `Schatz: ${distanceBand(d)}` : `Schatz:${trend} Richtung ${dir}, ${distanceBand(d)}`, dist: d };
+}
 
 // ---------- Sternschnuppen-Nacht ----------
 

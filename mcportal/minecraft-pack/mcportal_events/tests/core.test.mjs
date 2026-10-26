@@ -7,7 +7,7 @@ import {
   isBed, isLeftover, isNight, isRushOre, lightningOffset, MIN_GAP, mobTag, newActive, newSchedule, nightStep, packSize,
   parseControl, participants, ranSeconds, ringOffset, scheduleMinute, secondsUntilDawn, secondsUntilNight,
   shouldDouble, TYPES, xpBonus, invasionLoot, invasionMob, invasionTargets, waveSize, ZOMBIES,
-  beaconColumn, isGround, BOSSES, CRATER_RADIUS, craterDepth, craterGroundOk, isCover, isMeteorReplaceable, linePoints, planCrater, shootingStarPath, starLoot, BOUNTY_LOOT, bossHint, bountyHunters, chooseBoss, healthBoostLevel,
+  beaconColumn, isGround, BOSSES, CRATER_RADIUS, craterDepth, craterGroundOk, isCover, isMeteorReplaceable, linePoints, planCrater, shootingStarPath, starLoot, distanceBand, treasureHint, treasureLoot, BOUNTY_LOOT, bossHint, bountyHunters, chooseBoss, healthBoostLevel,
 } from "../scripts/core.js";
 
 test("night events: wait for the night, run until dawn", () => {
@@ -306,4 +306,25 @@ test("shooting stars: loot table, streaks in the sky", () => {
   assert.equal(pts.length, 6);
   assert.deepEqual(pts[5], { x: 10, y: 10, z: 0 });
   assert.equal(TYPES.shooting_stars.night, true);
+});
+
+test("treasure hunt: loot, rough distance, warmer and colder", () => {
+  for (let i = 0; i < 50; i++) {
+    const loot = treasureLoot(Math.random);
+    assert.equal(loot.length, 5);
+    assert.ok(loot.find(([id, n]) => id === "minecraft:diamond" && n >= 2 && n <= 4));
+  }
+  assert.equal(distanceBand(5), "direkt hier – grabt nach!");
+  assert.equal(distanceBand(250), "noch weit weg");
+  const t = { x: 0, z: -300 };
+  const first = treasureHint({ x: 0, z: 0 }, t);
+  assert.equal(first.text, "Schatz: Richtung Norden, noch weit weg");
+  const closer = treasureHint({ x: 0, z: -50 }, t, first.dist);
+  assert.match(closer.text, /wärmer/);
+  assert.match(closer.text, /noch weit weg/);
+  const away = treasureHint({ x: 0, z: 20 }, t, closer.dist);
+  assert.match(away.text, /kälter/);
+  assert.doesNotMatch(treasureHint({ x: 0, z: -1 }, t, first.dist).text, /wärmer|kälter/, "a step doesn't count");
+  assert.equal(treasureHint({ x: 3, z: -298 }, t, 20).text, "Schatz: direkt hier – grabt nach!");
+  assert.equal(TYPES.treasure.category, "ressourcen");
 });

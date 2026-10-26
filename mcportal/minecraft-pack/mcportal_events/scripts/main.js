@@ -7,7 +7,8 @@
 //    Zombie-Invasion (waves at the villages near players, better loot, villagers protected);
 //    Kopfgeld (a named boss appears in the wild under a column of light, hints every 5 s, bounty for the hunters,
 //    escapes after 20 min); Meteorit (crater with netherrack, amethyst and diamond ore - natural ground only, undo log);
-//    Sternschnuppen-Nacht (night: shooting stars, star pieces with loot fall near players).
+//    Sternschnuppen-Nacht (night: shooting stars, star pieces with loot fall near players);
+//    Schatzsuche (a chest buried 150-400 blocks away, warmer/colder hints, gone again if not found).
 //  * Mobs spawned by events carry the tag "mcfs_ev" + "mcfs_ev_<type>" and are removed when their event is over.
 //  * Build register: every chunk a player placed a block in is remembered; world-changing effects
 //    (lightning now, meteors later) stay away from it.
@@ -21,7 +22,8 @@ import {
 } from "@minecraft/server";
 import {
   activeMinute, beaconColumn, BOSSES, bossHint, BOUNTY_LOOT, CRATER_RADIUS, craterGroundOk, IMPACT_COUNTDOWN, isCover,
-  isMeteorReplaceable, linePoints, planCrater, shootingStarPath, STAR_TAG, starLoot, bountyHunters, chooseBoss, healthBoostLevel,
+  isMeteorReplaceable, linePoints, planCrater, shootingStarPath, STAR_TAG, starLoot, TREASURE_DEPTH, TREASURE_DISTANCE,
+  treasureHint, treasureLoot, bountyHunters, chooseBoss, healthBoostLevel,
   chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, formatMinutes, invasionLoot,
   invasionMob, invasionTargets, isBed, isGround, isLeftover, isNaturalTop, isRushOre, lightningOffset, MOB_TAG, mobTag, newActive,
   newSchedule, nightStep, packSize, parseControl, participants, ranSeconds, ringOffset, scheduleMinute, shouldDouble,
@@ -141,6 +143,12 @@ const HANDLERS = {
   bounty: { start() {}, minute() {}, stop() {} },
   // target, countdown and impact are handled by the meteor interval below
   meteor: { start() {}, minute() {}, stop() {} },
+  treasure: {
+    start() {},
+    minute() {},
+    // not found in time: the chest goes again (also later, if its area is not loaded right now)
+    stop(a) { if (a.treasure?.buried && !a.treasure.found) queueUndo(a.treasure.undo); },
+  },
   shooting_stars: {
     start() {},
     minute() {},
@@ -717,6 +725,144 @@ function craterBlocks(dim, m) {
   return changeBlocks(m.undo, dim, changes);
 }
 
+// ---------- Schatzsuche ----------
+
+const TREASURE_HINT_EVERY = 5 * 20;
+const treasureLast = new Map(); // player name -> distance at the last hint
+let nextTreasureHint = 0;
+
+system.runInterval(() => {
+  const a = active.find((x) => x.type === "treasure");
+  if (!a) return;
+  const dim = overworld();
+  const players = world.getAllPlayers().filter((p) => p.dimension.id === "minecraft:overworld");
+  if (!a.treasure) {
+    // the spot: far enough to be a hunt, away from every build (the register needs no loaded chunks)
+    if (!players.length) return;
+    const p = players[Math.floor(Math.random() * players.length)];
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const s = ringOffset(p.location.x, p.location.z, TREASURE_DISTANCE[0], TREASURE_DISTANCE[1], Math.random);
+      if (nearBuild(dim, s.x, s.z)) continue;
+      schedule.seq = (schedule.seq ?? 0) + 1;
+      a.treasure = { x: s.x, z: s.z, buried: false, found: false, undo: `treasure-${schedule.seq}` };
+      treasureLast.clear();
+      nextTreasureHint = 0;
+      world.sendMessage("§6[Schatzsuche] §fIrgendwo in der Nähe ist ein Schatz vergraben! Unten am Bildschirm steht, "
+        + "in welche Richtung es geht – und ob ihr wärmer oder kälter werdet.");
+      saveState();
+      logState();
+      return;
+    }
+    return;
+  }
+  const t = a.treasure;
+  if (!t.buried) buryTreasure(a, dim);
+  if (system.currentTick >= nextTreasureHint) {
+    nextTreasureHint = system.currentTick + TREASURE_HINT_EVERY;
+    for (const p of players) {
+      const h = treasureHint(p.location, t, treasureLast.get(p.name));
+      treasureLast.set(p.name, h.dist);
+      try { p.onScreenDisplay.setActionBar(`§6${h.text}`); } catch { /* left */ }
+    }
+  }
+  // close by: it glitters above the spot
+  if (t.buried && players.some((p) => Math.hypot(p.location.x - t.x, p.location.z - t.z) < 16)) {
+    try {
+      for (let i = 0; i < 3; i++) {
+        dim.spawnParticle("minecraft:villager_happy",
+          { x: t.x + 0.5 + (Math.random() - 0.5) * 2, y: t.surface + 1 + Math.random(), z: t.z + 0.5 + (Math.random() - 0.5) * 2 });
+      }
+    } catch { /* unloaded */ }
+  }
+}, 20);
+
+/** a build in this chunk or a neighbouring one? */
+function nearBuild(dim, x, z) {
+  for (let dx = -16; dx <= 16; dx += 16) {
+    for (let dz = -16; dz <= 16; dz += 16) if (isBuilt(dim.id, x + dx, z + dz)) return true;
+  }
+  return false;
+}
+
+/** bury the chest as soon as the spot is loaded (a player came close); nearby if the spot itself doesn't suit */
+function buryTreasure(a, dim) {
+  const t = a.treasure;
+  for (let r = 0; r <= 8; r += 2) {
+    for (let dx = -r; dx <= r; dx += 2) {
+      for (let dz = -r; dz <= r; dz += 2) {
+        if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+        const x = t.x + dx, z = t.z + dz;
+        let g;
+        try { g = groundAt(dim, x, z); } catch { return; } // not loaded yet - next second
+        if (!g || !isGround(g.typeId)) continue;
+        const y = g.top - TREASURE_DEPTH;
+        let ok = true;
+        for (let yy = y; yy <= g.top && ok; yy++) ok = isMeteorReplaceable(dim.getBlock({ x, y: yy, z })?.typeId ?? "");
+        if (!ok) continue;
+        if (!changeBlocks(t.undo, dim, [{ x, y, z, typeId: "minecraft:chest" }])) return;
+        const container = dim.getBlock({ x, y, z })?.getComponent("minecraft:inventory")?.container;
+        const slots = [...Array(container?.size ?? 27).keys()].sort(() => Math.random() - 0.5);
+        for (const [id, n] of treasureLoot(Math.random)) {
+          try { container?.setItem(slots.pop(), new ItemStack(id, n)); } catch { /* ignore */ }
+        }
+        Object.assign(t, { x, y, z, surface: g.top, buried: true });
+        log({ event: "treasure", buried: true, x, y, z, undo: t.undo });
+        saveState();
+        return;
+      }
+    }
+  }
+  // nothing suitable around this spot: try another one close by next second
+  const s = ringOffset(t.x, t.z, 10, 30, Math.random);
+  Object.assign(t, { x: s.x, z: s.z });
+}
+
+function isTreasureBlock(block) {
+  const t = active.find((x) => x.type === "treasure")?.treasure;
+  const l = block.location;
+  return t && t.buried && !t.found && l.x === t.x && l.y === t.y && l.z === t.z && block.dimension.id === "minecraft:overworld";
+}
+
+function treasureFound(player) {
+  const a = active.find((x) => x.type === "treasure");
+  if (!a || a.treasure.found) return;
+  a.treasure.found = true;
+  log({ event: "treasure", found: true, player: player.name });
+  news({ event: "treasure_found", player: player.name });
+  for (const p of world.getAllPlayers()) {
+    try { p.onScreenDisplay.setTitle("§6Schatz gefunden!", { subtitle: `§e${player.name}§7 war am schnellsten`, fadeInDuration: 10, stayDuration: 70, fadeOutDuration: 20 }); } catch { /* left */ }
+  }
+  stop(a, "found", `${player.name} hat den Schatz gefunden!`);
+}
+
+world.beforeEvents.playerInteractWithBlock.subscribe((ev) => {
+  if (!ev.isFirstEvent || ev.block.typeId !== "minecraft:chest" || !isTreasureBlock(ev.block)) return;
+  const p = ev.player;
+  system.run(() => treasureFound(p)); // the chest opens as usual
+});
+
+world.afterEvents.playerBreakBlock.subscribe((ev) => {
+  // dug out instead of opened: the loot drops - found as well
+  if (ev.brokenBlockPermutation.type.id === "minecraft:chest" && isTreasureBlock(ev.block)) treasureFound(ev.player);
+});
+
+// ---------- undo that has to wait until its area is loaded ----------
+
+function queueUndo(id) {
+  schedule.pendingUndo = [...new Set([...(schedule.pendingUndo ?? []), id])];
+  retryUndos();
+}
+
+function retryUndos() {
+  const left = [];
+  for (const id of schedule.pendingUndo ?? []) {
+    const res = undoChanges(id);
+    if (res?.notLoaded) left.push(id);
+  }
+  schedule.pendingUndo = left;
+}
+system.runInterval(() => { if (schedule?.pendingUndo?.length) retryUndos(); }, MINUTE);
+
 // ---------- Sternschnuppen-Nacht ----------
 
 const STREAK_EVERY = [15, 30];   // seconds between shooting stars
@@ -927,7 +1073,7 @@ world.afterEvents.entityHurt.subscribe((ev) => {
 
 const SOUNDS = { storm: "ambient.weather.thunder", mining_rush: "random.anvil_land", lucky_day: "random.levelup",
   blood_moon: "mob.wolf.growl", zombie_invasion: "mob.zombie.say", bounty: "mob.wither.spawn",
-  meteor: "ambient.weather.lightning.impact", shooting_stars: "random.orb" };
+  meteor: "ambient.weather.lightning.impact", shooting_stars: "random.orb", treasure: "random.chestopen" };
 
 function start(type, by) {
   if (!HANDLERS[type] || active.some((a) => a.type === type)) return false;
@@ -982,6 +1128,7 @@ function logState() {
   log({
     event: "state", auto: schedule.auto, online,
     active: active.map((a) => ({ type: a.type, remaining: a.remaining, total: a.total, by: a.by, phase: a.phase,
+      treasure: a.treasure ? { buried: a.treasure.buried, found: a.treasure.found, undo: a.treasure.undo } : undefined,
       meteor: a.meteor ? { x: a.meteor.x, y: a.meteor.y, z: a.meteor.z, impacted: a.meteor.impacted, undo: a.meteor.undo }
         : undefined,
       boss: a.boss ? { name: a.boss.name, x: Math.round(a.boss.x), y: Math.round(a.boss.y ?? 0), z: Math.round(a.boss.z) }
@@ -1021,7 +1168,7 @@ function minute() {
 system.afterEvents.scriptEventReceive.subscribe((ev) => {
   if (ev.id !== "mcfs:event" || !schedule) return;
   const fromConsole = ev.sourceType === ScriptEventSource.Server;
-  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers|boss|despawn|undo|meteor|stars)\b/.exec(ev.message);
+  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers|boss|despawn|undo|meteor|stars|treasure)\b/.exec(ev.message);
   if (test && fromConsole) return runTest(ev.message);
   const cmd = parseControl(ev.message);
   const reply = (msg) => {
@@ -1268,6 +1415,21 @@ function runTest(message) {
       const items = dim.getEntities({ type: "minecraft:item", tags: [STAR_TAG] })
         .map((e) => `${e.getComponent("minecraft:item").itemStack.typeId.slice(10)}@${Math.round(Math.hypot(e.location.x - at.x, e.location.z - at.z))}`);
       log({ event: "test", dropped: ok, pieces: items, tracked: fallenStars.length });
+    }, 40);
+  } else if (kind === "treasure") {
+    // treasure as if a player stood at (a, b) - spot fixed within ~40 blocks so the test area is loaded
+    const t = active.find((x) => x.type === "treasure");
+    const dim = overworld();
+    if (!t) return;
+    t.treasure = { x: Number(a) + 30, z: Number(b), buried: false, found: false, undo: "treasure-99" };
+    system.runTimeout(() => {
+      const tt = t.treasure;
+      const items = tt.buried ? dim.getBlock({ x: tt.x, y: tt.y, z: tt.z })?.getComponent("minecraft:inventory")?.container : null;
+      const loot = [];
+      for (let i = 0; items && i < items.size; i++) { const it = items.getItem(i); if (it) loot.push(`${it.typeId.slice(10)}x${it.amount}`); }
+      log({ event: "test", buried: tt.buried, x: tt.x, y: tt.y, z: tt.z, surface: tt.surface,
+        block: tt.buried ? dim.getBlock({ x: tt.x, y: tt.y, z: tt.z })?.typeId : null, loot,
+        hint: treasureHint({ x: Number(a), z: Number(b) }, tt).text });
     }, 40);
   } else if (kind === "villagers") {
     // a small "village": 4 villagers on the ground at (a, b)

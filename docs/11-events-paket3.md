@@ -1,6 +1,6 @@
 # Timed Events – Paket 3: Die Welt verändert sich (Plan, Änderung M13)
 
-Stand: 2026-10-26 · Status: **W1–W3 gebaut** (Grundlage, Meteorit, Sternschnuppen), W4–W7 offen · baut auf Paket 1 und 2 auf · nur stabile
+Stand: 2026-10-26 · Status: **W1–W4 gebaut** (Grundlage, Meteorit, Sternschnuppen, Schatzsuche), W5–W7 offen · baut auf Paket 1 und 2 auf · nur stabile
 Script-API, keine Experimente
 
 ## Ziel
@@ -137,6 +137,24 @@ zusätzlich mit einem Vorher/Nachher-Vergleich und dem Rückgängig-Befehl.
   Meldung ans Erfolge-Pack für „Sterntaler“). Liegen gebliebene Stücke bleiben nach dem Event Beute.
 - **Getestet:** 19 Node-Tests (neu: Beute, Bahnen, Linienpunkte). Testserver: wartet am Tag, startet bei Nacht,
   3 Sternenstücke 12–30 Blöcke entfernt, verfolgt; Ende bei Sonnenaufgang. Aufsammeln nur im Spiel prüfbar.
+
+## W4 – gebaut (Schatzsuche)
+
+- **Ort:** 150–400 Blöcke von einem zufälligen Spieler, Chunk und Nachbarn nicht im Bau-Register. Festgelegt beim
+  Start (das Register braucht keinen geladenen Bereich), **vergraben erst, wenn jemand in die Nähe kommt** und der
+  Bereich geladen ist: Truhe 3 Blöcke unter echtem Boden, alle Blöcke darüber natürlich; passt die Stelle nicht,
+  wird bis 8 Blöcke daneben gesucht, sonst ein neuer Ort in der Nähe.
+- **Inhalt:** 2–4 Diamanten, 4–8 Smaragde, 3–6 Goldbarren, 4–8 Erfahrungsfläschchen und eins von Goldener Apfel,
+  Namensschild, Sattel, Totem der Unsterblichkeit – zufällig in der Truhe verteilt.
+- **Hinweise** alle 5 s: Himmelsrichtung, grobe Entfernung („noch weit weg“ … „ganz nah“ … „direkt hier – grabt
+  nach!“) und „wärmer“/„kälter“ gegenüber dem letzten Hinweis; ab 16 Blöcken Funkeln über der Stelle.
+- **Gefunden** = Truhe als Erste/r geöffnet (oder ausgegraben): Titel für alle, Log `treasure`, Meldung
+  `treasure_found` (Erfolg „Schatzsucher“). Die Truhe bleibt dann.
+- **Nicht gefunden** nach 30 Min. Spielzeit (oder beendet): Truhe samt Inhalt weg, Boden wie vorher
+  (Rückgängig-Protokoll). Ist der Bereich nicht geladen, wird es jede Minute erneut versucht, bis es klappt.
+- **Getestet:** 20 Node-Tests (neu: Beute, Entfernungsstufen, wärmer/kälter). Testserver: Truhe 3 unter der
+  Oberfläche mit 5 Beute-Stapeln, Hinweis „Richtung Osten, nah“, beim Beenden Truhe weg und Boden zurück.
+  Öffnen durch einen Spieler nur im Spiel prüfbar.
 
 ## Was sich auf dem Server ändert
 
