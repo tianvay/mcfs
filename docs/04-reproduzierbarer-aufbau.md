@@ -206,20 +206,62 @@ die Anleitungen, nach denen gearbeitet wird (Skill, dieses Dokument).
   - Die neue ACL-Stelle in `install.sh`: Sie bricht ab, wenn das Portal danach etwas nicht lesen kann.
   - `world-pack.sh` mit sudo.
 
+## R6 (Teil 1) – Umstellung gebaut: `setup.sh --switch` / `--switch-back`
+
+- **Fund beim Bauen – die Startprüfung (M8) wäre am Stichtag gescheitert:** `mc-start-check post` liest die
+  Zeilen des Servers mit `journalctl`.
+  - Das ging bisher nur, weil `fred` in der Gruppe `adm` ist. Der Systembenutzer `minecraft` darf das Journal
+    nicht lesen. Die Prüfung hätte „Server started.“ nie gesehen, den Server nach 150 s gestoppt, und systemd
+    hätte es 4-mal versucht und dann aufgegeben.
+  - Jetzt läuft `post` als root (`ExecStartPost=+…` in `20-startcheck.conf`); `pre` läuft weiter als Benutzer.
+  - Der Spieler-Port kommt aus `MC_PORTS` (Standard 19132 19133) statt fest 19132.
+  - Gilt für den Testserver ab dem nächsten `install.sh` und dem nächsten Start; geprüft: `post` erkennt den
+    laufenden Testserver.
+- **Probestart jetzt mit der vollständigen Kette:** Unit, Konsolen-Socket, `10-portal.conf`
+  (Stopp über `stop`) und `20-startcheck.conf`, als Laufzeit-Units `mcportal-probe.service/.socket` in `/run`.
+  - **Bedingungen:** Die Startprüfung muss bestehen, alle Packs müssen sich melden, das Log muss „Quit correctly“
+    zeigen (sauber über die Konsole gestoppt), keine Fehler.
+  - **Startprüfung aus dem Repo:** Sie wird mit `bash` aus `/run` ausgeführt (`/run` ist noexec) – so wird auch
+    eine noch nicht installierte Version geprüft.
+  - **Geprüft als `fred`:** gerenderte Units mit Drop-ins bestehen `systemd-analyze verify`, `Restart=no` aus dem
+    Probe-Drop-in gewinnt.
+- **`install.sh` richtet das Portal nach der Unit aus:** Steht in `/etc/mcportal/config.toml` ein anderer
+  `server_dir`, wird nur diese Zeile angepasst (PIN usw. bleiben); vorher wird die Datei gesichert.
+- **`sudo setup.sh --switch [--import-players]`:**
+  - **Prüft vorher:** echte `/etc/mcportal/server.conf` statt Beispiel, niemand online, die Welt gibt es noch
+    nicht, die Unit zeigt noch auf den Testordner.
+  - **Ohne Ausfall:** die Vorbereitung mit den endgültigen Einstellungen, inklusive Probestart.
+  - **Wiederherstellungspunkt** in `/var/backups/mcportal-switch/<Zeit>/` (nur root – `minecraft` darf nicht
+    ändern können, was root später zurückspielt): alte Unit, Socket, Portal-Konfiguration.
+  - **Ab hier ca. 5 Minuten ohne Minecraft:**
+    1. Testserver stoppen. Mit `--import-players` Whitelist und Operatoren übernehmen.
+    2. Portal-Daten der Testphase nach `/var/lib/mcportal/archive/<Zeit>_testphase/` verschieben: Statistik,
+       Erfolge, Events, Wegpunkte, Karte **und die Update-Sicherungen**. Sonst würde der Rollback-Knopf den
+       Testserver in den neuen Ordner zurückspielen.
+    3. Haupt-Unit und Socket für `minecraft` schreiben.
+    4. `install.sh` ausführen: ACLs, Konfiguration, Helfer-Units, Startprüfung.
+    5. Start – die Welt entsteht jetzt mit dem Seed aus `server.conf`.
+    6. `verify.sh --conf … --laravel …`.
+  - **Bei einem Fehler** ab dem Stopp stellt das Script automatisch zurück.
+- **`sudo setup.sh --switch-back`:**
+  - Nimmt den neuesten unbenutzten Wiederherstellungspunkt und stellt damit Unit und Socket zurück.
+  - Holt die Portal-Daten der Testphase zurück; die des echten Servers kommen nach `…_after-switch/`.
+  - Danach `install.sh`, Start und `verify.sh`.
+  - Der Testordner selbst wird nie angefasst.
+- **Bleiben bei der Umstellung:** Versionshistorie, Protokoll, offene Operator-/Überleben-Aufträge, PIN.
+
 ## Umstieg am Stichtag (auf diesem Laptop)
 
 ```text
-Vorher (Tage davor, ohne Ausfall):
-  setup.sh --prepare     neues Programm, Konfiguration, Welt mit allen Packs in /opt/minecraft vorbereiten,
-                         einmal mit anderen Ports probestarten (wie der Testserver), verify.sh, wieder stoppen
+Vorher (ohne Ausfall):
+  sudo bash ~/mcportal-src/deploy/install.sh               neue Startprüfung auch für den Testserver
+  sudo bash ~/mcportal-src/provision/setup.sh --prepare    Probestart mit Konsole + Startprüfung
+  /etc/mcportal/server.conf anlegen (aus provision/server.conf.example) mit den Entscheidungen
 
-Stichtag (ca. 5 Minuten Ausfall):
-  1. Testserver stoppen, Testinstallation komplett archivieren (bleibt liegen, wird nicht gelöscht)
-  2. setup.sh            Unit auf /opt/minecraft umstellen, Portal neu ausrichten
-  3. import-players.sh --from <Testinstallation>   Whitelist + Operatoren
-  4. Portal-Daten der Testphase archivieren (Statistik, Erfolge, Events, Karte, Versionshistorie)
-  5. Start, verify.sh --conf /etc/mcportal/server.conf --laravel <Wert von vorher>, Kartenlauf
-Rückweg: alte Unit-Datei zurück, daemon-reload, Start – die Testinstallation ist unverändert da.
+Stichtag (ca. 5 Minuten Ausfall, niemand online):
+  sudo bash ~/mcportal-src/provision/setup.sh --switch [--import-players]
+  danach: Kartenlauf im Portal
+Rückweg: sudo bash ~/mcportal-src/provision/setup.sh --switch-back – die Testinstallation ist unverändert da.
 ```
 
 ## Schritte
@@ -231,7 +273,7 @@ Rückweg: alte Unit-Datei zurück, daemon-reload, Start – die Testinstallation
 | **R3** | `verify.sh` und `import-players.sh` |
 | **R4** | `world-pack.sh` & Co. für den Benutzer `minecraft`; Docs und Skill auf neue Pfade |
 | **R5** | Probelauf auf dem Laptop parallel zum laufenden Testserver (`--prepare`), danach aufräumen |
-| **R6** | Stichtag (mit dir zusammen) |
+| **R6** | `--switch` / `--switch-back` (gebaut), dann Stichtag (mit dir zusammen) |
 
 ## Zu entscheiden
 

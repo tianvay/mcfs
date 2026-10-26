@@ -156,6 +156,11 @@ install -d -m 750 -o root -g mcportal "$ETC"
 if [[ ! -f "$ETC/config.toml" ]]; then
   sed "s#@SERVER_DIR@#$MC_DIR#" "$SRC/config.example.toml" > "$ETC/config.toml"
   info "Konfiguration angelegt: $ETC/config.toml"
+elif ! grep -qxF "server_dir = \"$MC_DIR\"" "$ETC/config.toml"; then
+  # the portal follows the unit (e.g. after provision/setup.sh --switch); everything else (PIN ...) stays
+  cp -a "$ETC/config.toml" "$BK/config.toml"
+  sed -i "s#^server_dir = .*#server_dir = \"$MC_DIR\"#" "$ETC/config.toml"
+  info "Konfiguration: server_dir -> $MC_DIR (vorher gesichert: $BK/config.toml)"
 else
   info "Konfiguration vorhanden, unverändert: $ETC/config.toml"
 fi

@@ -52,7 +52,7 @@ Stand: 2026-10-26
 - [ ] **Reproduzierbarer Aufbau** für den echten Server (Plan: `docs/04-reproduzierbarer-aufbau.md`):
       R1–R5 erledigt (26.10.), `/opt/minecraft/bedrock` ist vorbereitet. Offen: **R6 Stichtag** – vorher
       Entscheidungen (Welt-/Servername, Seed, Spieleinstellungen, Whitelist übernehmen, Portal-Daten
-      archivieren, Auto-Events, Termin); `--switch` in `setup.sh` für die Umstellung bauen.
+      archivieren, Auto-Events, Termin). `setup.sh --switch`/`--switch-back` sind gebaut; vorher `install.sh` + `--prepare` erneut (neue Startprüfung, Probe mit Konsole).
 - [ ] Später: **Web-Konsole** und **Log-Ansicht**.
 - [ ] Prüfen, ob ein Spieler, der gerade online ist, Operator-Rechte durch `permission reload` sofort bekommt.
 

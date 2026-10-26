@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # Minecraft Family Portal - start check for minecraft-bedrock.service (change M8)
 #
-# Called by systemd (drop-in 20-startcheck.conf), as the Minecraft user:
-#   mc-start-check pre            before the start: wait until the game ports are completely free
-#   mc-start-check post <MAINPID>  after the start: wait until the server really accepts players
+# Called by systemd (drop-in 20-startcheck.conf):
+#   mc-start-check pre            as the Minecraft user, before the start: wait until the game ports are completely free
+#   mc-start-check post <MAINPID>  as root ("+" in the drop-in): wait until the server really accepts players.
+#                                  Root because it reads the server's lines from the journal - a system user like
+#                                  "minecraft" may not (the test phase only worked because fred is in group adm).
+# MC_PORTS (default "19132 19133", the first one is the player port) and MC_CONSOLE are set for the probe start
+# of provision/setup.sh.
 #
 # Why: if the server starts while port 19132 is still held (e.g. connections in TIME_WAIT for up
 # to 60 s after a stop), Bedrock silently skips opening it - the server runs, but nobody can join
@@ -12,6 +16,7 @@
 set -uo pipefail
 
 PORTS="${MC_PORTS:-19132 19133}"
+MAIN_PORT="${PORTS%% *}"
 CONSOLE="${MC_CONSOLE:-/run/minecraft-bedrock/console}"
 PRE_MAX="${PRE_MAX:-120}"     # seconds
 POST_MAX="${POST_MAX:-150}"   # seconds
@@ -44,11 +49,11 @@ post)
   while (( waited < POST_MAX )); do
     kill -0 "$pid" 2>/dev/null || { log "FEHLER: Serverprozess $pid läuft nicht mehr"; exit 1; }
     logtext="$(journalctl -q -o cat _PID="$pid" --no-pager 2>/dev/null)"
-    ss -Htlnp "( sport = :19132 )" 2>/dev/null | grep -q "pid=$pid," && listening=1
+    ss -Htlnp "( sport = :$MAIN_PORT )" 2>/dev/null | grep -q "pid=$pid," && listening=1
     grep -q 'Signed in to signaling service successfully' <<<"$logtext" && signed=1
     grep -q 'Server started\.' <<<"$logtext" && started=1
     if (( listening && signed && started )); then
-      log "OK nach ${waited}s: Spieler-Port 19132 offen, beim Xbox-Verbindungsdienst angemeldet, Server gestartet"
+      log "OK nach ${waited}s: Spieler-Port $MAIN_PORT offen, beim Xbox-Verbindungsdienst angemeldet, Server gestartet"
       exit 0
     fi
     sleep 2; waited=$((waited + 2))
