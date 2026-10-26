@@ -264,7 +264,7 @@ class FakeAdapter:
         night = {"blood_moon", "zombie_invasion"}
         active = [{"type": t, "remaining": r, "total": 500 if t in night else {"storm": 2400, "bounty": 1200}.get(t, 7200),
                    "by": "console", "phase": ("waiting" if r > 500 else "running") if t in night else None,
-                   "boss": {"name": "Bernd der Zombiekönig", "x": -120, "z": 48} if t == "bounty" else None}
+                   "boss": {"name": "Bernd der Zombiekönig", "x": -120, "y": 71, "z": 48} if t == "bounty" else None}
                   for t, r in self._ev_active.items()]
         self._ev_log({"event": "state", "auto": self._ev_auto, "online": len(self._online), "active": active,
                       "next_in": 95 if self._ev_auto else None, "last": "storm", "register": 12,

@@ -337,13 +337,25 @@ export function chooseBoss(rand) {
 
 const DIRECTIONS = ["Osten", "Südosten", "Süden", "Südwesten", "Westen", "Nordwesten", "Norden", "Nordosten"];
 
-/** hint for the action bar: distance and compass direction (Minecraft: -z = north, +x = east) */
+/**
+ * hint for the action bar: distance, compass direction (Minecraft: -z = north, +x = east) and, if it
+ * matters, the height difference
+ */
 export function bossHint(name, from, to) {
   const dx = to.x - from.x, dz = to.z - from.z;
   const dist = Math.round(Math.hypot(dx, dz));
-  if (dist < 8) return `${name} ist ganz in der Nähe!`;
+  const dy = to.y === undefined || from.y === undefined ? 0 : Math.round(to.y - from.y);
+  const height = Math.abs(dy) >= 4 ? `, ${Math.abs(dy)} Blöcke ${dy > 0 ? "höher" : "tiefer"}` : "";
+  if (dist < 8) return `${name} ist ganz in der Nähe!${height}`;
   const sector = Math.round(Math.atan2(dz, dx) / (Math.PI / 4));
-  return `${name}: ${dist} Blöcke Richtung ${DIRECTIONS[(sector + 8) % 8]}`;
+  return `${name}: ${dist} Blöcke Richtung ${DIRECTIONS[(sector + 8) % 8]}${height}`;
+}
+
+/** points of the light column above the boss (every second) */
+export function beaconColumn(at, height = 24, step = 2) {
+  const out = [];
+  for (let dy = 2; dy <= height; dy += step) out.push({ x: at.x, y: at.y + dy, z: at.z });
+  return out;
 }
 
 /** the bounty: always the same, so it's worth the hunt */

@@ -52,7 +52,7 @@ function evClock(sec) {
 function evProgress(a) {
   const left = evRemaining(a);
   const paused = !somebodyOnline();
-  const boss = a.boss ? `${a.boss.name} · zuletzt bei X ${a.boss.x} · Z ${a.boss.z}` : null;
+  const boss = a.boss ? `${a.boss.name} · zuletzt bei X ${a.boss.x}${a.boss.y ? ` · Y ${a.boss.y}` : ""} · Z ${a.boss.z}` : null;
   if (a.phase === "waiting") {
     return { timer: paused ? "⏸ pausiert" : `in ${evClock(left)}`, done: 0,
       note: `wartet auf die Nacht · beginnt in ca. ${evMinutes(left)} · ${evBy(a.by)}` };

@@ -7,7 +7,7 @@ import {
   isBed, isLeftover, isNight, isRushOre, lightningOffset, MIN_GAP, mobTag, newActive, newSchedule, nightStep, packSize,
   parseControl, participants, ranSeconds, ringOffset, scheduleMinute, secondsUntilDawn, secondsUntilNight,
   shouldDouble, TYPES, xpBonus, invasionLoot, invasionMob, invasionTargets, waveSize, ZOMBIES,
-  BOSSES, BOUNTY_LOOT, bossHint, bountyHunters, chooseBoss, healthBoostLevel,
+  beaconColumn, BOSSES, BOUNTY_LOOT, bossHint, bountyHunters, chooseBoss, healthBoostLevel,
 } from "../scripts/core.js";
 
 test("night events: wait for the night, run until dawn", () => {
@@ -229,6 +229,13 @@ test("Kopfgeld-Boss: health, hints, loot, hunters", () => {
   assert.equal(bossHint("Bernd", at, { x: -30, z: -30 }), "Bernd: 42 Blöcke Richtung Nordwesten");
   assert.equal(bossHint("Bernd", at, { x: 20, z: 20 }), "Bernd: 28 Blöcke Richtung Südosten");
   assert.equal(bossHint("Bernd", at, { x: 3, z: 2 }), "Bernd ist ganz in der Nähe!");
+  const me = { x: 0, y: 70, z: 0 };
+  assert.equal(bossHint("Bernd", me, { x: 0, y: 76, z: -38 }), "Bernd: 38 Blöcke Richtung Norden, 6 Blöcke höher");
+  assert.equal(bossHint("Bernd", me, { x: 0, y: 58, z: -38 }), "Bernd: 38 Blöcke Richtung Norden, 12 Blöcke tiefer");
+  assert.equal(bossHint("Bernd", me, { x: 0, y: 72, z: -38 }), "Bernd: 38 Blöcke Richtung Norden", "small steps don't matter");
+  const col = beaconColumn({ x: 5, y: 70, z: 5 });
+  assert.equal(col.length, 12);
+  assert.deepEqual([col[0].y, col.at(-1).y], [72, 94]);
   assert.ok(BOUNTY_LOOT.some(([id, n]) => id === "minecraft:diamond" && n === 3));
   assert.deepEqual(bountyHunters("Steve", ["Alex", "Steve"]), ["Alex", "Steve"]);
   assert.deepEqual(bountyHunters(null, ["Alex"]), ["Alex"]);

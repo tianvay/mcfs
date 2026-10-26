@@ -5,7 +5,8 @@
 //  * Events: Unwetter (storm), Mining Rush (ore drops doubled), Glückstag (XP doubled);
 //    night events (wait for the next night, end at dawn, no sleeping meanwhile): Blutmond (wolf packs),
 //    Zombie-Invasion (waves at the villages near players, better loot, villagers protected);
-//    Kopfgeld (a named boss appears in the wild, hints in the action bar, bounty for the hunters, escapes after 20 min).
+//    Kopfgeld (a named boss appears in the wild under a column of light, hints every 5 s, bounty for the hunters,
+//    escapes after 20 min).
 //  * Mobs spawned by events carry the tag "mcfs_ev" + "mcfs_ev_<type>" and are removed when their event is over.
 //  * Build register: every chunk a player placed a block in is remembered; world-changing effects
 //    (lightning now, meteors later) stay away from it.
@@ -16,7 +17,7 @@
 // console.warn on purpose: the server runs with content-log-level=warning.
 import { EntityDamageCause, ItemStack, Player, ScriptEventSource, system, WeatherType, world } from "@minecraft/server";
 import {
-  activeMinute, bossHint, BOUNTY_LOOT, bountyHunters, chooseBoss, healthBoostLevel,
+  activeMinute, beaconColumn, bossHint, BOUNTY_LOOT, bountyHunters, chooseBoss, healthBoostLevel,
   chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, formatMinutes, invasionLoot,
   invasionMob, invasionTargets, isBed, isLeftover, isNaturalTop, isRushOre, lightningOffset, MOB_TAG, mobTag, newActive,
   newSchedule, nightStep, packSize, parseControl, participants, ranSeconds, ringOffset, scheduleMinute, shouldDouble,
@@ -408,8 +409,9 @@ function protectVillagers(dim, center) {
 
 // ---------- Kopfgeld-Boss ----------
 
-const HINT_EVERY = 30 * 20;
+const HINT_EVERY = 5 * 20;
 const HUNTER_RADIUS = 32;
+const BEACON_PARTICLE = "minecraft:endrod";
 let nextHint = 0;
 
 system.runInterval(() => {
@@ -423,17 +425,21 @@ system.runInterval(() => {
     const p = players[Math.floor(Math.random() * players.length)];
     if (spawnBoss(a, dim, p.location)) {
       const b = a.boss;
-      world.sendMessage(`§6[Kopfgeld] §e${b.name}§f wurde bei §eX ${Math.round(b.x)} · Z ${Math.round(b.z)}§f gesehen! `
-        + "Wer ihn besiegt, bekommt das Kopfgeld.");
+      world.sendMessage(`§6[Kopfgeld] §e${b.name}§f wurde bei §eX ${Math.round(b.x)} · Y ${Math.round(b.y)} · `
+        + `Z ${Math.round(b.z)}§f gesehen – folgt der Lichtsäule! Wer ihn besiegt, bekommt das Kopfgeld.`);
       saveState();
       logState();
     }
     return;
   }
-  // follow the boss while its chunk is loaded; the last known place stays otherwise
+  // follow the boss while its chunk is loaded (the last known place stays otherwise) and mark it with a
+  // column of light that can be seen from far away
   try {
     const e = dim.getEntities({ tags: [mobTag("bounty")] })[0];
-    if (e) Object.assign(a.boss, { x: e.location.x, z: e.location.z });
+    if (e) {
+      Object.assign(a.boss, { x: e.location.x, y: e.location.y, z: e.location.z });
+      for (const p of beaconColumn(e.location)) dim.spawnParticle(BEACON_PARTICLE, p);
+    }
   } catch { /* ignore */ }
   if (system.currentTick < nextHint) return;
   nextHint = system.currentTick + HINT_EVERY;
@@ -443,11 +449,11 @@ system.runInterval(() => {
   }
 }, 20);
 
-/** the boss 40-80 blocks from `near`, in the wild; false if there is no spot (yet) */
+/** the boss 30-60 blocks from `near`, in the wild; false if there is no spot (yet) */
 function spawnBoss(a, dim, near) {
   const boss = chooseBoss(Math.random);
   for (let attempt = 0; attempt < 8; attempt++) {
-    const spot = ringOffset(near.x, near.z, 40, 80, Math.random);
+    const spot = ringOffset(near.x, near.z, 30, 60, Math.random);
     const top = wildTop(dim, spot.x, spot.z);
     if (!top || top.typeId.includes("water")) continue;
     try {
@@ -466,7 +472,7 @@ function spawnBoss(a, dim, near) {
           h.setCurrentValue(h.effectiveMax);
         } catch { /* gone */ }
       }, 2);
-      a.boss = { id: boss.id, name: boss.name, x: spot.x + 0.5, z: spot.z + 0.5 };
+      a.boss = { id: boss.id, name: boss.name, x: spot.x + 0.5, y: top.location.y + 1, z: spot.z + 0.5 };
       nextHint = 0;
       return true;
     } catch (err) {
@@ -669,7 +675,8 @@ function logState() {
   log({
     event: "state", auto: schedule.auto, online,
     active: active.map((a) => ({ type: a.type, remaining: a.remaining, total: a.total, by: a.by, phase: a.phase,
-      boss: a.boss ? { name: a.boss.name, x: Math.round(a.boss.x), z: Math.round(a.boss.z) } : undefined })),
+      boss: a.boss ? { name: a.boss.name, x: Math.round(a.boss.x), y: Math.round(a.boss.y ?? 0), z: Math.round(a.boss.z) }
+        : undefined })),
     next_in: estimateNext(schedule, online), last: schedule.last, register: register?.size ?? 0,
     types: IMPLEMENTED,
   });
@@ -777,7 +784,9 @@ function runTest(message) {
       const h = e?.getComponent("minecraft:health");
       log({ event: "test", boss: ok, name: e?.nameTag, type: e?.typeId, health: h ? `${h.currentValue}/${h.effectiveMax}` : null,
         effects: e ? e.getEffects().map((x) => `${x.typeId}${x.amplifier}`) : [],
-        hint: bounty?.boss ? bossHint(bounty.boss.name, at, bounty.boss) : null });
+        hint: bounty?.boss ? bossHint(bounty.boss.name, { ...at, y: 60 }, bounty.boss) : null, y: bounty?.boss?.y });
+      try { dim.spawnParticle(BEACON_PARTICLE, e.location); log({ event: "test", particle: "ok" }); }
+      catch (err) { log({ event: "test", particle: String(err) }); }
     }, 10);
   } else if (kind === "villagers") {
     // a small "village": 4 villagers on the ground at (a, b)

@@ -182,6 +182,17 @@ Phasen und Aufräumen lassen sich mit Test-Spielerpositionen prüfen, Kämpfe nu
   blieben erhalten (nächstes in ca. 172 Online-Minuten, 1 Chunk); 12 Event-Erfolge im Katalog. Startprüfung:
   62 s auf den Port gewartet (TIME-WAIT), dann OK.
 
+## Nachbesserung Events-Pack 1.1.1: Boss leichter zu finden (2026-10-26)
+
+- Anlass: Bei den ersten Kopfgeld-Versuchen wurde der Boss nicht gefunden. Laut Log stand er jedes Mal an der
+  Oberfläche (Gras, Y 68–70, 40–80 Blöcke entfernt) – es fehlte die Orientierung: nur ein Hinweis alle 30 s,
+  keine Höhe, nichts Sichtbares.
+- Jetzt: **Lichtsäule** über dem Boss (aufsteigende End-Stab-Funken, 2–24 Blöcke über ihm, jede Sekunde),
+  **Hinweis alle 5 s** mit Höhenunterschied („46 Blöcke Richtung Osten, 8 Blöcke höher“), **Y-Koordinate** in
+  Chatmeldung und Portal, Abstand beim Erscheinen **30–60** statt 40–80 Blöcke.
+- Getestet: 15 Node-Tests (neu: Höhe im Hinweis, Lichtsäule); Testserver: Partikel angenommen, Y im Zustand,
+  Hinweis mit Höhe. Installation: `install.sh` (Portal zeigt Y) und `world-pack.sh mcportal_events apply`.
+
 ## Was sich auf dem Server ändert
 
 - Events-Pack 1.0.0 → 1.1.0, Erfolge-Pack 1.1.0 → 1.2.0, neue Portal-Version. Keine Blockänderungen.
