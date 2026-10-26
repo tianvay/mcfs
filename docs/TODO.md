@@ -4,7 +4,6 @@ Stand: 2026-10-25
 
 ## Offen
 
-- [ ] **install.sh** (Wegpunkte im Portal + Korrektur Anzeige „starting“), danach Wegpunkte-Pack 1.3.0 installieren.
 - [ ] Ruinen im Spiel ansehen: einen Wegpunkt löschen (Kohleblock, Kupferlaternen).
 - [ ] „Dorf“ ggf. mit `/warp public Dorf` freigeben; Schalter „Öffentlich“ beim nächsten Setzen ausprobieren.
 - [ ] Wegpunkte noch ausprobieren: Teleport in den Nether/ins Ende, Diamant abbauen, Xbox (Grafik-Download).
@@ -33,6 +32,7 @@ Stand: 2026-10-25
 - [x] Korrektur „Update verfügbar“-Hinweis + Portal mit Statistik installiert (2026-10-25)
 - [x] M5 Statistik-Pack in der Welt installiert, Pack meldet sich (2026-10-25 21:19)
 - [x] M6 Statistik-Pack 2.0 in der Welt installiert, meldet sich ohne Script-Fehler (2026-10-26 06:33)
+- [x] Wegpunkte im Portal: Portal + Pack 1.3.0 installiert, Liste kommt an (2026-10-26 11:13)
 - [x] Wegpunkte 1.2.0 (Ruinen) installiert (2026-10-26 09:16)
 - [x] Wegpunkte 1.1.0 (öffentlich/privat) installiert (2026-10-26 09:08)
 - [x] Wegpunkte im Spiel bestätigt: craften, setzen, Name, `/warp` (Kurzform funktioniert) (2026-10-26)
