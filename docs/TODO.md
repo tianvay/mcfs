@@ -4,6 +4,7 @@ Stand: 2026-10-25
 
 ## Offen
 
+- [ ] **install.sh**: Korrektur Portal-Anzeige „starting“ nach Neustarts (seit M8 kam systemds „Started“ nach „Server started.“).
 - [ ] **Wegpunkte im Spiel testen**: craften, setzen, Name, `/warp` vs. `/mcfs:warp`, Teleport (auch Nether), abbauen,
       Grafik-Pack-Download beim Beitreten (PC und Xbox).
 - [ ] Operator-Nachrichten im Spiel ausprobieren (Vergeben/Entziehen, online und offline).

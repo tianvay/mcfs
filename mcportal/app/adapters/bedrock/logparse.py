@@ -87,7 +87,9 @@ class PlayerTracker:
         """Process one log line. Returns True if the player set / started flag changed."""
         if line.source == "systemd":
             t = line.text
-            if t.startswith(("Started ", "Stopped ", "Stopping ")) or "Deactivated" in t or "Failed" in t:
+            # not on "Started ...": with the start check (M8) systemd reports it only after the
+            # server's own "Server started." - a reset there would hide a running server
+            if t.startswith(("Stopped ", "Stopping ")) or "Deactivated" in t or "Failed" in t:
                 had = bool(self.players) or self.server_started
                 self.reset()
                 return had

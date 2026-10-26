@@ -36,6 +36,18 @@ class TrackerTest(unittest.TestCase):
         self.assertEqual(t.players, {})
         self.assertFalse(t.server_started)
 
+    def test_systemd_started_after_server_started_keeps_online(self):
+        # order since the start check (M8): server says "Server started." before systemd says "Started"
+        t = PlayerTracker()
+        for l in lines(
+            "100.0 mcserver systemd[1]: Starting minecraft-bedrock.service - Minecraft Bedrock Server...\n"
+            "102.0 mcserver bedrock_server[9]: [2026-10-26 08:40:04:543 INFO] Starting Server\n"
+            "106.0 mcserver bedrock_server[9]: [2026-10-26 08:40:09:031 INFO] Server started.\n"
+            "108.0 mcserver systemd[1]: Started minecraft-bedrock.service - Minecraft Bedrock Server.\n"
+        ):
+            t.feed(l)
+        self.assertTrue(t.server_started)
+
     def test_list_reconciles(self):
         t = PlayerTracker()
         for l in lines(JOURNAL):
