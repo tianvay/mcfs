@@ -9,7 +9,8 @@
 //  * Mining the diamond block removes the waypoint; explosions don't damage waypoint structures.
 //  * A removed waypoint stays as a ruin: copper lanterns, and after /warp delete a coal block in the middle.
 //  * Stored in world dynamic properties (survives restarts and updates).
-//  * Log lines for the portal: [mcportal-warp] {"v":1,"event":...}
+//  * Log lines for the portal: [mcportal-warp] {"v":1,"event":...}; after every change and at startup
+//    the complete list: {"v":1,"event":"list","waypoints":[...]}
 // Uses only stable APIs (@minecraft/server, @minecraft/server-ui) - no experiments in the world.
 import {
   CommandPermissionLevel, CustomCommandParamType, CustomCommandStatus, Direction, GameMode,
@@ -53,6 +54,22 @@ function all() {
   return cache;
 }
 
+let listQueued = false;
+
+/** complete list for the portal - once per tick at most, however many changes happened */
+function queueList() {
+  if (listQueued) return;
+  listQueued = true;
+  system.run(() => {
+    listQueued = false;
+    const waypoints = [...all().values()].map((w) => ({
+      name: w.name, owner: w.owner, dim: w.dim, x: Math.round(w.x * 10) / 10, y: Math.round(w.y * 10) / 10,
+      z: Math.round(w.z * 10) / 10, public: w.public === true, physical: w.physical === true, created: w.created,
+    }));
+    report("list", { waypoints });
+  });
+}
+
 function rebuildCells() {
   cells = new Map();
   for (const [key, wp] of cache) {
@@ -69,6 +86,7 @@ function store(wp, oldKey) {
   world.setDynamicProperty(PROP_PREFIX + keyOf(wp.name), JSON.stringify(wp));
   cache.set(keyOf(wp.name), wp);
   rebuildCells();
+  queueList();
 }
 
 function remove(key) {
@@ -76,6 +94,7 @@ function remove(key) {
   world.setDynamicProperty(PROP_PREFIX + key, undefined);
   cache.delete(key);
   rebuildCells();
+  queueList();
 }
 
 function keys() {
@@ -326,4 +345,5 @@ system.run(() => {
   all(); // load once the world is ready, also for the explosion protection
   console.warn(`${TAG} {"v":1,"started":true}`);
   report("loaded", { count: cache.size });
+  queueList();
 });

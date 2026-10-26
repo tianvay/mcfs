@@ -22,6 +22,7 @@ from .services.allowlist import AllowlistService
 from .services.minecraft import MinecraftService, PortalError
 from .services.stats import StatsService
 from .services.update import UpdateService
+from .services.waypoints import WaypointsService
 
 WEB_DIR = Path(__file__).parent / "web"
 SESSION_COOKIE = "mcportal_session"
@@ -81,6 +82,7 @@ def create_app(cfg: Config) -> FastAPI:
     update = UpdateService(adapter, mc, audit, cfg.data_dir, cfg.backup_dir, cfg.update_backups_keep)
     stats = StatsService(adapter, mc, cfg.data_dir)
     achievements = AchievementsService(adapter, mc, cfg.data_dir)
+    waypoints = WaypointsService(adapter, mc, cfg.data_dir)
     sessions: set[str] = set()
 
     @asynccontextmanager
@@ -88,6 +90,7 @@ def create_app(cfg: Config) -> FastAPI:
         await mc.startup()
         await stats.startup()
         await achievements.startup()
+        await waypoints.startup()
         await update.startup()
         yield
         await update.shutdown()
@@ -209,6 +212,10 @@ def create_app(cfg: Config) -> FastAPI:
     @app.get("/api/achievements")
     async def achievements_summary():
         return achievements.summary()
+
+    @app.get("/api/waypoints")
+    async def waypoints_summary():
+        return waypoints.summary()
 
     # ---------- audit ----------
 

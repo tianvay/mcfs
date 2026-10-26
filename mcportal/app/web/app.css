@@ -191,3 +191,12 @@ dialog input { width: 100%; margin-bottom: 12px; }
 .ach-list.locked li { background: var(--bg); }
 .ach-list.locked .ach-name { color: var(--muted); font-weight: 600; }
 .stat-player.recent h3 { margin-bottom: 8px; }
+
+.wp-list { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 6px; }
+.wp-list li { padding: 6px 8px; border-radius: 8px; background: var(--bg); }
+.wp-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.wp-name { font-weight: 700; overflow-wrap: anywhere; }
+.wp-badge { font-size: .72rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.wp-badge.public { background: var(--ok-bg); color: var(--ok); }
+.wp-badge.private { background: var(--line); color: var(--muted); }
+.wp-desc { font-size: .8rem; color: var(--muted); margin-top: 2px; }

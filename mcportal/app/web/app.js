@@ -144,7 +144,8 @@ function render(s) {
   $("#srv-console-note").hidden = s.console_available || !running;
 
   renderUpdate(s);
-  const statsKey = `${s.stats && s.stats.updated}|${s.achievements && s.achievements.updated}`;
+  const statsKey = `${s.stats && s.stats.updated}|${s.achievements && s.achievements.updated}`
+    + `|${s.waypoints && s.waypoints.updated}`;
   if (statsKey !== lastStatsUpdate && lastStatsUpdate !== null && !$("#tab-stats").hidden) loadStats();
   lastStatsUpdate = statsKey;
 
@@ -374,8 +375,32 @@ function achievementDetails(unlocked, ach) {
     open.length ? locked : "");
 }
 
-function playerCard(p, ach) {
+const DIM_NAMES = { "minecraft:overworld": "Oberwelt", "minecraft:nether": "Nether", "minecraft:the_end": "Ende" };
+
+function waypointDetails(own) {
+  if (!own.length) return "";
+  const coord = (n) => Math.floor(n).toLocaleString("de-DE", { useGrouping: false });
+  return el("details", { className: "stat-details" },
+    el("summary", { textContent: `📍 Wegpunkte (${own.length})` }),
+    el("ul", { className: "wp-list" }, ...own.map((w) => {
+      const travel = w.travels
+        ? `${w.travels}× bereist, zuletzt ${fmtDate(w.last_travel)}`
+          + (Object.keys(w.travelers).length > 1 || !w.travelers[w.owner]
+            ? ` (${Object.entries(w.travelers).map(([who, n]) => `${who} ${n}×`).join(", ")})` : "")
+        : "noch nicht bereist";
+      return el("li", {},
+        el("div", { className: "wp-head" },
+          el("span", { className: "wp-name", textContent: w.name }),
+          el("span", { className: `wp-badge ${w.public ? "public" : "private"}`, textContent: w.public ? "öffentlich" : "privat" })),
+        el("div", { className: "wp-desc",
+          textContent: `${DIM_NAMES[w.dim] || w.dim} ${coord(w.x)} / ${coord(w.y)} / ${coord(w.z)}`
+            + `${w.physical ? "" : " · ohne Bauwerk"} · ${travel}` }));
+    })));
+}
+
+function playerCard(p, ach, wps) {
   const unlocked = (ach.players && ach.players[p.name]) || [];
+  const own = (wps.players && wps.players[p.name]) || [];
   const fav = p.food_by.length ? `Lieblingsessen: ${label(p.food_by[0][0])}` : "";
   return el("div", { className: "stat-player" },
     el("h3", {}, el("span", { textContent: p.name }),
@@ -383,6 +408,8 @@ function playerCard(p, ach) {
     el("div", { className: "tiles" },
       tile("⏱", "Spielzeit", fmtTime(p.time_total), `heute ${fmtTime(p.time_today)}`),
       ach.total ? tile("🏆", "Erfolge", `${unlocked.length} / ${ach.total}`, unlocked[0] ? `zuletzt: ${unlocked[0].name}` : "") : "",
+      wps.list_at ? tile("📍", "Wegpunkte", fmtNum(own.length),
+        own.length ? `${own.filter((w) => w.public).length} öffentlich` : "") : "",
       tile("💀", "Tode", fmtNum(p.deaths)),
       tile("⚔️", "Mobs besiegt", fmtNum(p.kills)),
       tile("💎", "Diamanten", fmtNum(p.diamonds), "Diamanterz abgebaut"),
@@ -394,6 +421,7 @@ function playerCard(p, ach) {
       tile("▲", "Blöcke gesetzt", fmtNum(p.placed)),
       tile("▼", "Blöcke abgebaut", fmtNum(p.broken))),
     achievementDetails(unlocked, ach),
+    waypointDetails(own),
     details("⚔️ Besiegte Mobs", p.kills_by, "placed", "mob"),
     details("💀 Todesursachen", p.deaths_by, "broken", "mob"),
     details("🍖 Essen", p.food_by, "placed"),
@@ -416,8 +444,10 @@ function recentAchievements(ach) {
 async function loadStats() {
   let data;
   let ach;
+  let wps;
   try {
-    [data, ach] = await Promise.all([api("GET", "/api/stats"), api("GET", "/api/achievements")]);
+    [data, ach, wps] = await Promise.all([api("GET", "/api/stats"), api("GET", "/api/achievements"),
+      api("GET", "/api/waypoints")]);
   } catch (e) { toast(e.message, true); return; }
   const open = new Set([...document.querySelectorAll("#stats-list details[open]")].map((d) => d.dataset.key));
   const note = $("#stats-note");
@@ -432,7 +462,7 @@ async function loadStats() {
     list.replaceChildren(el("p", { className: "empty", textContent: "Noch nichts gezählt." }));
     return;
   }
-  list.replaceChildren(recentAchievements(ach), ...data.players.map((p) => playerCard(p, ach)));
+  list.replaceChildren(recentAchievements(ach), ...data.players.map((p) => playerCard(p, ach, wps)));
   // keep opened sections open across live refreshes (summary text without the changing counts)
   list.querySelectorAll(".stat-player").forEach((card) => {
     const who = card.querySelector("h3 span")?.textContent || "";

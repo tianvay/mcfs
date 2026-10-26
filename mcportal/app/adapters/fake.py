@@ -178,6 +178,28 @@ class FakeAdapter:
         if players:
             self._log("[Scripting] [mcportal-stats] " + json.dumps({"v": 2, "players": players}))
         self._emit_achievement()
+        self._emit_waypoints()
+
+    def _emit_waypoints(self) -> None:
+        """Like the waypoints pack 1.3.0: the full list once, then now and then a teleport."""
+        import random
+        if not self._online:
+            return
+        owner = self._online[0]
+        if not getattr(self, "_wp_list_sent", False):
+            self._wp_list_sent = True
+            wps = [
+                {"name": "Zuhause", "owner": owner, "dim": "minecraft:overworld", "x": -2, "y": 71, "z": -4,
+                 "public": False, "physical": True, "created": "2026-10-26T08:00:00Z"},
+                {"name": "Dorf", "owner": owner, "dim": "minecraft:overworld", "x": -297, "y": 76, "z": -264,
+                 "public": True, "physical": True, "created": "2026-10-26T08:10:00Z"},
+                {"name": "Netherfestung", "owner": owner, "dim": "minecraft:nether", "x": 120.5, "y": 64, "z": -33.2,
+                 "public": False, "physical": False, "created": "2026-10-26T08:20:00Z"},
+            ]
+            self._log("[Scripting] [mcportal-warp] " + json.dumps({"v": 1, "event": "list", "waypoints": wps}))
+        elif random.randint(0, 1) == 0:
+            name = random.choice(["Zuhause", "Dorf"])
+            self._log("[Scripting] [mcportal-warp] " + json.dumps({"v": 1, "event": "teleport", "player": owner, "name": name}))
 
     FAKE_CATALOG = [
         {"id": "diamonds", "tier": 1, "tiers": 3, "group": "Bergbau", "name": "Diamant!", "desc": "Den ersten Diamanten gefunden"},

@@ -121,3 +121,17 @@ bash ~/mcportal-src/deploy/world-pack.sh mcportal_waypoints apply
 - Getestet in der echten Engine (Testserver): beide Fälle Block für Block, umgebaute Laterne bleibt unangetastet,
   nicht geladener Bereich wird vorgemerkt; 7 Node-Tests.
 - Installation: `bash ~/mcportal-src/deploy/world-pack.sh mcportal_waypoints apply` (ein Neustart).
+
+## Version 1.3.0: Anzeige im Portal (2026-10-26)
+
+- Das Pack schreibt nach jeder Änderung und beim Start die **vollständige Liste** aller Wegpunkte ins Log
+  (`{"event":"list","waypoints":[…]}`: Name, Besitzer, Dimension, Koordinaten, öffentlich, Bauwerk, Datum).
+- Das Portal (`app/services/waypoints.py`, `/var/lib/mcportal/waypoints.json`) übernimmt die neueste Liste und
+  zählt aus den `teleport`-Ereignissen, wie oft und von wem zu jedem Wegpunkt gereist wurde (folgt Umbenennungen).
+- Tab „Statistik“: je Spieler Kachel **„📍 Wegpunkte“** und aufklappbare Liste – mit Ort, öffentlich/privat,
+  „ohne Bauwerk“, Anzahl Reisen und letzter Reise. **Admin-Ansicht: zeigt auch private Wegpunkte**
+  (das Portal nutzt nur der Admin).
+- Getestet: 3 Python-Tests (Liste je Besitzer, Reisen über Umbenennung und Portal-Neustart, Löschen);
+  Anzeige mit simuliertem Server; Pack 1.3.0 mit einer Kopie der echten Welt – Liste mit beiden Wegpunkten im Log.
+- Installation: zuerst `install.sh` (Portal), dann `world-pack.sh mcportal_waypoints apply` – so ist das Portal
+  bereit, wenn das Pack beim Neustart die Liste schreibt.

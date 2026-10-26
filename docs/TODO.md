@@ -4,9 +4,9 @@ Stand: 2026-10-25
 
 ## Offen
 
+- [ ] **install.sh** (Wegpunkte im Portal + Korrektur Anzeige „starting“), danach Wegpunkte-Pack 1.3.0 installieren.
 - [ ] Ruinen im Spiel ansehen: einen Wegpunkt löschen (Kohleblock, Kupferlaternen).
 - [ ] „Dorf“ ggf. mit `/warp public Dorf` freigeben; Schalter „Öffentlich“ beim nächsten Setzen ausprobieren.
-- [ ] **install.sh**: Korrektur Portal-Anzeige „starting“ nach Neustarts (seit M8 kam systemds „Started“ nach „Server started.“).
 - [ ] Wegpunkte noch ausprobieren: Teleport in den Nether/ins Ende, Diamant abbauen, Xbox (Grafik-Download).
 - [ ] Operator-Nachrichten im Spiel ausprobieren (Vergeben/Entziehen, online und offline).
 - [ ] Kosmetik: Beim Beenden des Portals protokolliert die gerade laufende Statusabfrage einen Fehler
