@@ -27,7 +27,7 @@ S S S               S = Steinziegel, D = der Diamantblock aus dem Rezept
 Danach fragt ein Fenster: **„Wie soll dieser Wegpunkt heißen?“** Wird es geschlossen, heißt der Wegpunkt
 „Wegpunkt 1“ (2, 3 …) und lässt sich umbenennen.
 
-**Befehle** (für alle; ob `/warp` oder nur `/mcfs:warp` funktioniert, zeigt der erste Test im Spiel):
+**Befehle** (für alle; die Kurzform `/warp` funktioniert, im Spiel bestätigt):
 
 | Befehl | Was |
 |---|---|
@@ -82,5 +82,5 @@ bash ~/mcportal-src/deploy/world-pack.sh mcportal_waypoints apply
 - **Bauwerk in der echten Engine** (Selbsttest per Konsole): alle 21 Blöcke korrekt, Mauern als Säulen,
   Laternen stehend; zweiter Wegpunkt an derselben Stelle abgelehnt.
 - 5 Node-Tests: Namen (gültig, doppelt, reserviert), Befehle, Bauplan, Ankunftsort, Liste.
-- **Nicht getestet** (nur mit Spieler möglich): Craften, Setzen per Item, Namensdialog, `/warp` als Kurzform,
-  Teleport, Abbauen, Explosionsschutz.
+- **Im Spiel bestätigt** (2026-10-26): Craften, Setzen per Item, Namensdialog, `/warp` als Kurzform, Teleport.
+- Noch nicht im Spiel geprüft: Teleport zwischen Dimensionen, Abbauen, Explosionsschutz.
