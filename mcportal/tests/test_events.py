@@ -185,9 +185,9 @@ class EventsTest(unittest.TestCase):
 
     def test_world_changing_events_can_be_started(self):
         s, _, adapter = self.service(LINES)
-        for t in ("meteor", "shooting_stars", "treasure", "haunted"):
+        for t in ("meteor", "shooting_stars", "treasure", "haunted", "creeper_chaos", "witch_coven"):
             asyncio.run(s.control("start", t, "admin"))
-        self.assertEqual(adapter.sent[-1], "scriptevent mcfs:event start haunted")
+        self.assertEqual(adapter.sent[-1], "scriptevent mcfs:event start witch_coven")
 
     def test_summary_asks_for_fresh_state_at_most_every_30_seconds(self):
         s, _, adapter = self.service(LINES)

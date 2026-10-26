@@ -59,6 +59,23 @@
           ]
         }
       }
+    },
+    "controller.render.mcfs_coven_witch": {
+      "geometry": "Geometry.default",
+      "materials": [
+        {
+          "*": "Material.default"
+        }
+      ],
+      "textures": [
+        "Texture.default"
+      ],
+      "overlay_color": {
+        "r": "0.2",
+        "g": "0.8",
+        "b": "0.25",
+        "a": "0.35"
+      }
     }
   }
 }

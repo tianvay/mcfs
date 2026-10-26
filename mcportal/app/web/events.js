@@ -8,6 +8,7 @@ const EVENT_NAMES = {
   storm: "🌧️ Unwetter", mining_rush: "💎 Mining Rush", lucky_day: "🍀 Glückstag",
   blood_moon: "🌕 Blutmond", zombie_invasion: "🧟 Zombie-Invasion", bounty: "👑 Kopfgeld",
   meteor: "☄️ Meteorit", shooting_stars: "🌠 Sternschnuppen", treasure: "🗺️ Schatzsuche", haunted: "👻 Spukort",
+  creeper_chaos: "💥 Creeper-Chaos", witch_coven: "🧙 Hexenzirkel",
 };
 const UNDO_NAMES = { meteor: "☄️ Meteoritenkrater", treasure: "🗺️ Schatztruhe" };
 const EVENT_BY = { auto: "automatisch", console: "Portal/Konsole", time: "Zeit abgelaufen", dawn: "Sonnenaufgang",
@@ -58,6 +59,7 @@ function eventDetail(a) {
   }
   if (a.type === "meteor") return "sucht einen Einschlagort";
   if (a.treasure) return a.treasure.found ? "gefunden" : a.treasure.buried ? "vergraben" : "wird vergraben, sobald jemand in die Nähe kommt";
+  if (a.coven) return `${a.coven.left} von ${a.coven.total} Hexen übrig · bei X ${a.coven.x} · Y ${a.coven.y} · Z ${a.coven.z}`;
   if (a.haunt) return `${a.haunt.village ? "im Dorf" : "bei"} X ${a.haunt.x} · Z ${a.haunt.z} · Fluch ${a.haunt.kills} / 15`;
   return null;
 }

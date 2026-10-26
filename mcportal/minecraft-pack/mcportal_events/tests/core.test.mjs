@@ -7,7 +7,7 @@ import {
   isBed, isLeftover, isNight, isRushOre, lightningOffset, MIN_GAP, mobTag, newActive, newSchedule, nightStep, packSize,
   parseControl, participants, ranSeconds, ringOffset, scheduleMinute, secondsUntilDawn, secondsUntilNight,
   shouldDouble, TYPES, xpBonus, invasionLoot, invasionMob, invasionTargets, waveSize, ZOMBIES,
-  beaconColumn, isGround, BOSSES, CRATER_RADIUS, craterDepth, craterGroundOk, isCover, isMeteorReplaceable, linePoints, planCrater, shootingStarPath, starLoot, distanceBand, treasureHint, treasureLoot, HAUNT_GOAL, hauntLoot, hauntMob, hauntWaveSize, BOUNTY_LOOT, bossHint, bountyHunters, chooseBoss, healthBoostLevel,
+  beaconColumn, isGround, BOSSES, CRATER_RADIUS, craterDepth, craterGroundOk, isCover, isMeteorReplaceable, linePoints, planCrater, shootingStarPath, starLoot, distanceBand, treasureHint, treasureLoot, HAUNT_GOAL, hauntLoot, hauntMob, hauntWaveSize, covenLoot, covenSize, creeperGroup, MAX_CHAOS_CREEPERS, BOUNTY_LOOT, bossHint, bountyHunters, chooseBoss, healthBoostLevel,
 } from "../scripts/core.js";
 
 test("night events: wait for the night, run until dawn", () => {
@@ -342,4 +342,21 @@ test("haunted place: mobs, waves, reward", () => {
   assert.equal(HAUNT_GOAL, 15);
   assert.equal(TYPES.haunted.night, true);
   assert.equal(TYPES.haunted.category, "mobs");
+});
+
+test("creeper chaos and witch coven: group sizes, cap, reward", () => {
+  for (let i = 0; i < 50; i++) {
+    const n = creeperGroup(Math.random, 0);
+    assert.ok(n >= 2 && n <= 4);
+  }
+  assert.equal(creeperGroup(() => 0.99, MAX_CHAOS_CREEPERS - 1), 1, "cap");
+  assert.equal(creeperGroup(() => 0.5, MAX_CHAOS_CREEPERS), 0);
+  assert.deepEqual([covenSize(1), covenSize(2), covenSize(3), covenSize(5), covenSize(10)], [3, 3, 4, 5, 5]);
+  const loot = covenLoot(Math.random);
+  assert.ok(loot.some(([id]) => id === "minecraft:nether_wart"));
+  assert.equal(loot.length, 5);
+  for (const t of ["creeper_chaos", "witch_coven"]) {
+    assert.equal(TYPES[t].night, true, t);
+    assert.equal(TYPES[t].category, "mobs", t);
+  }
 });

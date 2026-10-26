@@ -4,6 +4,13 @@ Stand: 2026-10-26
 
 ## Offen
 
+- [ ] **Creeper-Chaos, Hexenzirkel, Spuk-Nebel installieren und im Spiel ansehen** (Events-Pack 1.4.0, Erfolge-Pack
+      1.4.0, Grafik-Pack 1.1.0).
+- [ ] Weitere Mob-Event-Ideen (Liste vom 26.10.): Knochensturm (Skelette, „Knochenbrecher“), Spinnennacht
+      („Arachnophobie“), Untotenarmee (Zombies+Skelette+Ertrunkene, „Letzte Bastion“), Wilde Jagd („Jäger oder
+      Gejagter“), Tierwanderung („Tierfreund“), Elite-Mob („Bosskiller“), Der eine Zombie („David gegen Goliath“),
+      Königin der Nacht (große Spinne + kleine, „Arachnidenjäger“), Geisterstunde (unsichtbare Gegner, „Ich habe
+      nichts gesehen“).
 - [ ] **Events im Spiel prüfen** (über die Kachel „Events“ starten): Titel/Chat/Sound, Unwetter mit Blitzen
       (nicht bei Bauten), Mining Rush (Erze doppelt, mit Glück; Silk Touch einfach), Glückstag (Erfahrung doppelt),
       Restzeit in der Aktionsleiste, Erfolge „Mittendrin…“ usw. nach dem 5. Event.

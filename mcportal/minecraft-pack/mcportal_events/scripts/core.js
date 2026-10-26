@@ -52,6 +52,16 @@ export const TYPES = {
     subtitle: "§7Heute Nacht spukt es in der Nähe!", end: "Die Sonne geht auf – der Spuk ist vorbei.",
     nightTitle: "§5Es spukt!", nightSubtitle: "§7Besiegt die Spukgestalten und brecht den Fluch!",
   },
+  creeper_chaos: {
+    name: "Creeper-Chaos", night: true, color: "§a", category: "mobs",
+    subtitle: "§7Heute Nacht wimmelt es von Creepern!", end: "Die Sonne geht auf – das Creeper-Chaos ist vorbei.",
+    nightTitle: "§aCreeper-Chaos!", nightSubtitle: "§7Sssss … und manche sind geladen!",
+  },
+  witch_coven: {
+    name: "Hexenzirkel", night: true, color: "§d", category: "mobs",
+    subtitle: "§7Heute Nacht trifft sich ein Hexenzirkel!", end: "Die Sonne geht auf – der Hexenzirkel löst sich auf.",
+    nightTitle: "§dHexenzirkel!", nightSubtitle: "§7Folgt den Funken und sprengt den Zirkel!",
+  },
   shooting_stars: {
     name: "Sternschnuppen-Nacht", night: true, color: "§e", category: "welt",
     subtitle: "§7Heute Nacht fallen Sterne vom Himmel!", end: "Die Sternschnuppen-Nacht ist vorbei.",
@@ -125,6 +135,30 @@ export function hauntLoot(rand) {
   const n = (min, max) => min + Math.floor(rand() * (max - min + 1));
   return [["minecraft:emerald", n(3, 6)], ["minecraft:iron_ingot", n(4, 8)], ["minecraft:experience_bottle", n(4, 8)],
     ["minecraft:golden_apple", 1], [rand() < 0.5 ? "minecraft:amethyst_shard" : "minecraft:echo_shard", n(1, 3)]];
+}
+
+// ---------- Creeper-Chaos ----------
+
+export const CHARGED_CHANCE = 0.2;
+export const MAX_CHAOS_CREEPERS = 16; // alive around one player
+
+/** creepers per group: 2-4, never more than the cap allows */
+export function creeperGroup(rand, alive) {
+  return Math.max(0, Math.min(2 + Math.floor(rand() * 3), MAX_CHAOS_CREEPERS - alive));
+}
+
+// ---------- Hexenzirkel ----------
+
+/** 3 witches, one more per 2 players, at most 5 */
+export function covenSize(players) {
+  return Math.min(5, 3 + Math.floor(Math.max(0, players - 1) / 2));
+}
+
+/** the reward when the whole coven is defeated - brewing things. [item, amount][] */
+export function covenLoot(rand) {
+  const n = (min, max) => min + Math.floor(rand() * (max - min + 1));
+  return [["minecraft:nether_wart", n(2, 4)], ["minecraft:ender_pearl", n(1, 3)], ["minecraft:glowstone_dust", n(3, 6)],
+    ["minecraft:redstone", n(4, 8)], ["minecraft:experience_bottle", n(3, 5)]];
 }
 
 // ---------- Sternschnuppen-Nacht ----------

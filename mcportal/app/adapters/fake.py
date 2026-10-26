@@ -261,18 +261,19 @@ class FakeAdapter:
         self._log("[Scripting] [mcportal-events] " + json.dumps({"v": 1, **payload}), ts=ts)
 
     def _ev_state(self, ts: float | None = None) -> None:
-        night = {"blood_moon", "zombie_invasion", "shooting_stars", "haunted"}
+        night = {"blood_moon", "zombie_invasion", "shooting_stars", "haunted", "creeper_chaos", "witch_coven"}
         active = [{"type": t, "remaining": r, "total": 500 if t in night else {"storm": 2400, "bounty": 1200, "meteor": 1800, "treasure": 1800}.get(t, 7200),
                    "by": "console", "phase": ("waiting" if r > 500 else "running") if t in night else None,
                    "boss": {"name": "Bernd der Zombiekönig", "x": -120, "y": 71, "z": 48} if t == "bounty" else None,
                    "meteor": {"x": 210, "y": 70, "z": -95, "impacted": r < 1700, "undo": "meteor-4"} if t == "meteor" else None,
                    "treasure": {"buried": r < 1700, "found": False, "undo": "treasure-5"} if t == "treasure" else None,
-                   "haunt": {"x": -297, "z": -264, "village": True, "kills": 6} if t == "haunted" else None}
+                   "haunt": {"x": -297, "z": -264, "village": True, "kills": 6} if t == "haunted" else None,
+                   "coven": {"x": 140, "y": 68, "z": 33, "left": 2, "total": 4} if t == "witch_coven" else None}
                   for t, r in self._ev_active.items()]
         self._ev_log({"event": "state", "auto": self._ev_auto, "online": len(self._online), "active": active,
                       "next_in": 95 if self._ev_auto else None, "last": "storm", "register": getattr(self, "_ev_register", 12),
                       "types": ["storm", "mining_rush", "lucky_day", "blood_moon", "zombie_invasion", "bounty",
-                                "meteor", "shooting_stars", "treasure", "haunted"],
+                                "meteor", "shooting_stars", "treasure", "haunted", "creeper_chaos", "witch_coven"],
                       "undo": getattr(self, "_ev_undo", ["meteor-3"])}, ts)
 
     def event_control_live(self, action: str, event_type: str | None = None) -> None:
@@ -282,7 +283,7 @@ class FakeAdapter:
         if action == "start" and event_type not in self._ev_active:
             self._ev_active[event_type] = {"storm": 2400, "bounty": 1200, "blood_moon": 640, "zombie_invasion": 400,
                                            "meteor": 1800, "treasure": 1800, "shooting_stars": 640,
-                                           "haunted": 400}.get(event_type, 7200)
+                                           "haunted": 400, "creeper_chaos": 400, "witch_coven": 400}.get(event_type, 7200)
             self._ev_log({"event": "started", "type": event_type, "by": "console", "duration": self._ev_active[event_type]})
         elif action == "stop" and event_type in self._ev_active:
             ran = {"storm": 2400}.get(event_type, 7200) - self._ev_active.pop(event_type)

@@ -9,7 +9,9 @@
 //    escapes after 20 min); Meteorit (crater with netherrack, amethyst and diamond ore - natural ground only, undo log);
 //    Sternschnuppen-Nacht (night: shooting stars, star pieces with loot fall near players);
 //    Schatzsuche (a chest buried 150-400 blocks away, warmer/colder hints, gone again if not found);
-//    Spukort (night: a village near a player is haunted - fog, bells, waves; 15 defeated breaks the curse).
+//    Spukort (night: a village near a player is haunted - fog, bells, waves; 15 defeated breaks the curse);
+//    Creeper-Chaos (night: creeper groups, some charged; their explosions never break blocks);
+//    Hexenzirkel (night: 3-5 own coven witches under a spark column; all defeated -> brewing reward).
 //  * Mobs spawned by events carry the tag "mcfs_ev" + "mcfs_ev_<type>" and are removed when their event is over.
 //  * Build register: every chunk a player placed a block in is remembered; world-changing effects
 //    (lightning now, meteors later) stay away from it.
@@ -24,7 +26,8 @@ import {
 import {
   activeMinute, beaconColumn, BOSSES, bossHint, BOUNTY_LOOT, CRATER_RADIUS, craterGroundOk, IMPACT_COUNTDOWN, isCover,
   isMeteorReplaceable, linePoints, planCrater, shootingStarPath, STAR_TAG, starLoot, TREASURE_DEPTH, TREASURE_DISTANCE,
-  treasureHint, treasureLoot, HAUNT_GOAL, HAUNT_RADIUS, hauntLoot, hauntMob, hauntWaveSize, bountyHunters, chooseBoss, healthBoostLevel,
+  treasureHint, treasureLoot, HAUNT_GOAL, HAUNT_RADIUS, hauntLoot, hauntMob, hauntWaveSize, CHARGED_CHANCE, covenLoot,
+  covenSize, creeperGroup, bountyHunters, chooseBoss, healthBoostLevel,
   chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, formatMinutes, invasionLoot,
   invasionMob, invasionTargets, isBed, isGround, isLeftover, isNaturalTop, isRushOre, lightningOffset, MOB_TAG, mobTag, newActive,
   newSchedule, nightStep, packSize, parseControl, participants, ranSeconds, ringOffset, scheduleMinute, shouldDouble,
@@ -149,6 +152,20 @@ const HANDLERS = {
     minute() {},
     // not found in time: the chest goes again (also later, if its area is not loaded right now)
     stop(a) { if (a.treasure?.buried && !a.treasure.found) queueUndo(a.treasure.undo); },
+  },
+  creeper_chaos: {
+    start() {},
+    minute() {},
+    night() { lastCreepers.clear(); },
+    tick() { chaosTick(); },
+    stop() { lastCreepers.clear(); },
+  },
+  witch_coven: {
+    start() {},
+    minute() {},
+    night(a) { if (!a.coven) gatherCoven(a); },
+    tick(a) { covenTick(a); },
+    stop() {},
   },
   haunted: {
     start() {},
@@ -871,9 +888,152 @@ function retryUndos() {
 }
 system.runInterval(() => { if (schedule?.pendingUndo?.length) retryUndos(); }, MINUTE);
 
+// ---------- Creeper-Chaos ----------
+
+const CREEPER_EVERY = 30 * 20;
+const lastCreepers = new Map(); // player name -> tick of the last group
+
+function chaosTick() {
+  const now = system.currentTick;
+  for (const p of world.getAllPlayers()) {
+    if (p.dimension.id !== "minecraft:overworld") continue;
+    if (now - (lastCreepers.get(p.name) ?? -CREEPER_EVERY) < CREEPER_EVERY) continue;
+    lastCreepers.set(p.name, now);
+    creeperGroupAt(p.dimension, p.location);
+  }
+}
+
+/** 2-4 creepers 16-28 blocks from `near` at the surface, in the wild; about every fifth one charged */
+function creeperGroupAt(dim, near) {
+  let alive = 0;
+  try {
+    const top = dim.getTopmostBlock({ x: Math.floor(near.x), z: Math.floor(near.z) });
+    if (top && near.y < top.location.y - 6) return 0; // not into caves and mines
+    alive = dim.getEntities({ tags: [mobTag("creeper_chaos")], location: near, maxDistance: 64 }).length;
+  } catch {
+    return 0;
+  }
+  const n = creeperGroup(Math.random, alive);
+  let spawned = 0;
+  for (let attempt = 0; spawned < n && attempt < n * 4; attempt++) {
+    const spot = ringOffset(near.x, near.z, 16, 28, Math.random);
+    const at = zombieSpot(dim, spot.x, spot.z);
+    if (!at) continue;
+    try {
+      const c = spawnEventMob(dim, "minecraft:creeper", "creeper_chaos", at);
+      if (Math.random() < CHARGED_CHANCE) {
+        c.triggerEvent("minecraft:become_charged");
+        c.addTag("mcfs_charged");
+      }
+      spawned++;
+    } catch { /* ignore */ }
+  }
+  return spawned;
+}
+
+// event creepers hurt, but never break blocks - neither builds nor terrain
+world.beforeEvents.explosion.subscribe((ev) => {
+  try {
+    if (ev.source?.hasTag(mobTag("creeper_chaos"))) ev.setImpactedBlocks([]);
+  } catch { /* source gone */ }
+});
+
+// ---------- Hexenzirkel ----------
+
+const COVEN_MOB = "mcfs:coven_witch";
+const COVEN_HINT_EVERY = 5 * 20;
+let nextCovenHint = 0;
+
+/** 3-5 witches 40-80 blocks from a random player (or from `near`), in the wild */
+function gatherCoven(a, near) {
+  const dim = overworld();
+  const players = world.getAllPlayers().filter((p) => p.dimension.id === "minecraft:overworld");
+  if (!players.length && !near) return false;
+  const from = near ?? players[Math.floor(Math.random() * players.length)].location;
+  for (let attempt = 0; attempt < 16; attempt++) {
+    const spot = ringOffset(from.x, from.z, 40, 80, Math.random);
+    const top = wildTop(dim, spot.x, spot.z);
+    if (!top || !isGround(top.typeId)) continue;
+    const n = covenSize(Math.max(1, players.length));
+    let spawned = 0;
+    for (let i = 0; i < n; i++) {
+      const angle = (i / n) * Math.PI * 2;
+      const x = spot.x + Math.round(Math.cos(angle) * 3), z = spot.z + Math.round(Math.sin(angle) * 3);
+      const at = zombieSpot(dim, x, z) ?? { x: spot.x + 0.5, y: top.location.y + 1, z: spot.z + 0.5 };
+      try {
+        spawnEventMob(dim, COVEN_MOB, "witch_coven", at);
+        spawned++;
+      } catch (err) { log({ error: `coven: ${err}` }); }
+    }
+    if (!spawned) return false;
+    a.coven = { x: spot.x + 0.5, y: top.location.y + 1, z: spot.z + 0.5, total: spawned, gone: 0, byPlayer: 0 };
+    nextCovenHint = 0;
+    world.sendMessage(`§6[Hexenzirkel] §f${spawned} Hexen haben sich bei §eX ${spot.x} · Y ${top.location.y + 1} · Z ${spot.z}§f `
+      + "versammelt – folgt den Funken und sprengt den Zirkel!");
+    saveState();
+    logState();
+    return true;
+  }
+  return false;
+}
+
+function covenTick(a) {
+  if (!a.coven && !gatherCoven(a)) return;
+  const c = a.coven;
+  const dim = overworld();
+  // the witches stay near their circle; the spark column marks the middle of those still there
+  try {
+    const witches = dim.getEntities({ tags: [mobTag("witch_coven")] });
+    if (witches.length) {
+      const m = witches.reduce((s, w) => ({ x: s.x + w.location.x, y: Math.max(s.y, w.location.y), z: s.z + w.location.z }),
+        { x: 0, y: -999, z: 0 });
+      Object.assign(c, { x: m.x / witches.length, y: m.y, z: m.z / witches.length });
+      for (const pt of beaconColumn(c, 20, 2)) dim.spawnParticle("minecraft:witchspell_emitter", pt);
+    }
+  } catch { /* unloaded */ }
+  if (system.currentTick < nextCovenHint) return;
+  nextCovenHint = system.currentTick + COVEN_HINT_EVERY;
+  for (const p of world.getAllPlayers()) {
+    if (p.dimension.id !== "minecraft:overworld") continue;
+    try {
+      p.onScreenDisplay.setActionBar(`§d${bossHint(`Hexenzirkel (${c.total - c.gone} übrig)`, p.location, c)}`);
+    } catch { /* left */ }
+  }
+}
+
+/** a coven witch is gone; when the last one fell, the reward drops - if players fought them */
+function covenWitchDied(dead, killer) {
+  const a = active.find((x) => x.type === "witch_coven");
+  if (!a?.coven) return;
+  const c = a.coven;
+  c.gone += 1;
+  if (killer instanceof Player) c.byPlayer += 1;
+  saveState();
+  if (c.gone < c.total) return;
+  if (!c.byPlayer) {
+    stop(a, "died", "Der Hexenzirkel hat sich selbst gesprengt – keine Belohnung.");
+    return;
+  }
+  for (const [id, n] of covenLoot(Math.random)) {
+    try { dead.dimension.spawnItem(new ItemStack(id, n), dead.location); } catch { /* ignore */ }
+  }
+  let hunters = [];
+  try {
+    hunters = dead.dimension.getPlayers({ location: dead.location, maxDistance: 32 }).map((p) => p.name);
+  } catch { /* ignore */ }
+  if (killer instanceof Player && !hunters.includes(killer.name)) hunters.push(killer.name);
+  log({ event: "coven_defeated", players: hunters });
+  news({ event: "coven_defeated", players: hunters });
+  for (const p of world.getAllPlayers()) {
+    try { p.onScreenDisplay.setTitle("§dZirkel gesprengt!", { subtitle: "§7Die Hexen hinterlassen ihre Zutaten", fadeInDuration: 10, stayDuration: 70, fadeOutDuration: 20 }); } catch { /* left */ }
+  }
+  stop(a, "broken", "Der Hexenzirkel ist gesprengt!");
+}
+
 // ---------- Spukort ----------
 
 const HAUNT_FOG = "mcfs_haunt";
+const HAUNT_FOG_RADIUS = 96; // the fog reaches further than the haunted square itself
 const HAUNT_WAVE_EVERY = 45 * 20;
 const HAUNT_BELL_EVERY = 20 * 20;
 let nextHauntWave = 0;
@@ -915,11 +1075,11 @@ function hauntTick(a) {
   const center = { x: h.x + 0.5, y: 64, z: h.z + 0.5 };
   const players = world.getAllPlayers().filter((p) => p.dimension.id === "minecraft:overworld");
   const inArea = players.filter((p) => Math.hypot(p.location.x - center.x, p.location.z - center.z) < HAUNT_RADIUS);
-  // soul sand valley fog for everybody inside the haunted area, gone again when leaving
+  // thick haunting fog (own fog in the graphics pack, ~20 blocks view) for everybody within HAUNT_FOG_RADIUS
   for (const p of players) {
-    const inside = inArea.includes(p);
+    const inside = Math.hypot(p.location.x - center.x, p.location.z - center.z) < HAUNT_FOG_RADIUS;
     if (inside && !hauntFogged.has(p.name)) {
-      try { p.runCommand(`fog @s push minecraft:fog_soulsand_valley ${HAUNT_FOG}`); } catch (e) { log({ error: `fog: ${e}` }); }
+      try { p.runCommand(`fog @s push mcfs:haunt ${HAUNT_FOG}`); } catch (e) { log({ error: `fog: ${e}` }); }
       hauntFogged.add(p.name);
     } else if (!inside && hauntFogged.has(p.name)) {
       try { p.runCommand(`fog @s remove ${HAUNT_FOG}`); } catch { /* had none */ }
@@ -1124,6 +1284,15 @@ world.afterEvents.entityDie.subscribe((ev) => {
   if (!tags.includes(MOB_TAG)) return;
   if (tags.includes(mobTag("bounty"))) return bossDied(dead, killer);
   if (tags.includes(mobTag("haunted")) && killer instanceof Player) return hauntKill(killer);
+  if (tags.includes(mobTag("witch_coven"))) return covenWitchDied(dead, killer);
+  if (tags.includes(mobTag("creeper_chaos")) && killer instanceof Player) {
+    const charged = tags.includes("mcfs_charged");
+    if (charged) {
+      try { dead.dimension.spawnItem(new ItemStack("minecraft:diamond", 1), dead.location); } catch { /* ignore */ }
+    }
+    news({ event: "kill", kind: charged ? "charged_creeper" : "chaos_creeper", player: killer.name });
+    return;
+  }
   if (tags.includes(mobTag("blood_moon"))) {
     try {
       dead.dimension.spawnItem(new ItemStack("minecraft:bone", 1 + Math.floor(Math.random() * 2)), dead.location);
@@ -1222,7 +1391,8 @@ world.afterEvents.entityHurt.subscribe((ev) => {
 
 const SOUNDS = { storm: "ambient.weather.thunder", mining_rush: "random.anvil_land", lucky_day: "random.levelup",
   blood_moon: "mob.wolf.growl", zombie_invasion: "mob.zombie.say", bounty: "mob.wither.spawn",
-  meteor: "ambient.weather.lightning.impact", shooting_stars: "random.orb", treasure: "random.chestopen", haunted: "block.bell.hit" };
+  meteor: "ambient.weather.lightning.impact", shooting_stars: "random.orb", treasure: "random.chestopen", haunted: "block.bell.hit",
+  creeper_chaos: "random.fuse", witch_coven: "mob.witch.ambient" };
 
 function start(type, by) {
   if (!HANDLERS[type] || active.some((a) => a.type === type)) return false;
@@ -1277,6 +1447,8 @@ function logState() {
   log({
     event: "state", auto: schedule.auto, online,
     active: active.map((a) => ({ type: a.type, remaining: a.remaining, total: a.total, by: a.by, phase: a.phase,
+      coven: a.coven ? { x: Math.round(a.coven.x), y: Math.round(a.coven.y), z: Math.round(a.coven.z),
+        left: a.coven.total - a.coven.gone, total: a.coven.total } : undefined,
       haunt: a.haunt ? { x: a.haunt.x, z: a.haunt.z, village: a.haunt.village, kills: a.haunt.kills } : undefined,
       treasure: a.treasure ? { buried: a.treasure.buried, found: a.treasure.found, undo: a.treasure.undo } : undefined,
       meteor: a.meteor ? { x: a.meteor.x, y: a.meteor.y, z: a.meteor.z, impacted: a.meteor.impacted, undo: a.meteor.undo }
@@ -1318,7 +1490,7 @@ function minute() {
 system.afterEvents.scriptEventReceive.subscribe((ev) => {
   if (ev.id !== "mcfs:event" || !schedule) return;
   const fromConsole = ev.sourceType === ScriptEventSource.Server;
-  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers|boss|despawn|undo|meteor|stars|treasure|haunt)\b/.exec(ev.message);
+  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers|boss|despawn|undo|meteor|stars|treasure|haunt|creepers)\b/.exec(ev.message);
   if (test && fromConsole) return runTest(ev.message);
   const cmd = parseControl(ev.message);
   const reply = (msg) => {
@@ -1596,6 +1768,30 @@ function runTest(message) {
       log({ event: "test", spawned: n, mobs, broken: h.haunt.broken, still: active.some((x) => x.type === "haunted"),
         left: dim.getEntities({ tags: [mobTag("haunted")] }).length, loot });
     }, 20);
+  } else if (kind === "creepers") {
+    // a creeper group and a coven as if a player stood at (a, b); then a charged creeper explodes by command
+    const dim = overworld();
+    const at = { x: Number(a) + 0.5, y: dim.getTopmostBlock({ x: Number(a), z: Number(b) }).location.y + 1, z: Number(b) + 0.5 };
+    let n = 0;
+    for (let i = 0; i < 5; i++) n += creeperGroupAt(dim, at);
+    const coven = active.find((x) => x.type === "witch_coven");
+    const covenOk = coven ? gatherCoven(coven, at) : null;
+    system.runTimeout(() => {
+      const creepers = dim.getEntities({ tags: [mobTag("creeper_chaos")] });
+      const charged = creepers.filter((c) => c.hasTag("mcfs_charged"));
+      const witches = dim.getEntities({ tags: [mobTag("witch_coven")] });
+      log({ event: "test", creepers: creepers.length, spawned: n, charged: charged.length,
+        chargedComps: charged[0] ? charged[0].getComponents().map((x) => x.typeId.replace("minecraft:", "")).join(",") : null,
+        plainComps: creepers.find((c) => !c.hasTag("mcfs_charged"))?.getComponents().map((x) => x.typeId.replace("minecraft:", "")).join(","),
+        coven: covenOk, witches: witches.map((w) => `${w.typeId}:${w.getComponent("minecraft:scale")?.value}`) });
+      // blocks around a creeper before and after its explosion
+      const c = creepers[0];
+      if (!c) return;
+      const l = { x: Math.floor(c.location.x), y: Math.floor(c.location.y) - 1, z: Math.floor(c.location.z) };
+      const before = dim.getBlock(l)?.typeId;
+      c.triggerEvent("minecraft:start_exploding_forced");
+      system.runTimeout(() => log({ event: "test", exploded: !c.isValid, before, after: dim.getBlock(l)?.typeId }), 60);
+    }, 10);
   } else if (kind === "villagers") {
     // a small "village": 4 villagers on the ground at (a, b)
     const dim = overworld();

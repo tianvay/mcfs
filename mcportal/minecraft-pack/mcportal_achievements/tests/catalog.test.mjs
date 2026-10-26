@@ -138,7 +138,7 @@ test("wave 3, the world-changing specials and the meta achievements", () => {
   const all = Object.values(EVENT_CATEGORIES).flat().sort();
   assert.deepEqual(all, Object.values(EVENT_WAVES).flat().sort());
   for (const [cat, types] of Object.entries(EVENT_CATEGORIES)) {
-    assert.equal(CATALOG.find((a) => a.id === `cat_${cat}`).tiers[0].at, types.length, cat);
+    assert.equal(CATALOG.find((a) => a.id === `cat_${cat}`).tiers.at(-1).at, types.length, `${cat}: last tier = all events`);
   }
   assert.equal(CATALOG.find((a) => a.id === "seen_wave3").tiers[0].at, EVENT_WAVES[3].length);
   const first = (counters) => evaluate(counters, {}).map((a) => a.name);
@@ -147,4 +147,20 @@ test("wave 3, the world-changing specials and the meta achievements", () => {
   assert.deepEqual(first({ treasures: 1 }), ["Schatzsucher"]);
   assert.deepEqual(first({ curses: 1 }), ["Geisterjäger"]);
   assert.deepEqual(first({ together: 10 }), ["Gemeinsam stark", "Unzertrennlich"]);
+});
+
+test("wave 4: creepers and witches, mob category in two tiers", () => {
+  let c = {};
+  const take = (type) => { c = { ...c, ...eventCounters(c, type) }; };
+  for (const t of ["blood_moon", "zombie_invasion", "bounty", "haunted"]) take(t);
+  let names = evaluate(c, {}).map((a) => a.name);
+  assert.ok(names.includes("Nachtwache") && !names.includes("Herr der Nacht"));
+  take("creeper_chaos");
+  take("witch_coven");
+  names = evaluate(c, {}).map((a) => a.name);
+  assert.ok(names.includes("Herr der Nacht") && names.includes("Hab ich alles schon gesehen IV"));
+  const first = (counters) => evaluate(counters, {}).map((a) => a.name);
+  assert.deepEqual(first({ chaos_creepers: 10 }), ["Knallhart"]);
+  assert.deepEqual(first({ charged_creepers: 1 }), ["Entschärft"]);
+  assert.deepEqual(first({ covens: 1 }), ["Hexenmeister"]);
 });

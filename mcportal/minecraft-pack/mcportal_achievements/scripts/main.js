@@ -7,7 +7,7 @@
 // for the portal. At startup the catalog is written once: [mcportal-ach] {"v":1,"catalog":[...]}.
 // Event achievements (1.1.0, 1.2.0) come from the events pack via system.sendScriptEvent("mcfs:event_news", json):
 // started / ended (with participants) / state (running types) / lightning_survived / kill / bounty /
-// meteor_hit / star / treasure_found / curse_broken (1.3.0).
+// meteor_hit / star / treasure_found / curse_broken (1.3.0) / coven_defeated (1.4.0).
 // Uses only the stable @minecraft/server API - no experiments in the world.
 // console.warn on purpose: the server runs with content-log-level=warning.
 import { EntityInitializationCause, EquipmentSlot, Player, ScriptEventSource, system, world } from "@minecraft/server";
@@ -278,6 +278,10 @@ system.afterEvents.scriptEventReceive.subscribe((ev) => {
   } else if (n.event === "kill" && typeof n.player === "string") {
     const c = load(n.player).c;
     if (n.kind === "blood_wolf") setByName(n.player, { blood_wolves: (c.blood_wolves ?? 0) + 1 });
+    if (n.kind === "chaos_creeper" || n.kind === "charged_creeper") {
+      const extra = n.kind === "charged_creeper" ? { charged_creepers: (c.charged_creepers ?? 0) + 1 } : {};
+      setByName(n.player, { chaos_creepers: (c.chaos_creepers ?? 0) + 1, ...extra });
+    }
     if (n.kind === "invasion_zombie") {
       // count per invasion night: start again at 0 in a new night
       const base = c.inv_id === invasionNight ? c : { ...c, inv_now: 0 };
@@ -287,8 +291,8 @@ system.afterEvents.scriptEventReceive.subscribe((ev) => {
     for (const name of n.hunters) {
       if (typeof name === "string") setByName(name, { bounties: (load(name).c.bounties ?? 0) + 1 });
     }
-  } else if (n.event === "meteor_hit" || n.event === "curse_broken") {
-    const counter = n.event === "meteor_hit" ? "meteor_hit" : "curses";
+  } else if (n.event === "meteor_hit" || n.event === "curse_broken" || n.event === "coven_defeated") {
+    const counter = { meteor_hit: "meteor_hit", curse_broken: "curses", coven_defeated: "covens" }[n.event];
     for (const name of n.players ?? []) {
       if (typeof name === "string") setByName(name, { [counter]: (load(name).c[counter] ?? 0) + 1 });
     }

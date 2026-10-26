@@ -196,7 +196,21 @@ export const CATALOG = [
     { at: 3, name: "Schatzkammer", desc: "Mining Rush, Glückstag und Schatzsuche mitgemacht" },
   ] },
   { id: "cat_mobs", group: "Events", counter: "cat_mobs", tiers: [
-    { at: 4, name: "Nachtwache", desc: "Blutmond, Zombie-Invasion, Kopfgeld und Spukort mitgemacht" },
+    { at: 4, name: "Nachtwache", desc: "4 verschiedene Mob-Events mitgemacht" },
+    { at: 6, name: "Herr der Nacht", desc: "Alle 6 Mob-Events mitgemacht (Blutmond, Invasion, Kopfgeld, Spuk, Creeper, Hexen)" },
+  ] },
+  // wave 4: creepers and witches (events pack 1.4.0)
+  { id: "seen_wave4", group: "Events", counter: "seen_wave4", tiers: [
+    { at: 2, name: "Hab ich alles schon gesehen IV", desc: "Creeper-Chaos und Hexenzirkel mitgemacht" },
+  ] },
+  { id: "chaos_creepers", group: "Events", counter: "chaos_creepers", tiers: [
+    { at: 10, name: "Knallhart", desc: "10 Creeper beim Creeper-Chaos besiegt" },
+  ] },
+  { id: "charged_creeper", group: "Events", counter: "charged_creepers", tiers: [
+    { at: 1, name: "Entschärft", desc: "Einen geladenen Creeper besiegt, bevor er explodierte" },
+  ] },
+  { id: "coven", group: "Events", counter: "covens", tiers: [
+    { at: 1, name: "Hexenmeister", desc: "Dabei gewesen, als ein Hexenzirkel gesprengt wurde" },
   ] },
 ];
 
@@ -208,13 +222,14 @@ export const EVENT_WAVES = {
   1: ["storm", "mining_rush", "lucky_day"],
   2: ["blood_moon", "zombie_invasion", "bounty"],
   3: ["meteor", "shooting_stars", "treasure", "haunted"],
+  4: ["creeper_chaos", "witch_coven"],
 };
 
 /** event categories for the meta achievements (same as the events pack's TYPES[...].category) */
 export const EVENT_CATEGORIES = {
   welt: ["storm", "meteor", "shooting_stars"],
   ressourcen: ["mining_rush", "lucky_day", "treasure"],
-  mobs: ["blood_moon", "zombie_invasion", "bounty", "haunted"],
+  mobs: ["blood_moon", "zombie_invasion", "bounty", "haunted", "creeper_chaos", "witch_coven"],
 };
 
 export const TOGETHER = 3; // players taking part in one event for "Gemeinsam stark"

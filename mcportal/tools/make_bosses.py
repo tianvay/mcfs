@@ -1,14 +1,14 @@
-"""Generate the Kopfgeld boss mobs from Mojang's vanilla definitions (bedrock-samples).
+"""Generate the events pack's own mobs (Kopfgeld bosses, coven witches) from Mojang's vanilla definitions.
 
 Run on the development PC after cloning bedrock-samples (see tools/make_colors.py), and again after Minecraft
 updates that change zombies, skeletons or spiders:
 
     python -I tools/make_bosses.py <bedrock-samples> minecraft-pack
 
-Writes
-  mcportal_events/entities/boss_<mob>.json        behavior: vanilla mob (runtime_identifier) 50 % larger,
+Writes for every mob in MOBS
+  mcportal_events/entities/<name>.json             behavior: vanilla mob (runtime_identifier), larger,
                                                    never despawns, only summoned by the events pack
-  mcportal_events_rp/entity/boss_<mob>.entity.json client: vanilla geometry, textures and animations
+  mcportal_events_rp/entity/<name>.entity.json     client: vanilla geometry, textures and animations
   mcportal_events_rp/render_controllers/mcfs_bosses.render_controllers.json   colour shift (overlay colour)
 """
 from __future__ import annotations
@@ -17,12 +17,12 @@ import json
 import sys
 from pathlib import Path
 
-SCALE = 1.5
-# overlay colour per boss: the vanilla texture tinted (alpha = strength)
-BOSSES = {
-    "zombie": {"r": 0.45, "g": 0.0, "b": 0.65, "a": 0.45},    # Bernd: dark purple
-    "skeleton": {"r": 1.0, "g": 0.75, "b": 0.1, "a": 0.45},   # Sven: gold
-    "spider": {"r": 0.85, "g": 0.0, "b": 0.1, "a": 0.45},     # Susi: blood red
+# own mob -> vanilla mob, size, overlay colour (the vanilla texture tinted, alpha = strength)
+MOBS = {
+    "boss_zombie": ("zombie", 1.5, {"r": 0.45, "g": 0.0, "b": 0.65, "a": 0.45}),    # Bernd: dark purple
+    "boss_skeleton": ("skeleton", 1.5, {"r": 1.0, "g": 0.75, "b": 0.1, "a": 0.45}),  # Sven: gold
+    "boss_spider": ("spider", 1.5, {"r": 0.85, "g": 0.0, "b": 0.1, "a": 0.45}),      # Susi: blood red
+    "coven_witch": ("witch", 1.15, {"r": 0.2, "g": 0.8, "b": 0.25, "a": 0.35}),      # Hexenzirkel: green
 }
 
 
@@ -64,49 +64,49 @@ def write(path: Path, data) -> None:
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
 
 
-def behavior(samples: Path, mob: str) -> dict:
+def behavior(samples: Path, name: str, mob: str, scale: float) -> dict:
     data = load(samples / "behavior_pack" / "entities" / f"{mob}.json")
     ent = data["minecraft:entity"]
     desc = ent["description"]
-    desc["identifier"] = f"mcfs:boss_{mob}"
+    desc["identifier"] = f"mcfs:{name}"
     desc["runtime_identifier"] = f"minecraft:{mob}"  # behaves exactly like the vanilla mob
     desc["is_spawnable"] = False
     desc["is_summonable"] = True
     comps = ent["components"]
     comps.pop("minecraft:despawn", None)   # a boss stays until it is defeated or the bounty ends
     comps["minecraft:persistent"] = {}
-    comps["minecraft:scale"] = {"value": SCALE}
+    comps["minecraft:scale"] = {"value": scale}
     return data
 
 
-def client(samples: Path, mob: str) -> dict:
+def client(samples: Path, name: str, mob: str) -> dict:
     data = load(samples / "resource_pack" / "entity" / f"{mob}.entity.json")
     desc = data["minecraft:client_entity"]["description"]
-    desc["identifier"] = f"mcfs:boss_{mob}"
-    desc["render_controllers"] = [f"controller.render.mcfs_boss_{mob}"]
+    desc["identifier"] = f"mcfs:{name}"
+    desc["render_controllers"] = [f"controller.render.mcfs_{name}"]
     desc.pop("spawn_egg", None)
     return data
 
 
 def render_controllers() -> dict:
     out = {}
-    for mob, color in BOSSES.items():
+    for name, (mob, _, color) in MOBS.items():
         # values as Molang strings, like Mojang's own render controllers
         rc = {"geometry": "Geometry.default", "materials": [{"*": "Material.default"}], "textures": ["Texture.default"],
               "overlay_color": {k: str(v) for k, v in color.items()}}
         if mob == "spider":  # vanilla spider switches material when invisible
             rc["arrays"] = {"materials": {"Array.materials": ["Material.default", "Material.invisible"]}}
             rc["materials"] = [{"*": "Array.materials[query.is_invisible]"}]
-        out[f"controller.render.mcfs_boss_{mob}"] = rc
+        out[f"controller.render.mcfs_{name}"] = rc
     return {"format_version": "1.8.0", "render_controllers": out}
 
 
 def main(samples: Path, packs: Path) -> None:
-    for mob in BOSSES:
-        write(packs / "mcportal_events" / "entities" / f"boss_{mob}.json", behavior(samples, mob))
-        write(packs / "mcportal_events_rp" / "entity" / f"boss_{mob}.entity.json", client(samples, mob))
+    for name, (mob, scale, _) in MOBS.items():
+        write(packs / "mcportal_events" / "entities" / f"{name}.json", behavior(samples, name, mob, scale))
+        write(packs / "mcportal_events_rp" / "entity" / f"{name}.entity.json", client(samples, name, mob))
     write(packs / "mcportal_events_rp" / "render_controllers" / "mcfs_bosses.render_controllers.json", render_controllers())
-    print(f"{len(BOSSES)} bosses written")
+    print(f"{len(MOBS)} mobs written")
 
 
 if __name__ == "__main__":

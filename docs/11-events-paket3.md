@@ -213,6 +213,27 @@ zusätzlich mit einem Vorher/Nachher-Vergleich und dem Rückgängig-Befehl.
 - Kartenlauf direkt danach (96 s): 1.087 Chunks mit Bauten in 11 Paketen ans Events-Pack übergeben,
   Bau-Register von 1 auf **1.087** Chunks. Ab jetzt hält es jeder nächtliche Kartenlauf aktuell.
 
+## Nachtrag: Creeper-Chaos, Hexenzirkel, dichterer Spuk-Nebel (Events-Pack 1.4.0, Erfolge-Pack 1.4.0, Grafik-Pack 1.1.0)
+
+- **Spuk-Nebel:** eigener Nebel `mcfs:haunt` im Grafik-Pack (`fogs/mcfs_haunt_fog_setting.json`): Sicht nur noch
+  ≈ 20 Blöcke, violett-grau – die eingebauten Minecraft-Nebel lassen sich nicht verdichten. Reicht jetzt **96**
+  statt 48 Blöcke weit (das Spukgebiet für Wellen und Belohnung bleibt 48).
+- **💥 Creeper-Chaos** (Nacht): alle 30 s je Spieler an der Oberfläche 2–4 Creeper 16–28 Blöcke entfernt, nur in
+  der Wildnis, höchstens 16 im Umkreis; ~20 % **geladen** (`minecraft:become_charged`). **Explosionen der
+  Event-Creeper zerstören keine Blöcke** (`beforeEvents.explosion` → keine Blöcke), Schaden an Spielern bleibt.
+  Geladener Creeper besiegt → 1 Diamant.
+- **🧙 Hexenzirkel** (Nacht): 3–5 eigene Hexen `mcfs:coven_witch` (Vanilla-Hexe, 1,15-fach, grün getönt,
+  verschwinden nicht von selbst) im Kreis 40–80 Blöcke von einem Spieler; Funkensäule, Hinweise alle 5 s
+  („Hexenzirkel (3 übrig): …“). Alle besiegt → Netherwarze, Enderperlen, Glowstone, Redstone, Erfahrung; ohne
+  Spieler-Beteiligung keine Belohnung.
+- **Erfolge 1.4.0:** Hab ich alles schon gesehen IV (beide), Knallhart (10 Chaos-Creeper), Entschärft (geladenen
+  Creeper besiegt), Hexenmeister (Zirkel gesprengt); Mob-Kategorie mit zwei Stufen: Nachtwache (4 verschiedene
+  Mob-Events), **Herr der Nacht** (alle 6).
+- `tools/make_bosses.py` erzeugt jetzt alle eigenen Mobs (drei Bosse + Hexe).
+- **Getestet:** 22 + 10 Node-Tests, Python-Tests. Testserver: Creeper-Gruppen bis zur Obergrenze, geladene haben
+  `is_charged`, Explosion lässt den Boden heil; Zirkel mit `mcfs:coven_witch` in 1,15-facher Größe, Ende ohne
+  Spieler ohne Belohnung. Portal lokal. Nebel-Dichte nur im Spiel sichtbar.
+
 ## Was sich auf dem Server ändert
 
 - Events-Pack 1.3.0, Erfolge-Pack 1.3.0, Portal (Karten-Leser, Register-Abgleich, Knöpfe).
