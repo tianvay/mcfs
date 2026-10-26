@@ -314,6 +314,48 @@ export function invasionTargets(players) {
   return out;
 }
 
+// ---------- Kopfgeld-Boss ----------
+
+/** health boost level n gives (n + 1) * 4 extra health */
+export function healthBoostLevel(base, target) {
+  return Math.max(0, Math.ceil((target - base) / 4) - 1);
+}
+
+/** helmets keep zombie and skeleton from burning in the sun */
+export const BOSSES = [
+  { id: "bernd", name: "Bernd der Zombiekönig", mob: "minecraft:zombie", base: 20, health: 60,
+    helmet: "diamond_helmet", weapon: "iron_sword", effects: [["resistance", 1], ["strength", 0]] },
+  { id: "sven", name: "Skelett-Sven", mob: "minecraft:skeleton", base: 20, health: 50,
+    helmet: "golden_helmet", weapon: null, effects: [["speed", 0], ["resistance", 0]] },
+  { id: "susi", name: "Spinnen-Susi", mob: "minecraft:spider", base: 16, health: 50,
+    helmet: null, weapon: null, effects: [["strength", 0], ["resistance", 0]] },
+];
+
+export function chooseBoss(rand) {
+  return BOSSES[Math.floor(rand() * BOSSES.length)];
+}
+
+const DIRECTIONS = ["Osten", "Südosten", "Süden", "Südwesten", "Westen", "Nordwesten", "Norden", "Nordosten"];
+
+/** hint for the action bar: distance and compass direction (Minecraft: -z = north, +x = east) */
+export function bossHint(name, from, to) {
+  const dx = to.x - from.x, dz = to.z - from.z;
+  const dist = Math.round(Math.hypot(dx, dz));
+  if (dist < 8) return `${name} ist ganz in der Nähe!`;
+  const sector = Math.round(Math.atan2(dz, dx) / (Math.PI / 4));
+  return `${name}: ${dist} Blöcke Richtung ${DIRECTIONS[(sector + 8) % 8]}`;
+}
+
+/** the bounty: always the same, so it's worth the hunt */
+export const BOUNTY_LOOT = [
+  ["minecraft:diamond", 3], ["minecraft:emerald", 5], ["minecraft:golden_apple", 1], ["minecraft:experience_bottle", 5],
+];
+
+/** who gets the "Kopfgeldjäger" credit: the killer and everybody within 32 blocks */
+export function bountyHunters(killer, nearby) {
+  return [...new Set([killer, ...nearby].filter(Boolean))].sort();
+}
+
 /** beds can't be used while a night event waits or runs */
 export function isBed(typeId) {
   return typeId === "minecraft:bed" || String(typeId).endsWith("_bed");

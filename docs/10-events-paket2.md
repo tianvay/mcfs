@@ -1,6 +1,6 @@
 # Timed Events – Paket 2: Nachtgefahren (Plan, Änderung M12)
 
-Stand: 2026-10-26 · Status: **N1–N2 gebaut** (Nacht-Gerüst, Blutmond, Zombie-Invasion), N3–N6 offen · baut auf Paket 1 auf (`docs/09-events.md`) ·
+Stand: 2026-10-26 · Status: **N1–N3 gebaut** (alle drei Events), N4–N6 offen · baut auf Paket 1 auf (`docs/09-events.md`) ·
 nur stabile Script-API, keine Experimente
 
 ## Ziel
@@ -128,6 +128,23 @@ Phasen und Aufräumen lassen sich mit Test-Spielerpositionen prüfen, Kämpfe nu
   Testserver mit 4 Dorfbewohnern: zwei „Spieler“ im Dorf → ein Ziel, 5 Zombies; nächste Welle +4; alle
   Dorfbewohner geschützt; nicht geladener Ort → keine Zombies; während der Nacht wird nichts aufgeräumt;
   bei Sonnenaufgang Ende und alle Invasions-Zombies weg. Kampf und Beute nur im Spiel prüfbar.
+
+## N3 – gebaut
+
+- **Kopfgeld:** Beim Start (oder sobald jemand in der Oberwelt ist) erscheint ein zufälliger Boss 40–80 Blöcke
+  von einem zufälligen Spieler entfernt, nur in der Wildnis und nicht im Wasser: **Bernd der Zombiekönig**
+  (Zombie, Diamanthelm, Eisenschwert, Widerstand II, Stärke, 60 LP), **Skelett-Sven** (Goldhelm, Tempo,
+  Widerstand, 52 LP), **Spinnen-Susi** (Stärke, Widerstand, 52 LP). Mit Namen verschwinden Mobs nicht von selbst.
+- Chatmeldung mit Koordinaten; alle 30 s für jeden in der Oberwelt in der Aktionsleiste „Bernd: 54 Blöcke Richtung
+  Nordwesten“ (8 Himmelsrichtungen). Der Ort wird nachgeführt, solange der Boss geladen ist.
+- **Besiegt von einem Spieler:** Kopfgeld fällt (3 Diamanten, 5 Smaragde, Goldener Apfel, 5 Erfahrungsfläschchen),
+  Titel für alle, „Kopfgeldjäger“ = der Sieger und alle Spieler im Umkreis von 32 Blöcken (Log `bounty`,
+  Meldung ans Erfolge-Pack). **Verunglückt** (Lava, Sturz …) → kein Kopfgeld. **Nach 20 Min. Spielzeit** entkommt er.
+- Der Zustand im Log enthält beim Kopfgeld `boss` (Name, letzter Ort) für das Portal.
+- **Getestet:** 15 Node-Tests (neu: Lebenspunkte-Stufen, Helm gegen Sonne, Himmelsrichtungen, Kopfgeld, Jäger).
+  Testserver: Bernd mit 60/60 LP und Effekten, Hinweis „43 Blöcke Richtung Osten“ stimmt mit seinem Ort überein,
+  Tod ohne Spieler → Ende ohne Beute, Spinnen-Susi 52/52, nach 20 Min. entkommen und entfernt.
+  Im Spiel zu prüfen: Helm/Schwert sichtbar, Kampf, Kopfgeld.
 
 ## Was sich auf dem Server ändert
 

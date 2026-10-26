@@ -4,7 +4,8 @@
 //    (core.js). Running events only lose time while somebody is online; everything survives restarts.
 //  * Events: Unwetter (storm), Mining Rush (ore drops doubled), Glückstag (XP doubled);
 //    night events (wait for the next night, end at dawn, no sleeping meanwhile): Blutmond (wolf packs),
-//    Zombie-Invasion (waves at the villages near players, better loot, villagers protected).
+//    Zombie-Invasion (waves at the villages near players, better loot, villagers protected);
+//    Kopfgeld (a named boss appears in the wild, hints in the action bar, bounty for the hunters, escapes after 20 min).
 //  * Mobs spawned by events carry the tag "mcfs_ev" + "mcfs_ev_<type>" and are removed when their event is over.
 //  * Build register: every chunk a player placed a block in is remembered; world-changing effects
 //    (lightning now, meteors later) stay away from it.
@@ -15,7 +16,8 @@
 // console.warn on purpose: the server runs with content-log-level=warning.
 import { EntityDamageCause, ItemStack, Player, ScriptEventSource, system, WeatherType, world } from "@minecraft/server";
 import {
-  activeMinute, chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, formatMinutes, invasionLoot,
+  activeMinute, bossHint, BOUNTY_LOOT, bountyHunters, chooseBoss, healthBoostLevel,
+  chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, formatMinutes, invasionLoot,
   invasionMob, invasionTargets, isBed, isLeftover, isNaturalTop, isRushOre, lightningOffset, MOB_TAG, mobTag, newActive,
   newSchedule, nightStep, packSize, parseControl, participants, ranSeconds, ringOffset, scheduleMinute, shouldDouble,
   TYPES, waveSize, xpBonus, ZOMBIES,
@@ -130,6 +132,8 @@ const HANDLERS = {
     tick() { invasionTick(); },
     stop() {},
   },
+  // the boss is placed by the bounty interval below (also later, if nobody was online at the start)
+  bounty: { start() {}, minute() {}, stop() {} },
 };
 const IMPLEMENTED = Object.keys(HANDLERS);
 
@@ -402,6 +406,101 @@ function protectVillagers(dim, center) {
   } catch { /* ignore */ }
 }
 
+// ---------- Kopfgeld-Boss ----------
+
+const HINT_EVERY = 30 * 20;
+const HUNTER_RADIUS = 32;
+let nextHint = 0;
+
+system.runInterval(() => {
+  const a = active.find((x) => x.type === "bounty");
+  if (!a) return;
+  const dim = overworld();
+  if (!a.boss) {
+    // place the boss near a random player in the overworld (tried every second until somebody is there)
+    const players = world.getAllPlayers().filter((p) => p.dimension.id === "minecraft:overworld");
+    if (!players.length) return;
+    const p = players[Math.floor(Math.random() * players.length)];
+    if (spawnBoss(a, dim, p.location)) {
+      const b = a.boss;
+      world.sendMessage(`§6[Kopfgeld] §e${b.name}§f wurde bei §eX ${Math.round(b.x)} · Z ${Math.round(b.z)}§f gesehen! `
+        + "Wer ihn besiegt, bekommt das Kopfgeld.");
+      saveState();
+      logState();
+    }
+    return;
+  }
+  // follow the boss while its chunk is loaded; the last known place stays otherwise
+  try {
+    const e = dim.getEntities({ tags: [mobTag("bounty")] })[0];
+    if (e) Object.assign(a.boss, { x: e.location.x, z: e.location.z });
+  } catch { /* ignore */ }
+  if (system.currentTick < nextHint) return;
+  nextHint = system.currentTick + HINT_EVERY;
+  for (const p of world.getAllPlayers()) {
+    if (p.dimension.id !== "minecraft:overworld") continue;
+    try { p.onScreenDisplay.setActionBar(`§6${bossHint(a.boss.name, p.location, a.boss)}`); } catch { /* left */ }
+  }
+}, 20);
+
+/** the boss 40-80 blocks from `near`, in the wild; false if there is no spot (yet) */
+function spawnBoss(a, dim, near) {
+  const boss = chooseBoss(Math.random);
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const spot = ringOffset(near.x, near.z, 40, 80, Math.random);
+    const top = wildTop(dim, spot.x, spot.z);
+    if (!top || top.typeId.includes("water")) continue;
+    try {
+      const e = spawnEventMob(dim, boss.mob, "bounty", { x: spot.x + 0.5, y: top.location.y + 1, z: spot.z + 0.5 });
+      e.nameTag = boss.name; // named mobs don't despawn
+      const long = 20 * 60 * 60;
+      e.addEffect("health_boost", long, { amplifier: healthBoostLevel(boss.base, boss.health), showParticles: false });
+      for (const [effect, level] of boss.effects) e.addEffect(effect, long, { amplifier: level, showParticles: false });
+      // mobs can only be dressed by command (the script equipment API is for players)
+      if (boss.helmet) e.runCommand(`replaceitem entity @s slot.armor.head 0 ${boss.helmet}`);
+      if (boss.weapon) e.runCommand(`replaceitem entity @s slot.weapon.mainhand 0 ${boss.weapon}`);
+      // the boost raises the maximum - fill it up one tick later
+      system.runTimeout(() => {
+        try {
+          const h = e.getComponent("minecraft:health");
+          h.setCurrentValue(h.effectiveMax);
+        } catch { /* gone */ }
+      }, 2);
+      a.boss = { id: boss.id, name: boss.name, x: spot.x + 0.5, z: spot.z + 0.5 };
+      nextHint = 0;
+      return true;
+    } catch (err) {
+      log({ error: `boss: ${err}` });
+      return false;
+    }
+  }
+  return false;
+}
+
+/** boss died: the bounty for the hunters, or nothing if it fell into lava by itself */
+function bossDied(dead, killer) {
+  const a = active.find((x) => x.type === "bounty");
+  const name = a?.boss?.name ?? dead.nameTag ?? "Der Boss";
+  if (!(killer instanceof Player)) {
+    if (a) stop(a, "died", `${name} ist verunglückt – das Kopfgeld verfällt.`);
+    return;
+  }
+  for (const [id, n] of BOUNTY_LOOT) {
+    try { dead.dimension.spawnItem(new ItemStack(id, n), dead.location); } catch { /* ignore */ }
+  }
+  let nearby = [];
+  try {
+    nearby = dead.dimension.getPlayers({ location: dead.location, maxDistance: HUNTER_RADIUS }).map((p) => p.name);
+  } catch { /* ignore */ }
+  const hunters = bountyHunters(killer.name, nearby);
+  log({ event: "bounty", boss: name, killer: killer.name, hunters });
+  news({ event: "bounty", boss: name, hunters });
+  for (const p of world.getAllPlayers()) {
+    try { p.onScreenDisplay.setTitle("§6Kopfgeld!", { subtitle: `§e${killer.name}§7 hat §e${name}§7 besiegt`, fadeInDuration: 10, stayDuration: 70, fadeOutDuration: 20 }); } catch { /* left */ }
+  }
+  if (a) stop(a, "killed", `${killer.name} hat ${name} besiegt und das Kopfgeld kassiert!`);
+}
+
 // event mobs: loot and news for the achievements
 world.afterEvents.entityDie.subscribe((ev) => {
   const dead = ev.deadEntity;
@@ -417,6 +516,7 @@ world.afterEvents.entityDie.subscribe((ev) => {
   let tags;
   try { tags = dead.getTags(); } catch { return; }
   if (!tags.includes(MOB_TAG)) return;
+  if (tags.includes(mobTag("bounty"))) return bossDied(dead, killer);
   if (tags.includes(mobTag("blood_moon"))) {
     try {
       dead.dimension.spawnItem(new ItemStack("minecraft:bone", 1 + Math.floor(Math.random() * 2)), dead.location);
@@ -546,11 +646,11 @@ function start(type, by) {
   return true;
 }
 
-function stop(a, by) {
+function stop(a, by, endMessage) {
   active = active.filter((x) => x !== a);
   try { HANDLERS[a.type]?.stop(a); } catch (e) { log({ error: `stop ${a.type}: ${e}` }); }
   const t = TYPES[a.type];
-  world.sendMessage(`§6[Event] §7${t.end}`);
+  world.sendMessage(`§6[Event] §7${endMessage ?? t.end}`);
   const who = participants(a);
   log({ event: "ended", type: a.type, by, ran: ranSeconds(a), participants: who });
   news({ event: "ended", type: a.type, participants: who });
@@ -568,7 +668,8 @@ function logState() {
   const online = world.getAllPlayers().length;
   log({
     event: "state", auto: schedule.auto, online,
-    active: active.map((a) => ({ type: a.type, remaining: a.remaining, total: a.total, by: a.by, phase: a.phase })),
+    active: active.map((a) => ({ type: a.type, remaining: a.remaining, total: a.total, by: a.by, phase: a.phase,
+      boss: a.boss ? { name: a.boss.name, x: Math.round(a.boss.x), z: Math.round(a.boss.z) } : undefined })),
     next_in: estimateNext(schedule, online), last: schedule.last, register: register?.size ?? 0,
     types: IMPLEMENTED,
   });
@@ -604,7 +705,7 @@ function minute() {
 system.afterEvents.scriptEventReceive.subscribe((ev) => {
   if (ev.id !== "mcfs:event" || !schedule) return;
   const fromConsole = ev.sourceType === ScriptEventSource.Server;
-  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers)\b/.exec(ev.message);
+  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers|boss)\b/.exec(ev.message);
   if (test && fromConsole) return runTest(ev.message);
   const cmd = parseControl(ev.message);
   const reply = (msg) => {
@@ -665,6 +766,19 @@ function runTest(message) {
       const tame = wolves.filter((w) => w.getComponent("minecraft:tameable")).length;
       log({ event: "test", pack: ok, wolves: wolves.length, still_tameable: tame });
     }, 5);
+  } else if (kind === "boss") {
+    // place the boss of a running bounty as if a player stood at (a, b)
+    const bounty = active.find((x) => x.type === "bounty");
+    const dim = overworld();
+    const at = { x: Number(a) + 0.5, y: 0, z: Number(b) + 0.5 };
+    const ok = bounty && !bounty.boss && spawnBoss(bounty, dim, at);
+    system.runTimeout(() => {
+      const e = dim.getEntities({ tags: [mobTag("bounty")] })[0];
+      const h = e?.getComponent("minecraft:health");
+      log({ event: "test", boss: ok, name: e?.nameTag, type: e?.typeId, health: h ? `${h.currentValue}/${h.effectiveMax}` : null,
+        effects: e ? e.getEffects().map((x) => `${x.typeId}${x.amplifier}`) : [],
+        hint: bounty?.boss ? bossHint(bounty.boss.name, at, bounty.boss) : null });
+    }, 10);
   } else if (kind === "villagers") {
     // a small "village": 4 villagers on the ground at (a, b)
     const dim = overworld();

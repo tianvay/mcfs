@@ -7,6 +7,7 @@ import {
   isBed, isLeftover, isNight, isRushOre, lightningOffset, MIN_GAP, mobTag, newActive, newSchedule, nightStep, packSize,
   parseControl, participants, ranSeconds, ringOffset, scheduleMinute, secondsUntilDawn, secondsUntilNight,
   shouldDouble, TYPES, xpBonus, invasionLoot, invasionMob, invasionTargets, waveSize, ZOMBIES,
+  BOSSES, BOUNTY_LOOT, bossHint, bountyHunters, chooseBoss, healthBoostLevel,
 } from "../scripts/core.js";
 
 test("night events: wait for the night, run until dawn", () => {
@@ -209,4 +210,26 @@ test("Glückstag: every gain once more, nothing for losses or the first look", (
 
 test("every event type has a category for later meta achievements", () => {
   for (const [id, t] of Object.entries(TYPES)) assert.ok(["welt", "ressourcen", "mobs", "community"].includes(t.category), id);
+});
+
+test("Kopfgeld-Boss: health, hints, loot, hunters", () => {
+  assert.equal(healthBoostLevel(20, 60), 9, "10 levels x 4 = +40");
+  assert.equal(healthBoostLevel(20, 50), 7, "8 x 4 = +32 -> 52");
+  assert.equal(healthBoostLevel(16, 50), 8);
+  assert.equal(healthBoostLevel(20, 20), 0);
+  for (const b of BOSSES) {
+    assert.ok(b.base + (healthBoostLevel(b.base, b.health) + 1) * 4 >= b.health, b.id);
+    if (b.mob !== "minecraft:spider") assert.ok(b.helmet, `${b.id} needs a helmet against the sun`);
+  }
+  assert.equal(chooseBoss(() => 0).id, "bernd");
+  assert.equal(chooseBoss(() => 0.99).id, "susi");
+  const at = { x: 0, z: 0 };
+  assert.equal(bossHint("Bernd", at, { x: 0, z: -54 }), "Bernd: 54 Blöcke Richtung Norden");
+  assert.equal(bossHint("Bernd", at, { x: 40, z: 0 }), "Bernd: 40 Blöcke Richtung Osten");
+  assert.equal(bossHint("Bernd", at, { x: -30, z: -30 }), "Bernd: 42 Blöcke Richtung Nordwesten");
+  assert.equal(bossHint("Bernd", at, { x: 20, z: 20 }), "Bernd: 28 Blöcke Richtung Südosten");
+  assert.equal(bossHint("Bernd", at, { x: 3, z: 2 }), "Bernd ist ganz in der Nähe!");
+  assert.ok(BOUNTY_LOOT.some(([id, n]) => id === "minecraft:diamond" && n === 3));
+  assert.deepEqual(bountyHunters("Steve", ["Alex", "Steve"]), ["Alex", "Steve"]);
+  assert.deepEqual(bountyHunters(null, ["Alex"]), ["Alex"]);
 });
