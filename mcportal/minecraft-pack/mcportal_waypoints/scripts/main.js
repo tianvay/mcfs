@@ -6,7 +6,10 @@
 //  * /warp <Name> | list | delete <Name> | rename <alt> <neu> | public|private <Name> - for everybody
 //    /warp set <Name> - operators only: waypoint without structure at the current position
 //  * Waypoints are private (owner only) unless made public; operators can use all of them.
-//  * Mining the diamond block removes the waypoint; explosions don't damage waypoint structures.
+//  * The diamond block of a waypoint can't be mined (1.4.0): removing works only with /warp delete, which
+//    turns it into a coal block - the diamond is used up on purpose. Explosions don't damage waypoints.
+//  * Using (right click / LT / tap) the diamond block: owner and operators get the edit dialog
+//    (name, public), everybody else a short info.
 //  * A removed waypoint stays as a ruin: copper lanterns, and after /warp delete a coal block in the middle.
 //  * Stored in world dynamic properties (survives restarts and updates).
 //  * Log lines for the portal: [mcportal-warp] {"v":1,"event":...}; after every change and at startup
@@ -18,7 +21,8 @@ import {
 } from "@minecraft/server";
 import { ModalFormData } from "@minecraft/server-ui";
 import {
-  arrival, canUse, formatList, HELP, ITEM_ID, keyOf, parseCommand, PROP_PREFIX, provisionalName, structureKeys, validateName,
+  arrival, canUse, formatList, HELP, ITEM_ID, keyOf, parseCommand, PROP_PREFIX, provisionalName, splitNameHint,
+  structureKeys, validateName,
 } from "./core.js";
 import { build, placementProblem, ruin } from "./structure.js";
 
@@ -103,6 +107,18 @@ function keys() {
 
 const isOperator = (p) => p.playerPermissionLevel === PlayerPermissionLevel.Operator;
 const mayChange = (p, wp) => wp.owner === p.name || isOperator(p);
+const quoted = (name) => (name.includes(" ") ? `"${name}"` : name);
+
+/** the physical waypoint whose diamond block is at this block, if any */
+function waypointAt(block) {
+  if (block.typeId !== "minecraft:diamond_block") return null;
+  const { x, y, z } = block.location;
+  const dim = block.dimension.id;
+  for (const [key, wp] of all()) {
+    if (wp.physical && wp.dim === dim && wp.x === x && wp.y === y && wp.z === z) return [key, wp];
+  }
+  return null;
+}
 
 // ---------- /warp ----------
 
@@ -122,7 +138,11 @@ system.beforeEvents.startup.subscribe((ev) => {
       return { status: CustomCommandStatus.Failure, message: "Nur für Spieler." };
     }
     // command callbacks run read-only; do the work in the next tick
-    system.run(() => handle(player, parseCommand(a, b, c)));
+    system.run(() => {
+      const hint = splitNameHint(a, b, c, keys());
+      if (hint) return player.sendMessage(`§cNamen mit Leerzeichen bitte in Anführungszeichen. Meintest du: §e${hint}`);
+      handle(player, parseCommand(a, b, c));
+    });
     return { status: CustomCommandStatus.Success };
   });
 });
@@ -215,11 +235,21 @@ function rename(player, name, newName) {
 // ---------- placing the item builds the structure ----------
 
 world.beforeEvents.playerInteractWithBlock.subscribe((ev) => {
-  if (ev.itemStack?.typeId !== ITEM_ID) return;
-  ev.cancel = true; // the item itself is never placed or used up by the game
-  if (!ev.isFirstEvent) return;
   const { player, block, blockFace } = ev;
-  system.run(() => place(player, block, blockFace));
+  if (ev.itemStack?.typeId === ITEM_ID) {
+    ev.cancel = true; // the item itself is never placed or used up by the game
+    if (ev.isFirstEvent) system.run(() => place(player, block, blockFace));
+    return;
+  }
+  const found = waypointAt(block);
+  if (!found) return;
+  ev.cancel = true; // nothing is placed onto the diamond (that's where players arrive)
+  if (!ev.isFirstEvent) return;
+  const [key, wp] = found;
+  system.run(() => {
+    if (mayChange(player, wp)) return askName(player, key, 0, "", true);
+    player.sendMessage(`§6Wegpunkt §e${wp.name}§6 von ${wp.owner} (${wp.public ? "öffentlich" : "privat"}).`);
+  });
 });
 
 function place(player, block, face) {
@@ -260,34 +290,55 @@ function consumeOne(player) {
   return true;
 }
 
-function askName(player, key, attempt, error) {
+/** name dialog: after placing (edit = false) or when using the diamond block (edit = true, prefilled) */
+function askName(player, key, attempt, error, edit = false) {
+  const current = all().get(key);
+  if (!current) return;
   const form = new ModalFormData()
-    .title("Neuer Wegpunkt")
-    .textField(`${error ? `§c${error}§r\n` : ""}Wie soll dieser Wegpunkt heißen?`, "z. B. Zuhause")
-    .toggle("Öffentlich – alle Spieler dürfen hierher reisen", { defaultValue: false });
+    .title(edit ? "Wegpunkt bearbeiten" : "Neuer Wegpunkt")
+    .textField(`${error ? `§c${error}§r\n` : ""}Wie soll dieser Wegpunkt heißen?`, "z. B. Zuhause",
+      edit ? { defaultValue: current.name } : undefined)
+    .toggle("Öffentlich – alle Spieler dürfen hierher reisen", { defaultValue: edit && current.public === true });
   form.show(player).then((res) => {
     const wp = all().get(key);
     if (!wp) return; // removed in the meantime
     if (res.canceled) {
       if (res.cancelationReason === "UserBusy" && attempt < NAME_FORM_RETRIES) {
-        return system.runTimeout(() => askName(player, key, attempt + 1, error), 20);
+        return system.runTimeout(() => askName(player, key, attempt + 1, error, edit), 20);
       }
-      return player.sendMessage(`§6Wegpunkt §e${wp.name}§6 gespeichert (privat). Umbenennen: §e/warp rename "${wp.name}" <Name>`);
+      if (edit) return;
+      return player.sendMessage(`§6Wegpunkt §e${wp.name}§6 gespeichert (privat). Umbenennen: Diamantblock antippen`
+        + ` oder §e/warp rename ${quoted(wp.name)} <Name>`);
     }
     const name = String(res.formValues?.[0] ?? "").trim();
     const isPublic = res.formValues?.[1] === true;
     const problem = validateName(name, keys(), key);
-    if (problem) return askName(player, key, 0, problem);
+    if (problem) return askName(player, key, 0, problem, edit);
+    if (edit && name === wp.name && isPublic === (wp.public === true)) return; // nothing changed
     store({ ...wp, name, public: isPublic }, key);
-    const call = name.includes(" ") ? `"${name}"` : name;
     const visibility = isPublic ? "§aöffentlich§6" : "§cprivat§6";
-    player.sendMessage(`§6Wegpunkt §e${name}§6 gespeichert (${visibility}). Reisen mit §e/warp ${call}`);
-    report("renamed", { player: player.name, from: wp.name, name, public: isPublic });
+    player.sendMessage(`§6Wegpunkt §e${name}§6 gespeichert (${visibility}). Reisen mit §e/warp ${quoted(name)}`);
+    if (name !== wp.name) report("renamed", { player: player.name, from: wp.name, name, public: isPublic });
+    else report("visibility", { player: player.name, name, public: isPublic });
   }).catch(() => { /* player left */ });
 }
 
-// ---------- mining the diamond removes the waypoint; explosions spare waypoints ----------
+// ---------- the diamond can't be mined; explosions spare waypoints ----------
 
+world.beforeEvents.playerBreakBlock.subscribe((ev) => {
+  const found = waypointAt(ev.block);
+  if (!found) return;
+  ev.cancel = true; // also in creative mode and for operators
+  const [, wp] = found;
+  const player = ev.player;
+  system.run(() => {
+    player.sendMessage(mayChange(player, wp)
+      ? `§cDer Diamantblock gehört zum Wegpunkt „${wp.name}“. Entfernen nur mit §e/warp delete ${quoted(wp.name)}§c (er wird dabei zu Kohle).`
+      : `§cDer Diamantblock gehört zum Wegpunkt „${wp.name}“ von ${wp.owner} und kann nicht abgebaut werden.`);
+  });
+});
+
+// fallback, should no longer happen since 1.4.0: if the diamond is gone anyway, the waypoint goes too
 world.afterEvents.playerBreakBlock.subscribe((ev) => {
   if (ev.brokenBlockPermutation.type.id !== "minecraft:diamond_block") return;
   const l = ev.block.location;

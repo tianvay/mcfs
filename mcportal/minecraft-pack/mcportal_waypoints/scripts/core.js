@@ -61,14 +61,35 @@ export function parseCommand(a, b, c) {
   return { action: "teleport", name: first };
 }
 
+/**
+ * Names with a space typed without quotes arrive split: /warp rename Wegpunkt 1 -> "rename", "Wegpunkt", "1".
+ * If the joined words are an existing waypoint, return the correctly quoted command as a hint, else null.
+ */
+export function splitNameHint(a, b, c, existingKeys) {
+  const verb = (a ?? "").trim().toLowerCase();
+  const has = (...parts) => parts.every(Boolean) && existingKeys.has(keyOf(parts.join(" ")));
+  const quote = (...parts) => `"${parts.map((p) => p.trim()).join(" ")}"`;
+  if (["rename", "delete", "public", "private", "öffentlich", "privat"].includes(verb)) {
+    if (!b || existingKeys.has(keyOf(b))) return null;
+    if (has(b, c)) return `/warp ${verb} ${quote(b, c)}${verb === "rename" ? " <neuer Name>" : ""}`;
+    return null;
+  }
+  if (!a || !b || existingKeys.has(keyOf(a))) return null;
+  if (c && has(a, b, c)) return `/warp ${quote(a, b, c)}`;
+  if (has(a, b)) return `/warp ${quote(a, b)}`;
+  return null;
+}
+
 export const HELP = [
   "§6Wegpunkte§r",
   "§e/warp <Name>§r – zum Wegpunkt reisen",
   "§e/warp list§r – Wegpunkte anzeigen, die du benutzen darfst",
   "§e/warp delete <Name>§r – eigenen Wegpunkt löschen",
-  "§e/warp rename <alt> <neu>§r – eigenen Wegpunkt umbenennen",
+  "§e/warp rename <alt> <neu>§r – eigenen Wegpunkt umbenennen (oder den Diamantblock antippen)",
+  "Namen mit Leerzeichen in Anführungszeichen: §e/warp rename \"Wegpunkt 1\" Baumhaus§r",
   "§e/warp public <Name>§r / §e/warp private <Name>§r – für alle freigeben / nur für dich",
   "Neue Wegpunkte: Wegpunkt-Item craften (Laternen, Steinziegelmauern, Diamantblock) und auf den Boden setzen.",
+  "Der Diamantblock lässt sich nicht abbauen – entfernen nur mit §e/warp delete <Name>§r (er wird dabei zu Kohle).",
 ];
 
 // ---- the structure (relative to the diamond block in the middle of the floor)

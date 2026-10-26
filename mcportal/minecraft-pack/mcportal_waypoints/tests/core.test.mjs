@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  arrival, canUse, clearanceCells, formatList, keyOf, layout, parseCommand, provisionalName, ruinCells, structureKeys,
-  validateName,
+  arrival, canUse, clearanceCells, formatList, keyOf, layout, parseCommand, provisionalName, ruinCells, splitNameHint,
+  structureKeys, validateName,
 } from "../scripts/core.js";
 
 test("names: valid, invalid, duplicate (case-insensitive), reserved", () => {
@@ -94,4 +94,17 @@ test("list and provisional names", () => {
   assert.equal(formatList(wps, "Mama", true).length, 4, "operators see all");
   assert.equal(provisionalName(new Set(["wegpunkt 1"])), "Wegpunkt 2");
   assert.equal(keyOf("  ZuHause "), "zuhause");
+});
+
+test("unquoted names with a space get the quoted command as hint", () => {
+  const keys = new Set(["wegpunkt 1", "mein haus am see", "dorf"]);
+  assert.equal(splitNameHint("rename", "Wegpunkt", "1", keys), '/warp rename "Wegpunkt 1" <neuer Name>');
+  assert.equal(splitNameHint("delete", "Wegpunkt", "1", keys), '/warp delete "Wegpunkt 1"');
+  assert.equal(splitNameHint("public", "Wegpunkt", "1", keys), '/warp public "Wegpunkt 1"');
+  assert.equal(splitNameHint("Wegpunkt", "1", undefined, keys), '/warp "Wegpunkt 1"');
+  assert.equal(splitNameHint("Mein", "Haus", "am", keys), null, "only up to three words arrive");
+  assert.equal(splitNameHint("rename", "Dorf", "Markt", keys), null, "normal rename stays untouched");
+  assert.equal(splitNameHint("rename", "Wegpunkt 1", "Baumhaus", keys), null, "quoted correctly");
+  assert.equal(splitNameHint("Dorf", undefined, undefined, keys), null);
+  assert.equal(splitNameHint("rename", "Gibts", "nicht", keys), null, "unknown names keep the normal error");
 });

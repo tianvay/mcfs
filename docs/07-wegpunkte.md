@@ -28,6 +28,10 @@ Danach fragt ein Fenster: **„Wie soll dieser Wegpunkt heißen?“**, darunter 
 (standardmäßig aus). Wird das Fenster geschlossen, heißt der Wegpunkt „Wegpunkt 1“ (2, 3 …), ist privat und
 lässt sich umbenennen.
 
+**Bearbeiten** (seit 1.4.0): Den **Diamantblock antippen** (PC: Rechtsklick, Xbox: LT, Tablet: antippen) öffnet
+für Besitzer und Operatoren wieder das Fenster – Name und „Öffentlich“ sind vorausgefüllt. Andere Spieler sehen
+nur, wem der Wegpunkt gehört.
+
 **Privat oder öffentlich** (seit Version 1.1.0):
 
 | | Wer darf hinreisen und sieht ihn in `/warp list` |
@@ -45,23 +49,26 @@ Wegpunkte von vor 1.1.0 (z. B. „Dorf“) gelten als privat; freigeben mit `/wa
 | `/warp Zuhause` | zum Wegpunkt reisen – von überall, auch zwischen Oberwelt, Nether und Ende |
 | `/warp list` | alle Wegpunkte, die man benutzen darf – mit Ort, Besitzer, öffentlich/privat |
 | `/warp delete Zuhause` | eigenen Wegpunkt löschen (Operatoren: jeden); das Bauwerk wird zur Ruine (siehe unten) |
-| `/warp rename Zuhause Burg` | eigenen Wegpunkt umbenennen |
+| `/warp rename Zuhause Burg` | eigenen Wegpunkt umbenennen (oder Diamantblock antippen) |
 | `/warp public Zuhause` / `/warp private Zuhause` | eigenen Wegpunkt für alle freigeben / wieder privat machen |
 | `/warp set Zuhause` | **nur Operatoren:** Wegpunkt ohne Bauwerk an der aktuellen Position |
 | `/warp` | Hilfe |
 
-Namen mit Leerzeichen in Anführungszeichen: `/warp "Mein Haus"`. Namen sind eindeutig (Groß-/Kleinschreibung egal),
-höchstens 24 Zeichen; Befehlswörter (list, set …) sind keine Namen.
+Namen mit Leerzeichen in Anführungszeichen: `/warp "Mein Haus"`, `/warp rename "Wegpunkt 1" Baumhaus`. Fehlen die
+Anführungszeichen, schlägt das Spiel den richtigen Befehl vor (seit 1.4.0). Namen sind eindeutig
+(Groß-/Kleinschreibung egal), höchstens 24 Zeichen; Befehlswörter (list, set …) sind keine Namen.
 
-**Abbauen:** Wer den Diamantblock abbaut, entfernt den Wegpunkt (Meldung an alle) und bekommt den Diamantblock
-zurück.
+**Abbauen geht nicht** (seit 1.4.0): Der Diamantblock eines Wegpunkts lässt sich nicht abbauen – auch nicht im
+Kreativmodus oder als Operator. Entfernen nur mit `/warp delete <Name>`; der Diamant wird dabei zu Kohle und ist
+**absichtlich verbraucht**. (Bis 1.3.0 entfernte Abbauen den Wegpunkt und gab den Diamanten zurück.) Die übrigen
+Blöcke des Bauwerks (Steinziegel, Mauern, Laternen) lassen sich weiter abbauen.
 
 **Ruine** (seit 1.2.0): Ein entfernter Wegpunkt bleibt als Ruine stehen, damit man sieht, dass hier einer war:
 
 | | Mitte | Laternen |
 |---|---|---|
 | `/warp delete` | Diamantblock → **Kohleblock** (der Diamant ist damit weg) | → **Kupferlaternen** (laufen mit der Zeit grün an) |
-| Diamant abgebaut | bleibt leer | → Kupferlaternen |
+| Diamant abgebaut (nur bis 1.3.0) | bleibt leer | → Kupferlaternen |
 
 Nur Originalblöcke werden ersetzt. Ist der Bereich beim Löschen nicht geladen (niemand in der Nähe),
 wird der Umbau vorgemerkt und erledigt, sobald jemand vorbeikommt – außer dort steht inzwischen ein neuer Wegpunkt. **Explosionen** (Creeper, TNT) beschädigen Wegpunkt-Bauwerke nicht.
@@ -135,3 +142,16 @@ bash ~/mcportal-src/deploy/world-pack.sh mcportal_waypoints apply
   Anzeige mit simuliertem Server; Pack 1.3.0 mit einer Kopie der echten Welt – Liste mit beiden Wegpunkten im Log.
 - Installation: zuerst `install.sh` (Portal), dann `world-pack.sh mcportal_waypoints apply` – so ist das Portal
   bereit, wenn das Pack beim Neustart die Liste schreibt.
+
+## Version 1.4.0: Diamant geschützt, Bearbeiten per Antippen (2026-10-26)
+
+- Anlass: Ein Wegpunkt blieb „Wegpunkt 1“, weil `/warp rename Wegpunkt 1` ohne Anführungszeichen nicht ging.
+- **Diamantblock antippen** → Fenster „Wegpunkt bearbeiten“ (Name, Öffentlich) für Besitzer und Operatoren;
+  andere bekommen eine Info. Auf den Diamanten kann dabei nichts gesetzt werden (dort kommt man an).
+- **Diamantblock nicht abbaubar** (`beforeEvents.playerBreakBlock` abgebrochen, mit Hinweis auf `/warp delete`).
+  Bekannte Lücke: Ein Kolben könnte den Diamanten noch verschieben (dafür gibt es kein abbrechbares Ereignis).
+- **Hinweis bei fehlenden Anführungszeichen:** Ergeben die einzeln angekommenen Wörter einen vorhandenen Namen,
+  antwortet das Spiel mit dem richtigen Befehl, z. B. `/warp rename "Wegpunkt 1" <neuer Name>`.
+- Getestet: 8 Node-Tests (neu: Hinweis-Logik); Testserver lädt 1.4.0 ohne Script-Fehler. Antippen und
+  Abbau-Schutz brauchen einen echten Spieler – im Spiel prüfen.
+- Installation: `bash ~/mcportal-src/deploy/world-pack.sh mcportal_waypoints apply` (ein Neustart, Backup davor).
