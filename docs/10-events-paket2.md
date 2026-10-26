@@ -193,6 +193,20 @@ Phasen und Aufräumen lassen sich mit Test-Spielerpositionen prüfen, Kämpfe nu
 - Getestet: 15 Node-Tests (neu: Höhe im Hinweis, Lichtsäule); Testserver: Partikel angenommen, Y im Zustand,
   Hinweis mit Höhe. Installation: `install.sh` (Portal zeigt Y) und `world-pack.sh mcportal_events apply`.
 
+## Nachbesserung Events-Pack 1.1.2: Boss verschwand (2026-10-26)
+
+- Anlass: Spieler stand genau an Skelett-Svens Position – kein Boss. Im Log blieb seine Position seit dem
+  Erscheinen unverändert, die Lichtsäule fehlte: Das Pack fand ihn nicht mehr. Ursache: **Minecraft entfernt
+  feindliche Mobs, die weiter als 32 Blöcke von Spielern entfernt sind, zufällig („Despawn“)**; ein per Skript
+  gesetzter Name schützt nicht wie ein echtes Namensschild. Der Boss erschien 30–80 Blöcke entfernt – genau dort.
+  Auf dem Testserver nie aufgefallen, weil dort niemand spielt (ohne Spieler kein Despawn).
+- Jetzt: Fehlt der Boss 3 Sekunden lang, obwohl ein Spieler im Umkreis von 48 Blöcken seiner letzten Position ist
+  (der Bereich also geladen ist), kommt er dort mit seinen **bisherigen Lebenspunkten** zurück (Log `boss_back`).
+- Außerdem: Bosse, Zombies und Wölfe erscheinen nur noch auf **echtem Boden** – nicht auf Baumkronen (Laub zählte
+  als Naturboden) und nicht im Wasser. Bis zu 16 Suchversuche je Sekunde für den Boss.
+- Getestet: 16 Node-Tests (neu: Boden-Prüfung); Testserver: Boss per Skript entfernt (wie Despawn) → nach 3 s
+  zurück mit 33/52 LP; Boss steht auf Boden.
+
 ## Was sich auf dem Server ändert
 
 - Events-Pack 1.0.0 → 1.1.0, Erfolge-Pack 1.1.0 → 1.2.0, neue Portal-Version. Keine Blockänderungen.

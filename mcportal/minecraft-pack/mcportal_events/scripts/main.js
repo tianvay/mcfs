@@ -17,9 +17,9 @@
 // console.warn on purpose: the server runs with content-log-level=warning.
 import { EntityDamageCause, ItemStack, Player, ScriptEventSource, system, WeatherType, world } from "@minecraft/server";
 import {
-  activeMinute, beaconColumn, bossHint, BOUNTY_LOOT, bountyHunters, chooseBoss, healthBoostLevel,
+  activeMinute, beaconColumn, BOSSES, bossHint, BOUNTY_LOOT, bountyHunters, chooseBoss, healthBoostLevel,
   chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, formatMinutes, invasionLoot,
-  invasionMob, invasionTargets, isBed, isLeftover, isNaturalTop, isRushOre, lightningOffset, MOB_TAG, mobTag, newActive,
+  invasionMob, invasionTargets, isBed, isGround, isLeftover, isNaturalTop, isRushOre, lightningOffset, MOB_TAG, mobTag, newActive,
   newSchedule, nightStep, packSize, parseControl, participants, ranSeconds, ringOffset, scheduleMinute, shouldDouble,
   TYPES, waveSize, xpBonus, ZOMBIES,
 } from "./core.js";
@@ -315,7 +315,7 @@ function spawnWolfPack(dim, near) {
   for (let attempt = 0; attempt < 6; attempt++) {
     const spot = ringOffset(near.x, near.z, 20, 32, Math.random);
     const top = wildTop(dim, spot.x, spot.z);
-    if (!top) continue;
+    if (!top || !isGround(top.typeId)) continue;
     const n = packSize(Math.random);
     for (let i = 0; i < n; i++) {
       try {
@@ -390,7 +390,7 @@ function zombieSpot(dim, x, z) {
   if (isBuilt(dim.id, x, z)) return null;
   try {
     const top = dim.getTopmostBlock({ x, z });
-    if (!top || !isNaturalTop(top.typeId) || top.typeId.includes("water")) return null;
+    if (!top || !isGround(top.typeId)) return null;
     return { x: x + 0.5, y: top.location.y + 1, z: z + 0.5 };
   } catch {
     return null;
@@ -437,10 +437,20 @@ system.runInterval(() => {
   try {
     const e = dim.getEntities({ tags: [mobTag("bounty")] })[0];
     if (e) {
-      Object.assign(a.boss, { x: e.location.x, y: e.location.y, z: e.location.z });
+      Object.assign(a.boss, { x: e.location.x, y: e.location.y, z: e.location.z, missing: 0 });
+      const hp = e.getComponent("minecraft:health")?.currentValue;
+      if (hp > 0) a.boss.hp = hp;
       for (const p of beaconColumn(e.location)) dim.spawnParticle(BEACON_PARTICLE, p);
+    } else if (bossAreaWatched(dim, a.boss) && (a.boss.missing = (a.boss.missing ?? 0) + 1) >= 3) {
+      // Minecraft despawned it (hostile mobs further than 32 blocks from players vanish at random, a name set
+      // by script doesn't protect them): bring it back where it was, with the health it had
+      const def = BOSSES.find((b) => b.id === a.boss.id) ?? BOSSES[0];
+      createBoss(dim, def, a.boss, a.boss.hp);
+      a.boss.missing = 0;
+      a.boss.respawns = (a.boss.respawns ?? 0) + 1;
+      log({ event: "boss_back", boss: a.boss.name, respawns: a.boss.respawns });
     }
-  } catch { /* ignore */ }
+  } catch (err) { log({ error: `boss follow: ${err}` }); }
   if (system.currentTick < nextHint) return;
   nextHint = system.currentTick + HINT_EVERY;
   for (const p of world.getAllPlayers()) {
@@ -449,30 +459,52 @@ system.runInterval(() => {
   }
 }, 20);
 
+let testWatcher = null; // test server only: stands in for a player (there are none there)
+
+/** a player is close enough to the boss's last place that its chunk is loaded - then it should be there */
+function bossAreaWatched(dim, b) {
+  const watchers = world.getAllPlayers().filter((p) => p.dimension.id === dim.id).map((p) => p.location);
+  if (testWatcher) watchers.push(testWatcher);
+  const near = watchers.some((l) => Math.hypot(l.x - b.x, l.z - b.z) < 48);
+  if (!near) return false;
+  try {
+    return !!dim.getBlock({ x: Math.floor(b.x), y: Math.floor(b.y ?? 64), z: Math.floor(b.z) });
+  } catch {
+    return false; // not loaded
+  }
+}
+
+/** the boss mob itself: name, effects, equipment, full (or the given) health */
+function createBoss(dim, def, at, hp) {
+  const e = spawnEventMob(dim, def.mob, "bounty", { x: at.x, y: at.y, z: at.z });
+  e.nameTag = def.name;
+  const long = 20 * 60 * 60;
+  e.addEffect("health_boost", long, { amplifier: healthBoostLevel(def.base, def.health), showParticles: false });
+  for (const [effect, level] of def.effects) e.addEffect(effect, long, { amplifier: level, showParticles: false });
+  // mobs can only be dressed by command (the script equipment API is for players)
+  if (def.helmet) e.runCommand(`replaceitem entity @s slot.armor.head 0 ${def.helmet}`);
+  if (def.weapon) e.runCommand(`replaceitem entity @s slot.weapon.mainhand 0 ${def.weapon}`);
+  // the boost raises the maximum - fill it up one tick later
+  system.runTimeout(() => {
+    try {
+      const h = e.getComponent("minecraft:health");
+      h.setCurrentValue(hp > 0 ? Math.min(hp, h.effectiveMax) : h.effectiveMax);
+    } catch { /* gone */ }
+  }, 2);
+  return e;
+}
+
 /** the boss 30-60 blocks from `near`, in the wild; false if there is no spot (yet) */
 function spawnBoss(a, dim, near) {
   const boss = chooseBoss(Math.random);
-  for (let attempt = 0; attempt < 8; attempt++) {
+  for (let attempt = 0; attempt < 16; attempt++) {
     const spot = ringOffset(near.x, near.z, 30, 60, Math.random);
     const top = wildTop(dim, spot.x, spot.z);
-    if (!top || top.typeId.includes("water")) continue;
+    if (!top || !isGround(top.typeId)) continue; // not on tree tops, not in water
+    const at = { x: spot.x + 0.5, y: top.location.y + 1, z: spot.z + 0.5 };
     try {
-      const e = spawnEventMob(dim, boss.mob, "bounty", { x: spot.x + 0.5, y: top.location.y + 1, z: spot.z + 0.5 });
-      e.nameTag = boss.name; // named mobs don't despawn
-      const long = 20 * 60 * 60;
-      e.addEffect("health_boost", long, { amplifier: healthBoostLevel(boss.base, boss.health), showParticles: false });
-      for (const [effect, level] of boss.effects) e.addEffect(effect, long, { amplifier: level, showParticles: false });
-      // mobs can only be dressed by command (the script equipment API is for players)
-      if (boss.helmet) e.runCommand(`replaceitem entity @s slot.armor.head 0 ${boss.helmet}`);
-      if (boss.weapon) e.runCommand(`replaceitem entity @s slot.weapon.mainhand 0 ${boss.weapon}`);
-      // the boost raises the maximum - fill it up one tick later
-      system.runTimeout(() => {
-        try {
-          const h = e.getComponent("minecraft:health");
-          h.setCurrentValue(h.effectiveMax);
-        } catch { /* gone */ }
-      }, 2);
-      a.boss = { id: boss.id, name: boss.name, x: spot.x + 0.5, y: top.location.y + 1, z: spot.z + 0.5 };
+      createBoss(dim, boss, at);
+      a.boss = { id: boss.id, name: boss.name, ...at, missing: 0 };
       nextHint = 0;
       return true;
     } catch (err) {
@@ -712,7 +744,7 @@ function minute() {
 system.afterEvents.scriptEventReceive.subscribe((ev) => {
   if (ev.id !== "mcfs:event" || !schedule) return;
   const fromConsole = ev.sourceType === ScriptEventSource.Server;
-  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers|boss)\b/.exec(ev.message);
+  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers|boss|despawn)\b/.exec(ev.message);
   if (test && fromConsole) return runTest(ev.message);
   const cmd = parseControl(ev.message);
   const reply = (msg) => {
@@ -784,10 +816,32 @@ function runTest(message) {
       const h = e?.getComponent("minecraft:health");
       log({ event: "test", boss: ok, name: e?.nameTag, type: e?.typeId, health: h ? `${h.currentValue}/${h.effectiveMax}` : null,
         effects: e ? e.getEffects().map((x) => `${x.typeId}${x.amplifier}`) : [],
-        hint: bounty?.boss ? bossHint(bounty.boss.name, { ...at, y: 60 }, bounty.boss) : null, y: bounty?.boss?.y });
-      try { dim.spawnParticle(BEACON_PARTICLE, e.location); log({ event: "test", particle: "ok" }); }
-      catch (err) { log({ event: "test", particle: String(err) }); }
+        hint: bounty?.boss ? bossHint(bounty.boss.name, { ...at, y: 60 }, bounty.boss) : null, y: bounty?.boss?.y,
+        standsOn: e ? dim.getBlock({ x: Math.floor(e.location.x), y: Math.floor(e.location.y) - 1, z: Math.floor(e.location.z) })?.typeId : null });
+      if (e) {
+        try { dim.spawnParticle(BEACON_PARTICLE, e.location); log({ event: "test", particle: "ok" }); }
+        catch (err) { log({ event: "test", particle: String(err) }); }
+      }
     }, 10);
+  } else if (kind === "despawn") {
+    // remove the boss silently like Minecraft's despawning; a "player" stands at its place
+    const e = overworld().getEntities({ tags: [mobTag("bounty")] })[0];
+    const bounty = active.find((x) => x.type === "bounty");
+    if (e) {
+      e.getComponent("minecraft:health").setCurrentValue(33);
+      system.runTimeout(() => {
+        bounty.boss.hp = 33;
+        testWatcher = { x: e.location.x, z: e.location.z };
+        e.remove();
+        system.runTimeout(() => {
+          const back = overworld().getEntities({ tags: [mobTag("bounty")] });
+          const h = back[0]?.getComponent("minecraft:health");
+          log({ event: "test", despawned: true, back: back.length, name: back[0]?.nameTag,
+            health: h ? `${h.currentValue}/${h.effectiveMax}` : null, respawns: bounty.boss.respawns });
+          testWatcher = null;
+        }, 20 * 6);
+      }, 25);
+    }
   } else if (kind === "villagers") {
     // a small "village": 4 villagers on the ground at (a, b)
     const dim = overworld();

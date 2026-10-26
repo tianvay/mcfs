@@ -426,6 +426,12 @@ export function isNaturalTop(typeId) {
   return false;
 }
 
+/** ground a mob can be put on: natural, but not tree tops (leaves) and not water */
+export function isGround(typeId) {
+  const n = String(typeId);
+  return isNaturalTop(n) && !n.endsWith("_leaves") && !n.includes("water");
+}
+
 /** random point 16-64 blocks around (x, z) */
 export function lightningOffset(x, z, rand) {
   return ringOffset(x, z, 16, 64, rand);

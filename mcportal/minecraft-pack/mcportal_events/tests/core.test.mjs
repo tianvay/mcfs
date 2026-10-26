@@ -7,7 +7,7 @@ import {
   isBed, isLeftover, isNight, isRushOre, lightningOffset, MIN_GAP, mobTag, newActive, newSchedule, nightStep, packSize,
   parseControl, participants, ranSeconds, ringOffset, scheduleMinute, secondsUntilDawn, secondsUntilNight,
   shouldDouble, TYPES, xpBonus, invasionLoot, invasionMob, invasionTargets, waveSize, ZOMBIES,
-  beaconColumn, BOSSES, BOUNTY_LOOT, bossHint, bountyHunters, chooseBoss, healthBoostLevel,
+  beaconColumn, isGround, BOSSES, BOUNTY_LOOT, bossHint, bountyHunters, chooseBoss, healthBoostLevel,
 } from "../scripts/core.js";
 
 test("night events: wait for the night, run until dawn", () => {
@@ -239,4 +239,9 @@ test("Kopfgeld-Boss: health, hints, loot, hunters", () => {
   assert.ok(BOUNTY_LOOT.some(([id, n]) => id === "minecraft:diamond" && n === 3));
   assert.deepEqual(bountyHunters("Steve", ["Alex", "Steve"]), ["Alex", "Steve"]);
   assert.deepEqual(bountyHunters(null, ["Alex"]), ["Alex"]);
+});
+
+test("mobs only on real ground: no tree tops, no water", () => {
+  assert.ok(isGround("minecraft:grass_block") && isGround("minecraft:sand") && isGround("minecraft:snow_layer"));
+  assert.ok(!isGround("minecraft:oak_leaves") && !isGround("minecraft:water") && !isGround("minecraft:oak_planks"));
 });
