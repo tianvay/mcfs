@@ -4,9 +4,47 @@ import { test } from "node:test";
 
 import {
   activeMinute, chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, intervalMinutes, isNaturalTop,
-  isRushOre, lightningOffset, MIN_GAP, newActive, newSchedule, parseControl, participants, scheduleMinute,
+  isBed, isLeftover, isNight, isRushOre, lightningOffset, MIN_GAP, mobTag, newActive, newSchedule, nightStep, packSize,
+  parseControl, participants, ranSeconds, ringOffset, scheduleMinute, secondsUntilDawn, secondsUntilNight,
   shouldDouble, TYPES, xpBonus,
 } from "../scripts/core.js";
+
+test("night events: wait for the night, run until dawn", () => {
+  assert.ok(!isNight(12999) && isNight(13000) && isNight(22999) && !isNight(23000) && !isNight(0));
+  assert.equal(secondsUntilNight(12000), 50);
+  assert.equal(secondsUntilNight(23500), (24000 - 23500 + 13000) / 20);
+  assert.equal(secondsUntilDawn(18000), 250);
+  const a = newActive("blood_moon", "auto");
+  assert.equal(a.phase, "waiting");
+  assert.equal(nightStep(a, 6000), null);
+  assert.equal(a.remaining, 350, "7000 ticks until nightfall");
+  assert.deepEqual(activeMinute([a], ["Steve"]), [], "night events never end by minutes");
+  assert.deepEqual(a.seen, {}, "waiting doesn't count as taking part");
+  assert.equal(nightStep(a, 13020), "night");
+  assert.equal(a.phase, "running");
+  for (let m = 0; m < 6; m++) activeMinute([a], m < 2 ? ["Alex", "Steve"] : ["Steve"]);
+  assert.equal(nightStep(a, 20000), null);
+  assert.equal(nightStep(a, 23001), "dawn");
+  assert.equal(ranSeconds(a), 360);
+  assert.deepEqual(participants(a), ["Steve"], "Alex was there 2 of 6 minutes");
+  const b = newActive("zombie_invasion", "console");
+  assert.equal(nightStep(b, 15000), "night", "started at night: begins at once");
+});
+
+test("event mobs: tags and tidying up", () => {
+  assert.equal(mobTag("blood_moon"), "mcfs_ev_blood_moon");
+  assert.ok(isLeftover(["mcfs_ev", "mcfs_ev_blood_moon"], ["storm"]));
+  assert.ok(!isLeftover(["mcfs_ev", "mcfs_ev_blood_moon"], ["blood_moon"]));
+  assert.ok(!isLeftover(["some_other_tag"], []), "foreign mobs are never touched");
+  assert.ok(isBed("minecraft:bed") && isBed("minecraft:red_bed") && !isBed("minecraft:bedrock"));
+  for (let i = 0; i < 50; i++) {
+    const p = ringOffset(0, 0, 20, 32, Math.random);
+    const d = Math.hypot(p.x, p.z);
+    assert.ok(d >= 19 && d <= 33, `ring ${d}`);
+    const n = packSize(Math.random);
+    assert.ok(n >= 3 && n <= 5);
+  }
+});
 
 const always = (v) => () => v;
 

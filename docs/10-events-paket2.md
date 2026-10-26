@@ -1,6 +1,6 @@
 # Timed Events – Paket 2: Nachtgefahren (Plan, Änderung M12)
 
-Stand: 2026-10-26 · Status: **Plan, noch nicht umgesetzt** · baut auf Paket 1 auf (`docs/09-events.md`) ·
+Stand: 2026-10-26 · Status: **N1 gebaut** (Nacht-Gerüst, Blutmond), N2–N6 offen · baut auf Paket 1 auf (`docs/09-events.md`) ·
 nur stabile Script-API, keine Experimente
 
 ## Ziel
@@ -91,6 +91,26 @@ Meta-Erfolge mit Paket 3.
 
 Jeder Schritt mit Node-Tests für die Logik und einem Lauf auf dem Testserver (dort ohne Spieler – Spawns,
 Phasen und Aufräumen lassen sich mit Test-Spielerpositionen prüfen, Kämpfe nur im Spiel).
+
+## N1 – gebaut
+
+- **Nacht-Events** (`core.js`: `nightStep`, `isNight` …): Phase `waiting` (Restzeit = bis zur Nacht) → `running`
+  (Restzeit = bis Sonnenaufgang) → Ende „dawn“. Geprüft wird jede Sekunde über die Tageszeit. Teilnahme zählt nur
+  in der Nacht selbst (`ran`). Der Zustand im Log enthält jetzt `phase`.
+- **Schlafsperre:** Bett benutzen wird abgebrochen („Heute Nacht schläft niemand!“), solange ein Nacht-Event
+  wartet oder läuft.
+- **Event-Mobs** tragen `mcfs_ev` + `mcfs_ev_<art>`; jede Minute und bei jedem Event-Ende werden die entfernt,
+  deren Event nicht mehr läuft (auch wenn ihr Chunk beim Ende nicht geladen war). Fremde Mobs werden nie angefasst.
+- **Blutmond:** bei Einbruch der Nacht roter Bildschirm + Knurren, rötlicher Nebel (`fog … push
+  minecraft:fog_crimson_forest`, bei Sonnenaufgang entfernt), alle 90 s je Spieler an der Oberfläche ein
+  Rudel aus 3–5 wütenden Wölfen 20–32 Blöcke entfernt, nur in der Wildnis (gleiche Prüfung wie bei Blitzen),
+  höchstens 12 im Umkreis. Besiegte Blutmond-Wölfe lassen 1–2 Knochen fallen; Meldung `kill`/`blood_wolf` an
+  das Erfolge-Pack.
+- **Getestet:** 13 Node-Tests (neu: Nacht-Phasen, Teilnahme nur nachts, Markierungen, Betten, Rudelgröße).
+  Testserver: Start am Tag → wartet (348 s bis zur Nacht) → bei Nacht „running“; Start in der Nacht → sofort;
+  Neustart mitten in der Nacht → läuft weiter; Wolfsrudel nur auf Naturboden, Wölfe nach einem Tick wütend
+  (verlieren „zähmbar“), bleiben während der Nacht; Sonnenaufgang / Beenden → Ende, alle Blutmond-Wölfe weg.
+  Nicht prüfbar ohne Spieler: Nebel, roter Bildschirm, Angriff, Schlafsperre.
 
 ## Was sich auf dem Server ändert
 

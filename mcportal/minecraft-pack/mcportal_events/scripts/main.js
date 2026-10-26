@@ -1,8 +1,10 @@
-// Minecraft Family Portal - timed events (behavior pack, change M11)
+// Minecraft Family Portal - timed events (behavior pack, changes M11, M12)
 //
 //  * Random events while players are online - the more players, the more often, at most one per hour
 //    (core.js). Running events only lose time while somebody is online; everything survives restarts.
-//  * Events: Unwetter (storm), Mining Rush (ore drops doubled), Glückstag (XP doubled).
+//  * Events: Unwetter (storm), Mining Rush (ore drops doubled), Glückstag (XP doubled);
+//    night events (wait for the next night, end at dawn, no sleeping meanwhile): Blutmond (wolf packs).
+//  * Mobs spawned by events carry the tag "mcfs_ev" + "mcfs_ev_<type>" and are removed when their event is over.
 //  * Build register: every chunk a player placed a block in is remembered; world-changing effects
 //    (lightning now, meteors later) stay away from it.
 //  * Control (console / portal / operators): /scriptevent mcfs:event start|stop <type> | auto on|off | state
@@ -12,9 +14,9 @@
 // console.warn on purpose: the server runs with content-log-level=warning.
 import { EntityDamageCause, ItemStack, Player, ScriptEventSource, system, WeatherType, world } from "@minecraft/server";
 import {
-  activeMinute, chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, formatMinutes, isNaturalTop,
-  isRushOre, lightningOffset, newActive, newSchedule, parseControl, participants, scheduleMinute, shouldDouble, TYPES,
-  xpBonus,
+  activeMinute, chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, formatMinutes, isBed, isLeftover,
+  isNaturalTop, isRushOre, lightningOffset, MOB_TAG, mobTag, newActive, newSchedule, nightStep, packSize, parseControl,
+  participants, ranSeconds, ringOffset, scheduleMinute, shouldDouble, TYPES, xpBonus,
 } from "./core.js";
 
 const TAG = "[mcportal-events]";
@@ -111,6 +113,14 @@ const HANDLERS = {
     minute() {},
     stop() { xpLast.clear(); },
   },
+  // night events: night(a, resumed) at nightfall, tick(a) every second during the night
+  blood_moon: {
+    start() {},
+    minute() {},
+    night(a, resumed) { bloodMoonNight(resumed); },
+    tick() { bloodMoonTick(); },
+    stop() { bloodMoonEnd(); },
+  },
 };
 const IMPLEMENTED = Object.keys(HANDLERS);
 
@@ -136,28 +146,197 @@ system.runInterval(() => {
   }
 }, 20);
 
+/**
+ * Top block at (x, z) if the place is "wild": chunk not in the build register and a 7 x 7 area of natural
+ * ground - no roofs, paths, fields, lanterns ... (also protects builds from before the register).
+ */
+function wildTop(dim, x, z) {
+  if (isBuilt(dim.id, x, z)) return null;
+  try {
+    const top = dim.getTopmostBlock({ x, z });
+    if (!top) return null;
+    for (let dx = -3; dx <= 3; dx++) {
+      for (let dz = -3; dz <= 3; dz++) {
+        if (isBuilt(dim.id, x + dx, z + dz)) return null;
+        const b = dim.getTopmostBlock({ x: x + dx, z: z + dz });
+        if (!b || !isNaturalTop(b.typeId)) return null;
+      }
+    }
+    return top;
+  } catch {
+    return null; // not loaded
+  }
+}
+
 /** lightning at (x, z) if the ground there looks untouched; true if it struck */
 function strike(x, z) {
   const dim = overworld();
-  if (isBuilt(dim.id, x, z)) return false;
-  let top;
+  const top = wildTop(dim, x, z);
+  if (!top) return false;
   try {
-    top = dim.getTopmostBlock({ x, z });
-    if (!top) return false;
-    // a 7 x 7 area of natural ground: no roofs, paths, fields, lanterns ... (also protects older builds)
-    for (let dx = -3; dx <= 3; dx++) {
-      for (let dz = -3; dz <= 3; dz++) {
-        if (isBuilt(dim.id, x + dx, z + dz)) return false;
-        const b = dim.getTopmostBlock({ x: x + dx, z: z + dz });
-        if (!b || !isNaturalTop(b.typeId)) return false;
-      }
-    }
     dim.spawnEntity("minecraft:lightning_bolt", { x: x + 0.5, y: top.location.y + 1, z: z + 0.5 });
     return true;
   } catch {
-    return false; // not loaded
+    return false;
   }
 }
+
+// ---------- night events: phases, no sleeping, event mobs ----------
+
+const isNightEventActive = () => active.some((a) => a.night);
+
+// every second: nightfall / dawn, and the per-second work of running night events
+system.runInterval(() => {
+  if (!schedule) return;
+  const tod = world.getTimeOfDay();
+  for (const a of [...active]) {
+    if (!a.night) continue;
+    const step = nightStep(a, tod);
+    if (step === "night") {
+      announceNight(a);
+      try { HANDLERS[a.type].night(a, false); } catch (e) { log({ error: `night ${a.type}: ${e}` }); }
+      saveState();
+      logState();
+    } else if (step === "dawn") {
+      stop(a, "dawn");
+    } else if (a.phase === "running") {
+      try { HANDLERS[a.type].tick?.(a); } catch (e) { log({ error: `tick ${a.type}: ${e}` }); }
+    }
+  }
+}, 20);
+
+function announceNight(a) {
+  const t = TYPES[a.type];
+  for (const p of world.getAllPlayers()) {
+    try {
+      p.onScreenDisplay.setTitle(t.nightTitle, { subtitle: t.nightSubtitle, fadeInDuration: 10, stayDuration: 80, fadeOutDuration: 20 });
+    } catch { /* left */ }
+  }
+  world.sendMessage(`§6[Event] ${t.nightTitle}§f ${t.nightSubtitle}`);
+}
+
+// no sleeping through a night event
+world.beforeEvents.playerInteractWithBlock.subscribe((ev) => {
+  if (!ev.isFirstEvent || !isNightEventActive() || !isBed(ev.block.typeId)) return;
+  ev.cancel = true;
+  const p = ev.player;
+  system.run(() => p.sendMessage("§cHeute Nacht schläft niemand!"));
+});
+
+/** spawn a mob for an event, marked for tidying up */
+function spawnEventMob(dim, typeId, type, at) {
+  const e = dim.spawnEntity(typeId, at);
+  e.addTag(MOB_TAG);
+  e.addTag(mobTag(type));
+  return e;
+}
+
+/** remove event mobs whose event is over - also those in chunks that were unloaded at the end */
+function tidyUp() {
+  const running = active.map((a) => a.type);
+  let removed = 0;
+  for (const id of ["minecraft:overworld", "minecraft:nether", "minecraft:the_end"]) {
+    let mobs = [];
+    try { mobs = world.getDimension(id).getEntities({ tags: [MOB_TAG] }); } catch { /* ignore */ }
+    for (const m of mobs) {
+      try {
+        if (isLeftover(m.getTags(), running)) { m.remove(); removed++; }
+      } catch { /* gone */ }
+    }
+  }
+  return removed;
+}
+system.runInterval(tidyUp, MINUTE);
+
+// ---------- Blutmond ----------
+
+const BLOOD_FOG = "mcfs_blood";
+const PACK_EVERY = 90 * 20;
+const MAX_WOLVES_PER_PLAYER = 12;
+const lastPack = new Map(); // player name -> tick of the last wolf pack
+const fogged = new Set();   // player names with the blood fog
+
+function bloodMoonNight(resumed) {
+  lastPack.clear();
+  fogged.clear();
+  if (resumed) return; // after a restart: fog comes back with the next tick, no second flash
+  for (const p of world.getAllPlayers()) {
+    try {
+      p.camera.fade({ fadeColor: { red: 0.6, green: 0, blue: 0 }, fadeTime: { fadeInTime: 0.5, holdTime: 1.5, fadeOutTime: 2 } });
+      p.playSound("mob.wolf.growl");
+    } catch { /* left */ }
+  }
+}
+
+function bloodMoonTick() {
+  const now = system.currentTick;
+  for (const p of world.getAllPlayers()) {
+    if (p.dimension.id !== "minecraft:overworld") continue;
+    if (!fogged.has(p.name)) {
+      try {
+        p.runCommand(`fog @s push minecraft:fog_crimson_forest ${BLOOD_FOG}`);
+        fogged.add(p.name);
+      } catch (e) {
+        fogged.add(p.name); // don't retry every second
+        log({ error: `fog: ${e}` });
+      }
+    }
+    if (now - (lastPack.get(p.name) ?? -PACK_EVERY) < PACK_EVERY) continue;
+    lastPack.set(p.name, now);
+    spawnWolfPack(p.dimension, p.location);
+  }
+}
+
+/** 3-5 angry wolves 20-32 blocks from `near`, only in the wild; false if no spot or enough wolves around */
+function spawnWolfPack(dim, near) {
+  try {
+    // only at the surface: nobody gets a wolf pack into a cave or a mine
+    const top = dim.getTopmostBlock({ x: Math.floor(near.x), z: Math.floor(near.z) });
+    if (top && near.y < top.location.y - 6) return false;
+    const around = dim.getEntities({ tags: [mobTag("blood_moon")], location: near, maxDistance: 64 }).length;
+    if (around >= MAX_WOLVES_PER_PLAYER) return false;
+  } catch {
+    return false;
+  }
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const spot = ringOffset(near.x, near.z, 20, 32, Math.random);
+    const top = wildTop(dim, spot.x, spot.z);
+    if (!top) continue;
+    const n = packSize(Math.random);
+    for (let i = 0; i < n; i++) {
+      try {
+        const w = spawnEventMob(dim, "minecraft:wolf", "blood_moon",
+          { x: spot.x + 0.5 + (i % 2), y: top.location.y + 1, z: spot.z + 0.5 + Math.floor(i / 2) });
+        w.triggerEvent("minecraft:become_angry");
+      } catch { /* ignore */ }
+    }
+    return true;
+  }
+  return false;
+}
+
+function bloodMoonEnd() {
+  for (const p of world.getAllPlayers()) {
+    try { p.runCommand(`fog @s remove ${BLOOD_FOG}`); } catch { /* had none */ }
+  }
+  fogged.clear();
+  lastPack.clear();
+}
+
+// event mobs: loot and news for the achievements
+world.afterEvents.entityDie.subscribe((ev) => {
+  const dead = ev.deadEntity;
+  let tags;
+  try { tags = dead.getTags(); } catch { return; }
+  if (!tags.includes(MOB_TAG)) return;
+  const killer = ev.damageSource.damagingEntity;
+  if (tags.includes(mobTag("blood_moon"))) {
+    try {
+      dead.dimension.spawnItem(new ItemStack("minecraft:bone", 1 + Math.floor(Math.random() * 2)), dead.location);
+    } catch { /* ignore */ }
+    if (killer instanceof Player) news({ event: "kill", kind: "blood_wolf", player: killer.name });
+  }
+});
 
 // Mining Rush: one tick after an ore was mined, the items that dropped at its place come once more.
 // Fortune is included (the real drop is copied); silk touch drops (the ore block itself) are not doubled.
@@ -247,6 +426,9 @@ world.afterEvents.entityHurt.subscribe((ev) => {
 
 // ---------- start / stop ----------
 
+const SOUNDS = { storm: "ambient.weather.thunder", mining_rush: "random.anvil_land", lucky_day: "random.levelup",
+  blood_moon: "mob.wolf.growl", zombie_invasion: "mob.zombie.say", bounty: "mob.wither.spawn" };
+
 function start(type, by) {
   if (!HANDLERS[type] || active.some((a) => a.type === type)) return false;
   const a = newActive(type, by);
@@ -254,15 +436,24 @@ function start(type, by) {
   if (by === "auto") schedule.last = type;
   HANDLERS[type].start(a);
   const t = TYPES[type];
+  // a night event started at night begins at once - then the night title follows right away
+  const now = a.night ? nightStep(a, world.getTimeOfDay()) : null;
   for (const p of world.getAllPlayers()) {
     try {
       p.onScreenDisplay.setTitle(`${t.color}${t.name}!`, { subtitle: t.subtitle, fadeInDuration: 10, stayDuration: 80, fadeOutDuration: 20 });
-      p.playSound({ storm: "ambient.weather.thunder", mining_rush: "random.anvil_land", lucky_day: "random.levelup" }[type]);
+      p.playSound(SOUNDS[type]);
     } catch { /* left */ }
   }
   world.sendMessage(`§6[Event] ${t.color}${t.name}§f – ${t.subtitle}`);
-  log({ event: "started", type, by, duration: a.total });
+  log({ event: "started", type, by, duration: a.total, phase: a.phase });
   news({ event: "started", type });
+  if (now === "night") {
+    system.runTimeout(() => {
+      if (!active.includes(a)) return;
+      announceNight(a);
+      try { HANDLERS[type].night(a, false); } catch (e) { log({ error: `night ${type}: ${e}` }); }
+    }, 60);
+  }
   saveState();
   logState();
   return true;
@@ -274,8 +465,9 @@ function stop(a, by) {
   const t = TYPES[a.type];
   world.sendMessage(`§6[Event] §7${t.end}`);
   const who = participants(a);
-  log({ event: "ended", type: a.type, by, ran: a.total - Math.max(0, a.remaining), participants: who });
+  log({ event: "ended", type: a.type, by, ran: ranSeconds(a), participants: who });
   news({ event: "ended", type: a.type, participants: who });
+  tidyUp();
   saveState();
   logState();
 }
@@ -289,7 +481,7 @@ function logState() {
   const online = world.getAllPlayers().length;
   log({
     event: "state", auto: schedule.auto, online,
-    active: active.map((a) => ({ type: a.type, remaining: a.remaining, total: a.total, by: a.by })),
+    active: active.map((a) => ({ type: a.type, remaining: a.remaining, total: a.total, by: a.by, phase: a.phase })),
     next_in: estimateNext(schedule, online), last: schedule.last, register: register?.size ?? 0,
     types: IMPLEMENTED,
   });
@@ -303,7 +495,8 @@ function minute() {
   for (const a of active) {
     if (!names.length) continue;
     try { HANDLERS[a.type].minute(a); } catch (e) { log({ error: `minute ${a.type}: ${e}` }); }
-    const ran = a.total - a.remaining;
+    if (a.night) continue; // a night is short - the title at nightfall is enough
+    const ran = ranSeconds(a);
     if (ran > 0 && ran % ACTIONBAR_EVERY === 0) {
       const t = TYPES[a.type];
       for (const p of players) {
@@ -324,14 +517,14 @@ function minute() {
 system.afterEvents.scriptEventReceive.subscribe((ev) => {
   if (ev.id !== "mcfs:event" || !schedule) return;
   const fromConsole = ev.sourceType === ScriptEventSource.Server;
-  const test = /^test (strike|minute|rush) /.exec(ev.message);
+  const test = /^test (strike|minute|rush|pack|tidy)\b/.exec(ev.message);
   if (test && fromConsole) return runTest(ev.message);
   const cmd = parseControl(ev.message);
   const reply = (msg) => {
     if (ev.sourceEntity instanceof Player) ev.sourceEntity.sendMessage(msg);
     else log({ event: "control", message: msg });
   };
-  if (!cmd) return reply("Aufruf: start|stop <storm|mining_rush|lucky_day>, auto on|off, state");
+  if (!cmd) return reply(`Aufruf: start|stop <${IMPLEMENTED.join("|")}>, auto on|off, state`);
   const by = fromConsole ? "console" : `player:${ev.sourceEntity?.name ?? "?"}`;
   if (cmd.verb === "start") {
     if (!HANDLERS[cmd.type]) return reply(`${cmd.type} gibt es noch nicht.`);
@@ -374,6 +567,19 @@ function runTest(message) {
       }, 1);
     }, 5);
     return;
+  } else if (kind === "pack") {
+    // a wolf pack as if a player stood at (a, top, b)
+    const dim = overworld();
+    const top = dim.getTopmostBlock({ x: Number(a), z: Number(b) });
+    const ok = spawnWolfPack(dim, { x: Number(a) + 0.5, y: top.location.y + 1, z: Number(b) + 0.5 });
+    // angry wolves lose "tameable" (become_angry swaps the wild component group, effective next tick)
+    system.runTimeout(() => {
+      const wolves = dim.getEntities({ tags: [mobTag("blood_moon")] });
+      const tame = wolves.filter((w) => w.getComponent("minecraft:tameable")).length;
+      log({ event: "test", pack: ok, wolves: wolves.length, still_tameable: tame });
+    }, 5);
+  } else if (kind === "tidy") {
+    log({ event: "test", removed: tidyUp(), left: overworld().getEntities({ tags: [MOB_TAG] }).length });
   } else if (kind === "strike") {
     log({ event: "test", strike: strike(Number(a), Number(b)), built: isBuilt("minecraft:overworld", Number(a), Number(b)) });
   } else if (kind === "minute") {
@@ -398,7 +604,10 @@ system.run(() => {
   loadRegister();
   console.warn(`${TAG} {"v":1,"started":true}`);
   for (const a of active) {
-    try { HANDLERS[a.type]?.start(a); } catch (e) { log({ error: `resume ${a.type}: ${e}` }); }
+    try {
+      HANDLERS[a.type]?.start(a);
+      if (a.night && a.phase === "running") HANDLERS[a.type].night(a, true);
+    } catch (e) { log({ error: `resume ${a.type}: ${e}` }); }
   }
   logState();
   system.runInterval(minute, MINUTE);

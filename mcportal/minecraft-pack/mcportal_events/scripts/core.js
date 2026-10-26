@@ -10,7 +10,7 @@ export const PARTICIPATION = 5 * 60; // seconds online during an event to count 
 
 /**
  * event types; `minutes` = duration in online minutes, `category` for later meta achievements
- * (welt, ressourcen, mobs, community)
+ * (welt, ressourcen, mobs, community). `night` events wait for the next night and end at dawn instead.
  */
 export const TYPES = {
   storm: {
@@ -25,7 +25,64 @@ export const TYPES = {
     name: "Glückstag", minutes: 120, color: "§a", category: "ressourcen",
     subtitle: "§72 Stunden doppelte Erfahrung!", end: "Der Glückstag ist vorbei.",
   },
+  blood_moon: {
+    name: "Blutmond", night: true, color: "§4", category: "mobs",
+    subtitle: "§7Heute Nacht streifen Wolfsrudel umher!", end: "Die Sonne geht auf – der Blutmond ist vorbei.",
+    nightTitle: "§4Blutmond!", nightSubtitle: "§7Die Wölfe sind hungrig …",
+  },
+  zombie_invasion: {
+    name: "Zombie-Invasion", night: true, color: "§2", category: "mobs",
+    subtitle: "§7Heute Nacht greifen Zombies die Dörfer an!", end: "Die Sonne geht auf – die Zombies ziehen sich zurück.",
+    nightTitle: "§2Zombie-Invasion!", nightSubtitle: "§7Verteidigt die Dörfer!",
+  },
+  bounty: {
+    name: "Kopfgeld", minutes: 20, color: "§6", category: "mobs",
+    subtitle: "§7Ein Boss treibt sein Unwesen – findet ihn!", end: "Der Boss ist entkommen.",
+  },
 };
+
+// ---------- day and night (Minecraft time of day in ticks, 0-23999) ----------
+
+export const NIGHT_START = 13000;
+export const NIGHT_END = 23000;
+export const NIGHT_SECONDS = (NIGHT_END - NIGHT_START) / 20;
+
+export function isNight(timeOfDay) {
+  return timeOfDay >= NIGHT_START && timeOfDay < NIGHT_END;
+}
+
+/** seconds of game time until the next nightfall (0 at night) */
+export function secondsUntilNight(timeOfDay) {
+  if (isNight(timeOfDay)) return 0;
+  return ((NIGHT_START - timeOfDay + 24000) % 24000) / 20;
+}
+
+/** seconds of game time until dawn (0 at day) */
+export function secondsUntilDawn(timeOfDay) {
+  return isNight(timeOfDay) ? (NIGHT_END - timeOfDay) / 20 : 0;
+}
+
+/**
+ * Phase of a night event for the current time of day. Changes `a` in place.
+ * @returns {"night" | "dawn" | null} "night" when it just began, "dawn" when it is over, else null
+ */
+export function nightStep(a, timeOfDay) {
+  if (a.phase === "waiting") {
+    if (!isNight(timeOfDay)) {
+      a.remaining = secondsUntilNight(timeOfDay);
+      return null;
+    }
+    a.phase = "running";
+    a.remaining = secondsUntilDawn(timeOfDay);
+    return "night";
+  }
+  if (!isNight(timeOfDay)) {
+    a.remaining = 0;
+    return "dawn";
+  }
+  a.remaining = secondsUntilDawn(timeOfDay);
+  return null;
+}
 
 // minutes of shared online time per event, by number of players online (index = players)
 const INTERVALS = [Infinity, 180, 150, 120, 105, 90, 75, 75, 60, 60, 60];
@@ -86,6 +143,10 @@ export function chooseType(available, active, last, rand) {
 }
 
 export function newActive(type, by) {
+  if (TYPES[type].night) {
+    // phase and remaining are set by the first nightStep (waiting for the night or running at once)
+    return { type, night: true, phase: "waiting", remaining: 0, total: NIGHT_SECONDS, ran: 0, seen: {}, by };
+  }
   return { type, remaining: TYPES[type].minutes * 60, total: TYPES[type].minutes * 60, seen: {}, by };
 }
 
@@ -97,6 +158,13 @@ export function activeMinute(active, playerNames) {
   if (!playerNames.length) return [];
   const ended = [];
   for (const a of active) {
+    if (a.night) {
+      // night events end by nightStep at dawn; only the night itself counts as taking part
+      if (a.phase !== "running") continue;
+      a.ran += 60;
+      for (const n of playerNames) a.seen[n] = (a.seen[n] ?? 0) + 60;
+      continue;
+    }
     for (const n of playerNames) a.seen[n] = (a.seen[n] ?? 0) + 60;
     a.remaining -= 60;
     if (a.remaining <= 0) ended.push(a);
@@ -104,9 +172,14 @@ export function activeMinute(active, playerNames) {
   return ended;
 }
 
+/** seconds the event really ran */
+export function ranSeconds(a) {
+  return a.night ? a.ran : a.total - Math.max(0, a.remaining);
+}
+
 /** players that took part: online at least PARTICIPATION seconds (or the whole time of a shorter run) */
 export function participants(a) {
-  const ran = a.total - Math.max(0, a.remaining);
+  const ran = ranSeconds(a);
   const need = Math.min(PARTICIPATION, Math.max(60, ran));
   return Object.entries(a.seen).filter(([, s]) => s >= need).map(([n]) => n).sort();
 }
@@ -159,6 +232,34 @@ export function xpBonus(last, now) {
   if (last === undefined || now <= last) return { bonus: 0, last: now };
   const bonus = now - last;
   return { bonus, last: now + bonus };
+}
+
+// ---------- spots in the wild (lightning, wolf packs, bosses) ----------
+
+/** random point between `min` and `max` blocks around (x, z) */
+export function ringOffset(x, z, min, max, rand) {
+  const angle = rand() * Math.PI * 2;
+  const dist = min + rand() * (max - min);
+  return { x: Math.floor(x + Math.cos(angle) * dist), z: Math.floor(z + Math.sin(angle) * dist) };
+}
+
+/** wolves per pack: 3-5 */
+export function packSize(rand) {
+  return 3 + Math.floor(rand() * 3);
+}
+
+/** event mobs carry the tag "mcfs_ev" plus "mcfs_ev_<type>"; tidy up those whose event is not running */
+export const MOB_TAG = "mcfs_ev";
+export const mobTag = (type) => `mcfs_ev_${type}`;
+
+export function isLeftover(tags, activeTypes) {
+  if (!tags.includes(MOB_TAG)) return false;
+  return !tags.some((t) => t.startsWith("mcfs_ev_") && activeTypes.includes(t.slice(8)));
+}
+
+/** beds can't be used while a night event waits or runs */
+export function isBed(typeId) {
+  return typeId === "minecraft:bed" || String(typeId).endsWith("_bed");
 }
 
 // ---------- build register: chunks where players placed blocks ----------
@@ -216,7 +317,5 @@ export function isNaturalTop(typeId) {
 
 /** random point 16-64 blocks around (x, z) */
 export function lightningOffset(x, z, rand) {
-  const angle = rand() * Math.PI * 2;
-  const dist = 16 + rand() * 48;
-  return { x: Math.floor(x + Math.cos(angle) * dist), z: Math.floor(z + Math.sin(angle) * dist) };
+  return ringOffset(x, z, 16, 64, rand);
 }
