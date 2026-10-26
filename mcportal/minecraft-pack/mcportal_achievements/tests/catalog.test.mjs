@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  armorCounters, CATALOG, deathCounters, evaluate, EVENT_WAVES, eventCounters, flatCatalog, isDiamondOre, isOre, isSapling,
+  armorCounters, CATALOG, deathCounters, evaluate, EVENT_WAVES, eventCounters, flatCatalog, invasionKill, isDiamondOre, isOre,
+  isSapling,
   killCounters,
 } from "../scripts/catalog.js";
 
@@ -86,4 +87,33 @@ test("events: 5/20/50 taken part, every wave-1 event once, the special ones", ()
   assert.deepEqual(first({ lucky_xp: 1000 }), ["Glückspilz"]);
   assert.deepEqual(first({ lightning_survived: 1 }), ["Geistesblitz"]);
   assert.equal(CATALOG.find((a) => a.id === "seen_wave1").tiers[0].at, EVENT_WAVES[1].length);
+});
+
+test("wave 2, night dangers and together", () => {
+  let c = {};
+  const take = (type, n = 1) => { c = { ...c, ...eventCounters(c, type, n) }; };
+  take("storm");
+  take("blood_moon");
+  take("zombie_invasion");
+  assert.equal(c.seen_wave1, 1);
+  assert.equal(c.seen_wave2, 2);
+  take("bounty", 3);
+  assert.equal(c.seen_wave2, 3);
+  const names = evaluate(c, {}).map((a) => a.name);
+  assert.ok(names.includes("Hab ich alles schon gesehen II"));
+  assert.ok(names.includes("Gemeinsam stark"), "the bounty had 3 hunters");
+  assert.ok(!names.includes("Hab ich alles schon gesehen"), "wave 1 is not complete");
+  assert.equal(CATALOG.find((a) => a.id === "seen_wave2").tiers[0].at, EVENT_WAVES[2].length);
+  // invasion: the best single night counts, not the sum
+  let k = {};
+  for (let i = 0; i < 15; i++) k = { ...k, ...invasionKill(k) };
+  k.inv_now = 0; // next night
+  for (let i = 0; i < 12; i++) k = { ...k, ...invasionKill(k) };
+  assert.deepEqual([k.inv_now, k.invasion_best], [12, 15]);
+  assert.deepEqual(evaluate(k, {}), []);
+  for (let i = 0; i < 8; i++) k = { ...k, ...invasionKill(k) };
+  assert.deepEqual(evaluate(k, {}).map((a) => a.name), ["Hirn-Rissig"]);
+  const first = (counters) => evaluate(counters, {}).map((a) => a.name);
+  assert.deepEqual(first({ blood_wolves: 10 }), ["Wer hat Angst vorm bösen Wolf?"]);
+  assert.deepEqual(first({ bounties: 1 }), ["Kopfgeldjäger"]);
 });

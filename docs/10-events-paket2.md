@@ -1,6 +1,6 @@
 # Timed Events – Paket 2: Nachtgefahren (Plan, Änderung M12)
 
-Stand: 2026-10-26 · Status: **N1–N3 gebaut** (alle drei Events), N4–N6 offen · baut auf Paket 1 auf (`docs/09-events.md`) ·
+Stand: 2026-10-26 · Status: **N1–N4 gebaut** (alle drei Events, Erfolge), N5–N6 offen · baut auf Paket 1 auf (`docs/09-events.md`) ·
 nur stabile Script-API, keine Experimente
 
 ## Ziel
@@ -145,6 +145,18 @@ Phasen und Aufräumen lassen sich mit Test-Spielerpositionen prüfen, Kämpfe nu
   Testserver: Bernd mit 60/60 LP und Effekten, Hinweis „43 Blöcke Richtung Osten“ stimmt mit seinem Ort überein,
   Tod ohne Spieler → Ende ohne Beute, Spinnen-Susi 52/52, nach 20 Min. entkommen und entfernt.
   Im Spiel zu prüfen: Helm/Schwert sichtbar, Kampf, Kopfgeld.
+
+## N4 – gebaut (Erfolge-Pack 1.2.0, Events-Pack 1.1.0)
+
+- Neue Erfolge in der Gruppe „Events“: **Hab ich alles schon gesehen II** (Welle 2: Zombie-Invasion, Blutmond,
+  Kopfgeld), **Hirn-Rissig** (20 Zombies in einer einzigen Invasionsnacht – gezählt je Nacht, die beste zählt),
+  **Wer hat Angst vorm bösen Wolf?** (10 Blutmond-Wölfe), **Kopfgeldjäger** (beim Sieg über einen Boss dabei),
+  **Gemeinsam stark** (ein Event mit mindestens 3 Teilnehmern – erster Meta-Erfolg „Community“).
+- Das Erfolge-Pack verarbeitet die neuen Meldungen `kill` (`invasion_zombie`, `blood_wolf`) und `bounty` (Jäger).
+- Versionen: Events-Pack 1.0.0 → **1.1.0**, Erfolge-Pack 1.1.0 → **1.2.0**.
+- **Getestet:** 8 Node-Tests im Erfolge-Pack (neu: Welle 2, Gemeinsam stark, beste Invasionsnacht, Wölfe, Kopfgeld).
+  Testserver mit beiden Packs und nachgestellten Meldungen: Invasion je Nacht gezählt (beste Nacht 3, neue Nacht
+  beginnt bei 1), 2 Wölfe, Kopfgeld für beide Jäger, „Gemeinsam stark“ bei 3 Teilnehmern.
 
 ## Was sich auf dem Server ändert
 

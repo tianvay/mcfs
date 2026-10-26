@@ -154,6 +154,23 @@ export const CATALOG = [
   { id: "lightning", group: "Events", counter: "lightning_survived", tiers: [
     { at: 1, name: "Geistesblitz", desc: "Bei einem Unwetter vom Blitz getroffen – und überlebt" },
   ] },
+  // wave 2: the night dangers (events pack 1.1.0)
+  { id: "seen_wave2", group: "Events", counter: "seen_wave2", tiers: [
+    { at: 3, name: "Hab ich alles schon gesehen II", desc: "Zombie-Invasion, Blutmond und Kopfgeld-Jagd mitgemacht" },
+  ] },
+  { id: "invasion", group: "Events", counter: "invasion_best", tiers: [
+    { at: 20, name: "Hirn-Rissig", desc: "20 Zombies in einer einzigen Invasionsnacht besiegt" },
+  ] },
+  { id: "blood_wolves", group: "Events", counter: "blood_wolves", tiers: [
+    { at: 10, name: "Wer hat Angst vorm bösen Wolf?", desc: "10 Blutmond-Wölfe besiegt" },
+  ] },
+  { id: "bounty", group: "Events", counter: "bounties", tiers: [
+    { at: 1, name: "Kopfgeldjäger", desc: "Bei der Jagd auf einen Kopfgeld-Boss dabei gewesen, als er fiel" },
+  ] },
+  // community: the first meta achievement (the others come with the third event package)
+  { id: "together", group: "Events", counter: "together", tiers: [
+    { at: 1, name: "Gemeinsam stark", desc: "Ein Event mit mindestens 3 Mitspielern gemeinsam erlebt" },
+  ] },
 ];
 
 /**
@@ -162,19 +179,32 @@ export const CATALOG = [
  */
 export const EVENT_WAVES = {
   1: ["storm", "mining_rush", "lucky_day"],
+  2: ["blood_moon", "zombie_invasion", "bounty"],
 };
 
+export const TOGETHER = 3; // players taking part in one event for "Gemeinsam stark"
+
 /**
- * Counter changes when a player took part in an event of `type`.
+ * Counter changes when a player took part in an event of `type` that had `participants` participants in all.
  * @returns {Record<string, number>} counter -> new absolute value
  */
-export function eventCounters(counters, type) {
+export function eventCounters(counters, type, participants = 1) {
   const out = { events: (counters.events ?? 0) + 1, [`ev_${type}`]: (counters[`ev_${type}`] ?? 0) + 1 };
+  if (participants >= TOGETHER) out.together = (counters.together ?? 0) + 1;
   const after = { ...counters, ...out };
   for (const [wave, types] of Object.entries(EVENT_WAVES)) {
     if (types.includes(type)) out[`seen_wave${wave}`] = types.filter((t) => after[`ev_${t}`] > 0).length;
   }
   return out;
+}
+
+/**
+ * Zombies defeated in the current invasion night (inv_now, reset at its start) and the best night so far.
+ * @returns {Record<string, number>}
+ */
+export function invasionKill(counters) {
+  const now = (counters.inv_now ?? 0) + 1;
+  return { inv_now: now, invasion_best: Math.max(counters.invasion_best ?? 0, now) };
 }
 
 /**

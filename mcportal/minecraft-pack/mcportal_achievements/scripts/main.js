@@ -5,13 +5,14 @@
 // title + level-up sound for the player, chat message for everyone, and one log line
 //   [mcportal-ach] {"v":1,"unlocked":[{"player":"Steve","id":"diamonds","tier":1,"name":"Diamant!"}]}
 // for the portal. At startup the catalog is written once: [mcportal-ach] {"v":1,"catalog":[...]}.
-// Event achievements (1.1.0) come from the events pack via system.sendScriptEvent("mcfs:event_news", json):
-// started / ended (with participants) / state (running types) / lightning_survived.
+// Event achievements (1.1.0, 1.2.0) come from the events pack via system.sendScriptEvent("mcfs:event_news", json):
+// started / ended (with participants) / state (running types) / lightning_survived / kill / bounty.
 // Uses only the stable @minecraft/server API - no experiments in the world.
 // console.warn on purpose: the server runs with content-log-level=warning.
 import { EntityInitializationCause, EquipmentSlot, Player, ScriptEventSource, system, world } from "@minecraft/server";
 import {
-  armorCounters, deathCounters, evaluate, eventCounters, flatCatalog, isDiamondOre, isOre, isSapling, killCounters,
+  armorCounters, deathCounters, evaluate, eventCounters, flatCatalog, invasionKill, isDiamondOre, isOre, isSapling,
+  killCounters,
 } from "./catalog.js";
 
 const TAG = "[mcportal-ach]";
@@ -31,6 +32,8 @@ const distRest = new Map();
 let feeds = [];
 /** event types running right now (from the events pack) */
 let eventsRunning = new Set();
+/** id of the current invasion night - zombie kills are counted per night */
+let invasionNight = null;
 
 // ---------- progress storage ----------
 
@@ -259,15 +262,30 @@ system.afterEvents.scriptEventReceive.subscribe((ev) => {
   } catch {
     return;
   }
-  if (n.event === "state" && Array.isArray(n.active)) eventsRunning = new Set(n.active);
-  else if (n.event === "started") eventsRunning.add(n.type);
-  else if (n.event === "ended") {
+  if (n.event === "state" && Array.isArray(n.active)) {
+    eventsRunning = new Set(n.active);
+    if (eventsRunning.has("zombie_invasion") && !invasionNight) invasionNight = `resumed-${system.currentTick}`;
+  } else if (n.event === "started") {
+    eventsRunning.add(n.type);
+    if (n.type === "zombie_invasion") invasionNight = `night-${system.currentTick}`;
+  } else if (n.event === "ended") {
     eventsRunning.delete(n.type);
-    for (const name of n.participants ?? []) {
-      if (typeof name === "string") setByName(name, eventCounters(load(name).c, n.type));
-    }
+    const who = (n.participants ?? []).filter((x) => typeof x === "string");
+    for (const name of who) setByName(name, eventCounters(load(name).c, n.type, who.length));
   } else if (n.event === "lightning_survived" && typeof n.player === "string") {
     if (!load(n.player).c.lightning_survived) setByName(n.player, { lightning_survived: 1 });
+  } else if (n.event === "kill" && typeof n.player === "string") {
+    const c = load(n.player).c;
+    if (n.kind === "blood_wolf") setByName(n.player, { blood_wolves: (c.blood_wolves ?? 0) + 1 });
+    if (n.kind === "invasion_zombie") {
+      // count per invasion night: start again at 0 in a new night
+      const base = c.inv_id === invasionNight ? c : { ...c, inv_now: 0 };
+      setByName(n.player, { ...invasionKill(base), inv_id: invasionNight });
+    }
+  } else if (n.event === "bounty" && Array.isArray(n.hunters)) {
+    for (const name of n.hunters) {
+      if (typeof name === "string") setByName(name, { bounties: (load(name).c.bounties ?? 0) + 1 });
+    }
   }
 });
 
