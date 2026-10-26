@@ -14,6 +14,7 @@ Update per Knopfdruck mit Backup und Rollback, Block-Statistik pro Spieler.
 | [`mcportal/minecraft-pack/`](mcportal/minecraft-pack/) | Behavior Pack für die Block-Statistik |
 | [`docs/`](docs/) | Analyse, Architektur, Änderungen M1–M5, To-dos |
 | [`analyse/inspect.sh`](analyse/inspect.sh) | Read-only Bestandsaufnahme eines Servers |
+| [`.claude/skills/bedrock-behavior-pack/`](.claude/skills/bedrock-behavior-pack/) | Skill für Claude Code: Behavior Packs für diesen Server bauen, testen, installieren und ans Portal anbinden |
 
 ## Dokumentation
 
