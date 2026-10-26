@@ -14,7 +14,7 @@ const AUDIT_TEXT = {
   SERVER_START: "Server gestartet", SERVER_STOP: "Server gestoppt", SERVER_RESTART: "Server neu gestartet",
   WHITELIST_ADD: "Whitelist: hinzugefügt", WHITELIST_REMOVE: "Whitelist: entfernt", LOGIN: "PIN-Anmeldung",
   OPERATOR_GRANT: "Operator-Rechte vergeben", OPERATOR_REVOKE: "Operator-Rechte entzogen",
-  UPDATE: "Server-Update", GAMEMODE_SURVIVAL: "Spielmodus auf Überleben gesetzt",
+  UPDATE: "Server-Update", GAMEMODE_SURVIVAL: "Spielmodus auf Überleben gesetzt", MAP: "Karte gezeichnet",
 };
 
 let state = null;
@@ -98,6 +98,7 @@ function showTab(name) {
   try { sessionStorage.setItem("tab", name); } catch {}
   if (name === "allow") loadAllowlist();
   if (name === "stats") loadStats();
+  if (name === "map") loadMap();
   if (name === "server") loadAudit();
 }
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
@@ -127,7 +128,6 @@ function render(s) {
   $("#f-start").textContent = fmtDate(s.last_start);
   $("#f-update").textContent = fmtDate(s.last_update);
   $("#f-allow").textContent = s.allowlist_count == null ? "–" : `${s.allowlist_count} Spieler`;
-  $("#f-seed").textContent = s.seed || "–";
   tickUptime();
 
   // server tab
@@ -145,6 +145,7 @@ function render(s) {
   $("#srv-console-note").hidden = s.console_available || !running;
 
   renderUpdate(s);
+  mapOnState(s);
   const statsKey = `${s.stats && s.stats.updated}|${s.achievements && s.achievements.updated}`
     + `|${s.waypoints && s.waypoints.updated}`;
   if (statsKey !== lastStatsUpdate && lastStatsUpdate !== null && !$("#tab-stats").hidden) loadStats();

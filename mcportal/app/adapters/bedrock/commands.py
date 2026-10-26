@@ -49,5 +49,15 @@ def permission_reload() -> str:
     return "permission reload"
 
 
+SAVE_STEPS = ("hold", "query", "resume")
+
+
+def world_save(step: str) -> str:
+    # consistent copy of the running world (documented in bedrock_server_how_to.html)
+    if step not in SAVE_STEPS:
+        raise ValueError("unknown save step")
+    return f"save {step}"
+
+
 def allowlist_remove(name: str) -> str:
     return f"allowlist remove {_name_arg(name)}"

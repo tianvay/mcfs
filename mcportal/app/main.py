@@ -18,6 +18,7 @@ from .adapters import create_adapter
 from .audit import AuditLog
 from .config import Config
 from .services.achievements import AchievementsService
+from .services.map import MapService
 from .services.allowlist import AllowlistService
 from .services.minecraft import MinecraftService, PortalError
 from .services.stats import StatsService
@@ -83,6 +84,7 @@ def create_app(cfg: Config) -> FastAPI:
     stats = StatsService(adapter, mc, cfg.data_dir)
     achievements = AchievementsService(adapter, mc, cfg.data_dir)
     waypoints = WaypointsService(adapter, mc, cfg.data_dir)
+    world_map = MapService(adapter, mc, audit, cfg.data_dir)
     sessions: set[str] = set()
 
     @asynccontextmanager
@@ -92,7 +94,9 @@ def create_app(cfg: Config) -> FastAPI:
         await achievements.startup()
         await waypoints.startup()
         await update.startup()
+        await world_map.startup()
         yield
+        await world_map.shutdown()
         await update.shutdown()
         await mc.shutdown()
 
@@ -216,6 +220,23 @@ def create_app(cfg: Config) -> FastAPI:
     @app.get("/api/waypoints")
     async def waypoints_summary():
         return waypoints.summary()
+
+    # ---------- map ----------
+
+    @app.get("/api/map")
+    async def map_summary():
+        return await asyncio.to_thread(world_map.summary)
+
+    @app.post("/api/map/render", status_code=202)
+    async def map_render(user: str = Depends(require_write)):
+        world_map.begin(user)
+        return {"accepted": True}
+
+    @app.get("/api/map/tiles/{build}/{dim}/{level}/{name}")
+    async def map_tile(build: str, dim: str, level: str, name: str):
+        # a build never changes, so tiles can be cached for good
+        return FileResponse(world_map.tile_path(build, dim, level, name), media_type="image/png",
+                            headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
     # ---------- audit ----------
 

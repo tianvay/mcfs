@@ -247,6 +247,18 @@ class FakeAdapter:
     def tell_operator_status_live(self, name: str, granted: bool) -> None:
         self._log(f"[tellraw {name}] {'Du bist jetzt Operator.' if granted else 'Du bist nicht mehr Operator.'}")
 
+    def world_save_live(self, step: str) -> None:
+        """Like the real server; the "world" is whatever lies in <server_dir>/worlds/<level-name>."""
+        if step == "hold":
+            self._log("Saving...")
+        elif step == "query":
+            world = self.files.world_dir()
+            files = sorted(p for p in world.rglob("*") if p.is_file()) if world.is_dir() else []
+            self._log("Data saved. Files are now ready to be copied.")
+            self._log(", ".join(f"{p.relative_to(world.parent).as_posix()}:{p.stat().st_size}" for p in files), bare=True)
+        elif step == "resume":
+            self._log("Changes to the world are resumed.")
+
     def allowlist_remove_live(self, name: str) -> None:
         entries = [e for e in self.files.read_allowlist() if e.get("name", "").lower() != name.lower()]
         self.files.write_allowlist(entries)

@@ -1,8 +1,13 @@
 # To-do – Minecraft Family Portal
 
-Stand: 2026-10-25
+Stand: 2026-10-26
 
 ## Offen
+
+- [ ] **Karte K1 installieren**: `install.sh`, dann im Tab „Karte“ einmal „Jetzt neu zeichnen“ (echter Lauf mit
+      `save hold/query/resume`); danach prüfen, ob der Nachtlauf um 04:00 kam (Protokoll im Server-Tab).
+- [ ] Karte K2: Wegpunkte auf der Karte · K3: Spielerpositionen (Statistik-Pack 2.1.0) · K4: nur Geändertes
+      neu zeichnen, Biom-Färbung (Plan: `docs/08-karte.md`).
 
 - [ ] Ruinen im Spiel ansehen: einen Wegpunkt löschen (Kohleblock, Kupferlaternen).
 - [ ] „Dorf“ ggf. mit `/warp public Dorf` freigeben; Schalter „Öffentlich“ beim nächsten Setzen ausprobieren.
@@ -27,6 +32,8 @@ Stand: 2026-10-25
 - [ ] Prüfen, ob ein Spieler, der gerade online ist, Operator-Rechte durch `permission reload` sofort bekommt.
 
 ## Erledigt
+
+- [x] Karte K1 gebaut und gegen eine Kopie der echten Welt getestet (Laptop: 106 s, 200 MB, 5 MB Kacheln) (2026-10-26)
 
 - [x] Feste IP 192.168.178.38 in der FRITZ!Box zugewiesen (2026-10-25)
 - [x] Korrektur „Update verfügbar“-Hinweis + Portal mit Statistik installiert (2026-10-25)

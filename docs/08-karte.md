@@ -1,6 +1,6 @@
-# Weltkarte im Portal (Plan, Änderung M10)
+# Weltkarte im Portal (Änderung M10)
 
-Stand: 2026-10-26 · Status: **Plan, noch nicht umgesetzt** · eigener Renderer, keine fremde Software
+Stand: 2026-10-26 · Status: **K1 gebaut** (Karte, Knopf, nachts), K2–K4 offen · eigener Renderer, keine fremde Software
 
 ## Ziel
 
@@ -19,6 +19,19 @@ bekannter Ort). Neu gezeichnet wird jede Nacht und auf Knopfdruck.
 
 Auf dem Laptop (2 Kerne) ist mit etwa 1–2 Minuten für eine vollständige Karte zu rechnen, mit
 inkrementellem Zeichnen (K4) danach Sekunden.
+
+## K1 – so ist es gebaut
+
+- Tab **„Karte“**: Oberwelt, Nether, Ende umschaltbar; ziehen, Mausrad/Pinch, ＋/－, ⭐ = zurück zum Spawn;
+  unten links Koordinaten unter der Maus. Darunter Stand, nächstes Neuzeichnen, **Seed** (aus der Übersicht
+  hierher verschoben) und der Knopf **„Jetzt neu zeichnen“**.
+- Gemessen auf dem Laptop (echte Welt, 20 404 + 1 404 + 666 Chunks): **106 s**, **200 MB RAM**, **5 MB Kacheln**.
+- Abweichung vom Plan: Statt eigener systemd-Unit und Timer startet das Portal den Renderer selbst als
+  Kindprozess (`nice 19`, `ionice -c3`, Speichergrenze 1,5 GB) und plant den Nachtlauf (04:00) selbst.
+  Dadurch braucht es **keine** neue Unit, keine polkit-Änderung und keine Änderung an `install.sh`.
+- Läuft das Portal um 04:00 nicht, entfällt der Nachtlauf; der Knopf geht immer.
+- Ist der Server gestoppt, wird ohne `save hold` kopiert (die Dateien sind dann ruhig).
+- Protokoll: Eintrag „Karte gezeichnet“ (Erfolg oder Fehler) im Server-Tab.
 
 ## Ablauf eines Kartenlaufs
 
@@ -46,10 +59,10 @@ von 60 s; zusätzlich schreibt das Portal vor `hold` eine Markierungsdatei und s
 | LevelDB-Leser | `app/map/leveldb.py` | MANIFEST, `.ldb`-Tabellen, `.log`; nur lesend, neueste Sequenz gewinnt |
 | Chunk-Leser | `app/map/chunk.py` | Höhenkarte (Data3D), Subchunks v8/v9 mit Paletten, Biome |
 | Renderer | `app/map/render.py` | oberster Block je Spalte, Wasser mit Tiefe, Relief-Schattierung, Nether unter der Decke |
-| Farben | `app/map/colors.json` | Durchschnittsfarbe je Block, einmalig erzeugt aus Mojangs offiziellen Texturen (`Mojang/bedrock-samples`) mit `tools/make_colors.py` auf dem PC; der Server lädt nichts herunter |
-| Kacheln | `/var/lib/mcportal/map/<dim>/<zoom>/<x>_<z>.png` | 256 × 256 px, Zoom 1 px = 1 Block und Verkleinerungen; geschätzt 20–50 MB |
+| Farben | `app/map/colors.json` | 1 334 Blöcke, Durchschnittsfarbe der Oberseite aus Mojangs offiziellen Texturen (`Mojang/bedrock-samples` 1.26.50.4) mit `tools/make_colors.py` auf dem PC; der Server lädt nichts herunter |
+| Kacheln | `/var/lib/mcportal/map/build-<zeit>/<dim>/<stufe>/<x>_<z>.png` | 256 × 256 px, Stufe 0 = 1 px je Block, jede Stufe halbiert; `current.json` zeigt auf den gültigen Stand, alte Stände werden gelöscht |
 | Ansicht | `web/map.js` | eigener kleiner Canvas-Viewer (Ziehen, Zoomen, Koordinaten unter der Maus); keine externe Bibliothek, CSP bleibt `'self'` |
-| Dienst | `mcportal-map.service` (oneshot) + `mcportal-map.timer` (nachts 04:00) | als Benutzer `mcportal`, `Nice=19`, `IOSchedulingClass=idle`, `CPUQuota=50%`, `MemoryMax=1G`, gleiche Sandbox wie das Portal |
+| Ablauf | `app/services/map.py` | Kopie, Kindprozess `python -m app.map.render` (nice 19, idle-I/O, 1,5 GB), Nachtlauf 04:00 |
 | API | `/api/map` (Index, Stand, Laufstatus), `/api/map/render` (Knopf), `/api/map/tile/...` | Knopf gesperrt, solange ein Lauf aktiv ist oder ein Update läuft |
 
 ## Einzeichnungen
@@ -76,12 +89,15 @@ Jede Phase wird zuerst gegen Kopien der echten Welt und den Testserver (`~/bds-t
 
 ## Was sich auf dem Server ändert (K1)
 
-- Neue Dateien unter `/opt/mcportal` (über `install.sh`), Daten unter `/var/lib/mcportal/map`.
-- Neue Units `mcportal-map.service` und `mcportal-map.timer`; die polkit-Regel `50-mcportal.rules`
-  erlaubt dem Portal zusätzlich genau diesen Unit-Start.
-- Keine neuen Ports, keine Pakete, keine Änderungen an Laravel, Webserver oder Minecraft-Dateien.
-- **Rückweg:** Timer und Unit deaktivieren, `/var/lib/mcportal/map` löschen, vorherige Portal-Version per
-  Install-Backup zurück. Die Welt ist nicht betroffen.
+- Neue Portal-Dateien unter `/opt/mcportal/app` (über `install.sh`, wie jede Portal-Änderung), Daten unter
+  `/var/lib/mcportal/map`.
+- Minecraft: nur die Konsolenbefehle `save hold` / `save query` / `save resume` während des Kopierens
+  (wenige Sekunden). Keine Datei des Servers oder der Welt wird geschrieben.
+- Keine neuen Ports, Pakete, Units oder Rechte; keine Änderungen an Laravel oder am Webserver.
+- **Sicherung gegen hängendes `save hold`:** `save resume` im `finally`; Markierungsdatei
+  `/var/lib/mcportal/map/save-hold.active` → beim nächsten Portal-Start wird `save resume` nachgeholt.
+- **Rückweg:** vorherige Portal-Version per Install-Backup zurück, `/var/lib/mcportal/map` löschen.
+  Die Welt ist nicht betroffen.
 
 ## Offene Punkte
 

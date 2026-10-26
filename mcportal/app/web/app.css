@@ -88,6 +88,19 @@ h2 { font-size: 1.05rem; margin: 0 0 12px; }
 .facts div { min-width: 0; }
 .facts dt { color: var(--muted); font-size: .85rem; }
 .facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+/* map: wider than the other cards on large screens */
+#tab-map .card { width: min(1100px, calc(100vw - 32px)); position: relative; left: 50%; transform: translateX(-50%); }
+.map-dims { margin-bottom: 8px; }
+.map-wrap { position: relative; margin-bottom: 12px; }
+.map-canvas { display: block; width: 100%; height: min(60vh, 640px); border-radius: 10px; background: #11140f;
+  touch-action: none; cursor: grab; }
+.map-canvas:active { cursor: grabbing; }
+.map-empty { position: absolute; inset: 40% 16px auto; text-align: center; color: #e7eee4; margin: 0; }
+.map-tools { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; gap: 6px; }
+.map-tools .btn { min-width: 40px; }
+.map-info { position: absolute; left: 8px; bottom: 8px; padding: 2px 8px; border-radius: 8px; font-size: .85rem;
+  background: rgba(0, 0, 0, .55); color: #fff; font-variant-numeric: tabular-nums; }
+.map-facts .wide { grid-column: 1 / -1; }
 .facts dd.seed { font-family: ui-monospace, monospace; font-weight: 500; user-select: all; cursor: text; }
 
 .row { display: flex; gap: 8px; }

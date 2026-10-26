@@ -55,6 +55,24 @@ def parse_spawned(line: LogLine) -> str | None:
     return m.group("name") if m else None
 
 
+SAVE_READY = "Data saved. Files are now ready to be copied."
+_SAVE_ENTRY_RE = re.compile(r"^(?P<path>[^,:]+):(?P<length>\d+)$")
+
+
+def parse_save_files(line: LogLine) -> list[tuple[str, int]] | None:
+    """File list printed (without prefix) after "save query":
+    "Bedrock level/db/000005.ldb:600, Bedrock level/db/CURRENT:16, ..." -> [(path, length), ...]."""
+    if line.source != "server" or line.message != line.text:
+        return None
+    out = []
+    for part in line.text.strip().split(", "):
+        m = _SAVE_ENTRY_RE.match(part)
+        if not m:
+            return None
+        out.append((m.group("path"), int(m.group("length"))))
+    return out or None
+
+
 def parse_version(line: LogLine) -> str | None:
     if line.source != "server":
         return None

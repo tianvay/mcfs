@@ -2,7 +2,7 @@
 
 Self-hosted Minecraft-Bedrock-Server fürs Heimnetz mit einem kleinen Webportal
 (`http://<server>:8080`): Status, Spieler online, Start/Stop, Whitelist mit Operator-Status,
-Update per Knopfdruck mit Backup und Rollback, Block-Statistik pro Spieler.
+Update per Knopfdruck mit Backup und Rollback, Block-Statistik pro Spieler, Weltkarte.
 
 > Stand: Testphase auf einem Linux-Mint-Laptop. Der eigentliche Server folgt.
 
@@ -25,6 +25,7 @@ Update per Knopfdruck mit Backup und Rollback, Block-Statistik pro Spieler.
 5. [Erfolge](docs/05-erfolge.md) – eigene Achievements mit Nachricht im Spiel, M7
 6. [Zuverlässiger Start & Cheats](docs/06-zuverlaessiger-start.md) – Startprüfung M8
 7. [Wegpunkte](docs/07-wegpunkte.md) – craften, bauen, `/warp`, M9
+8. [Weltkarte](docs/08-karte.md) – eigener Renderer, Kacheln, Tab „Karte“, M10
 8. [To-dos](docs/TODO.md)
 
 ## Grundsätze

@@ -18,6 +18,7 @@
     <button role="tab" data-tab="home" aria-selected="true">Übersicht</button>
     <button role="tab" data-tab="allow" aria-selected="false">Whitelist</button>
     <button role="tab" data-tab="stats" aria-selected="false">Statistik</button>
+    <button role="tab" data-tab="map" aria-selected="false">Karte</button>
     <button role="tab" data-tab="server" aria-selected="false">Server</button>
   </nav>
 
@@ -39,7 +40,6 @@
         <div><dt>Letzter Start</dt><dd id="f-start">–</dd></div>
         <div><dt>Letztes Update</dt><dd id="f-update">–</dd></div>
         <div><dt>Whitelist</dt><dd id="f-allow">–</dd></div>
-        <div><dt>Seed</dt><dd id="f-seed" class="seed" title="Anklicken markiert den Seed zum Kopieren">–</dd></div>
       </dl>
       <div class="row">
         <button class="btn" data-goto="allow">📋 Whitelist</button>
@@ -73,6 +73,33 @@
     </section>
 
     <!-- Server -->
+    <!-- Karte -->
+    <section id="tab-map" class="tab" hidden>
+      <div class="card">
+        <h2>Karte</h2>
+        <div id="map-dims" class="row map-dims"></div>
+        <div class="map-wrap">
+          <canvas id="map-canvas" class="map-canvas" aria-label="Weltkarte"></canvas>
+          <p id="map-empty" class="map-empty" hidden>Noch keine Karte – „Jetzt neu zeichnen“ erstellt die erste.</p>
+          <div class="map-tools">
+            <button id="map-zoom-in" class="btn small" type="button" aria-label="Hineinzoomen">＋</button>
+            <button id="map-zoom-out" class="btn small" type="button" aria-label="Herauszoomen">－</button>
+            <button id="map-home" class="btn small" type="button" aria-label="Zum Spawn">⭐</button>
+          </div>
+          <div class="map-info"><span id="map-coords">X – · Z –</span> · <span id="map-scale"></span></div>
+        </div>
+        <dl class="facts plain map-facts">
+          <div><dt>Stand der Karte</dt><dd id="map-stand">–</dd></div>
+          <div><dt>Nächstes Neuzeichnen</dt><dd id="map-next">–</dd></div>
+          <div class="wide"><dt>Seed</dt><dd id="map-seed" class="seed" title="Anklicken markiert den Seed zum Kopieren">–</dd></div>
+        </dl>
+        <p id="map-error" class="note error" hidden></p>
+        <button id="map-render" class="btn" type="button">🔄 Jetzt neu zeichnen</button>
+        <p class="note small">Die Karte zeigt die Welt von oben, so wie sie gebaut ist. Schwarz = noch nie betreten.
+          Gezeichnet wird aus einer Kopie der Welt – das Spiel läuft dabei normal weiter.</p>
+      </div>
+    </section>
+
     <section id="tab-server" class="tab" hidden>
       <div class="card">
         <h2>Server steuern</h2>
@@ -124,6 +151,7 @@
   </dialog>
   <div id="toast" class="toast" role="status" hidden></div>
 
+  <script src="/static/map.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>
