@@ -13,7 +13,7 @@ bekannter Ort). Neu gezeichnet wird jede Nacht und auf Knopfdruck.
 | Prüfung | Ergebnis |
 |---|---|
 | Weltdatenbank lesen (Mojangs LevelDB-Variante, zlib/raw-deflate) | in reinem Python, **1,6 s** für 362 000 Einträge |
-| Inhalt | 20 404 Chunks Oberwelt, 2 072 Chunks Nether, kein Ende |
+| Inhalt | 20 404 Chunks Oberwelt, 666 Chunks Ende (Nether wird nicht gezeichnet) |
 | Testbild Oberwelt (Höhenkarte + ein Block je Spalte, Wassertiefe, Relief) | **23 s** auf dem PC, Dorf, Wege, Gebäude erkennbar |
 | Zusatzpakete | keine; Pillow ist im Portal-venv nicht nötig (PNG wird selbst geschrieben) |
 
@@ -82,7 +82,7 @@ von 60 s; zusätzlich schreibt das Portal vor `hold` eine Markierungsdatei und s
 
 | Phase | Inhalt | Eingriff in Minecraft |
 |---|---|---|
-| **K1** | LevelDB-/Chunk-Leser, Renderer, Kacheln, Viewer, Tab „Karte“, Knopf + Nacht-Timer; Oberwelt und Nether | nur Konsolenbefehle `save hold/query/resume` |
+| **K1** | LevelDB-/Chunk-Leser, Renderer, Kacheln, Viewer, Tab „Karte“, Knopf + Nachtlauf; Oberwelt und Ende | nur Konsolenbefehle `save hold/query/resume` |
 | **K2** | Wegpunkte und Weltspawn auf der Karte | keiner |
 | **K3** | Spielerpositionen (Statistik-Pack 2.1.0) | Pack-Upgrade |
 | **K4** | inkrementell (nur geänderte Chunks neu), Biom-Färbung von Gras/Laub/Wasser | keiner |
