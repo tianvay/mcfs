@@ -65,25 +65,13 @@ erreichbar: Zwei Sekunden nach der automatischen Anmeldung hat systemd-logind de
 Im laufenden Betrieb verhindert das die Cinnamon-Energieverwaltung; direkt nach dem Hochfahren greift
 aber die systemd-Voreinstellung „Deckel zu = Ruhezustand“.
 
-Abhilfe (einmalig, mit sudo):
+Abhilfe (einmalig): `sudo bash ~/mcportal-src/deploy/no-suspend.sh apply`
 
-```bash
-sudo mkdir -p /etc/systemd/logind.conf.d
-printf '[Login]
-HandleLidSwitch=ignore
-HandleLidSwitchExternalPower=ignore
-HandleLidSwitchDocked=ignore
-' | sudo tee /etc/systemd/logind.conf.d/50-mcserver-no-suspend.conf
-sudo systemctl kill -s HUP systemd-logind
-sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
-```
-
-- Die ersten drei Zeilen: Deckel schließen löst nie mehr einen Ruhezustand aus (Konfiguration wird
+- Deckel schließen löst nie mehr einen Ruhezustand aus (Konfiguration wird
   ohne Neustart neu eingelesen; laufende Sitzungen bleiben).
-- Die letzte Zeile: Ruhezustand und Hibernate sind ganz abgeschaltet – auch aus dem Menü oder per
+- Ruhezustand und Hibernate sind ganz abgeschaltet – auch aus dem Menü oder per
   Energiespar-Einstellung. Für einen Server gewollt.
-- Rückgängig: `sudo rm /etc/systemd/logind.conf.d/50-mcserver-no-suspend.conf`,
-  `sudo systemctl kill -s HUP systemd-logind`, `sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target`.
+- Rückgängig: `sudo bash ~/mcportal-src/deploy/no-suspend.sh rollback`
 
 Ergebnis des Neustart-Tests sonst: Minecraft (Startprüfung OK, Port offen), Konsole, Portal und Laravel
 kamen von selbst; das WLAN ist für alle Benutzer freigegeben, Passwort systemweit gespeichert.
