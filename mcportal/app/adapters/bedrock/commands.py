@@ -60,7 +60,17 @@ def world_save(step: str) -> str:
 
 
 # timed events (pack mcportal_events): fixed words only
-EVENT_TYPES = ("storm", "mining_rush", "lucky_day", "blood_moon", "zombie_invasion", "bounty")
+EVENT_TYPES = ("storm", "mining_rush", "lucky_day", "blood_moon", "zombie_invasion", "bounty",
+               "meteor", "shooting_stars", "treasure", "haunted")
+_UNDO_ID = re.compile(r"^[a-z_]+-\d{1,10}$")
+
+
+def event_undo(undo_id: str) -> str:
+    """Put back the blocks an event changed (meteor crater ...); only ids the events pack reported."""
+    if not _UNDO_ID.match(undo_id):
+        raise ValueError("invalid undo id")
+    return f"scriptevent mcfs:event undo {undo_id}"
+
 
 # weather and time of day from the portal: fixed values only
 WEATHER = {"clear": "weather clear", "rain": "weather rain", "thunder": "weather thunder"}

@@ -239,6 +239,12 @@ def create_app(cfg: Config) -> FastAPI:
     async def game_events_summary():
         return game_events.summary()
 
+    # before /api/gameevents/{action}, which would take "undo" as an action
+    @app.post("/api/gameevents/undo", status_code=202)
+    async def game_events_undo(body: WorldIn, user: str = Depends(require_write)):
+        await game_events.undo(body.value, user)
+        return {"accepted": body.value}
+
     @app.post("/api/gameevents/{action}", status_code=202)
     async def game_events_control(action: str, body: EventControlIn, user: str = Depends(require_write)):
         await game_events.control(action, body.type, user)

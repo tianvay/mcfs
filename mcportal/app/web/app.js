@@ -14,7 +14,7 @@ const AUDIT_TEXT = {
   SERVER_START: "Server gestartet", SERVER_STOP: "Server gestoppt", SERVER_RESTART: "Server neu gestartet",
   WHITELIST_ADD: "Whitelist: hinzugefügt", WHITELIST_REMOVE: "Whitelist: entfernt", LOGIN: "PIN-Anmeldung",
   OPERATOR_GRANT: "Operator-Rechte vergeben", OPERATOR_REVOKE: "Operator-Rechte entzogen",
-  UPDATE: "Server-Update", GAMEMODE_SURVIVAL: "Spielmodus auf Überleben gesetzt", MAP: "Karte gezeichnet", EVENT: "Event", WORLD_WEATHER: "Wetter", WORLD_TIME: "Tageszeit",
+  UPDATE: "Server-Update", GAMEMODE_SURVIVAL: "Spielmodus auf Überleben gesetzt", MAP: "Karte gezeichnet", EVENT: "Event", WORLD_WEATHER: "Wetter", WORLD_TIME: "Tageszeit", EVENT_UNDO: "Event rückgängig",
 };
 
 let state = null;

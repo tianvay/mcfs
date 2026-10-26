@@ -114,7 +114,7 @@ class EventsTest(unittest.TestCase):
         asyncio.run(s.control("start", "lucky_day", "admin"))
         asyncio.run(s.control("auto_off", None, "admin"))
         self.assertEqual(adapter.sent, ["scriptevent mcfs:event start lucky_day", "scriptevent mcfs:event auto off"])
-        for action, etype in [("start", "meteor"), ("start", "storm; stop"), ("explode", None), ("stop", None)]:
+        for action, etype in [("start", "volcano"), ("start", "storm; stop"), ("explode", None), ("stop", None)]:
             with self.assertRaises(PortalError):
                 asyncio.run(s.control(action, etype, "admin"))
         with self.assertRaises(ValueError):
@@ -168,6 +168,26 @@ class EventsTest(unittest.TestCase):
         self.assertEqual(s.sync_register(f), 1)
         with self.assertRaises(ValueError):
             commands.event_register(["o1,2;start storm"])
+
+    def test_undo_only_for_ids_the_pack_reported(self):
+        lines = [*LINES, ev(3100.0, {**STATE, "undo": ["meteor-3"]})]
+        s, mc, adapter = self.service(lines)
+        sent = []
+        adapter.event_undo_live = lambda undo_id: sent.append(commands.event_undo(undo_id))
+        self.assertEqual(s.summary()["undo"], ["meteor-3"])
+        asyncio.run(s.undo("meteor-3", "admin"))
+        self.assertEqual(sent, ["scriptevent mcfs:event undo meteor-3"])
+        for bad in ["meteor-4", "../x", "meteor-3; op Steve"]:
+            with self.assertRaises(PortalError):
+                asyncio.run(s.undo(bad, "admin"))
+        with self.assertRaises(ValueError):
+            commands.event_undo("meteor-3 && stop")
+
+    def test_world_changing_events_can_be_started(self):
+        s, _, adapter = self.service(LINES)
+        for t in ("meteor", "shooting_stars", "treasure", "haunted"):
+            asyncio.run(s.control("start", t, "admin"))
+        self.assertEqual(adapter.sent[-1], "scriptevent mcfs:event start haunted")
 
     def test_summary_asks_for_fresh_state_at_most_every_30_seconds(self):
         s, _, adapter = self.service(LINES)

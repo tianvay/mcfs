@@ -1,6 +1,6 @@
 # Timed Events – Paket 3: Die Welt verändert sich (Plan, Änderung M13)
 
-Stand: 2026-10-26 · Status: **W1–W6 gebaut** (alle vier Events, Erfolge), W7 (Portal, Installation) offen · baut auf Paket 1 und 2 auf · nur stabile
+Stand: 2026-10-26 · Status: **W1–W7 gebaut**, Installation offen · baut auf Paket 1 und 2 auf · nur stabile
 Script-API, keine Experimente
 
 ## Ziel
@@ -185,6 +185,26 @@ zusätzlich mit einem Vorher/Nachher-Vergleich und dem Rückgängig-Befehl.
 - Test sichert: jede Event-Art steht in genau einer Kategorie und einer Welle.
 - **Getestet:** 9 Node-Tests im Erfolge-Pack; Testserver mit allen drei Packs und nachgestellten Meldungen: alle
   Zähler kommen an (Welle 3 = 4, Kategorie Welt = 3, Sterne, Schatz, Fluch, Volltreffer).
+
+## W7 – gebaut (Portal)
+
+- Reiter Events kennt die vier neuen Events (☄️ Meteorit, 🌠 Sternschnuppen, 🗺️ Schatzsuche, 👻 Spukort) mit
+  Details: Meteor-Ort und ob er eingeschlagen ist, Schatz „wird vergraben … / vergraben / gefunden“ (ohne Ort –
+  sonst wäre es keine Suche), Spukort mit Ort und „Fluch 6 / 15“. Verlauf zeigt auch „gefunden“, „Fluch
+  gebrochen“, „verglüht“.
+- **Blockänderungen** (Karte „Welt“): jede Rückgängig-ID, die das Events-Pack meldet, mit Knopf „Rückgängig“
+  (Rückfrage). Das Portal nimmt nur IDs aus dieser Liste an (`POST /api/gameevents/undo`, Befehl
+  `commands.event_undo`); Protokoll „Event rückgängig“.
+- **Getestet:** Python-Tests (Rückgängig nur für gemeldete IDs, ungültige abgelehnt, neue Events startbar);
+  lokal im Browser auf PC und Handy: Details der neuen Events, Rückgängig mit Rückfrage und Protokoll.
+
+## Installation (W7)
+
+1. `install.sh` (Portal).
+2. `NO_RESTART=1 world-pack.sh mcportal_events apply` und `world-pack.sh mcportal_achievements apply`
+   (Events-Pack 1.3.0, Erfolge-Pack 1.3.0, ein Neustart).
+3. **Sofort danach einen Kartenlauf** starten: Er liefert die Bestandsaufnahme der alten Bauten an das neue
+   Events-Pack – bevor ein automatischer Meteorit oder Schatz kommen kann.
 
 ## Was sich auf dem Server ändert
 

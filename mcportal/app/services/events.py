@@ -101,7 +101,7 @@ class EventsService:
         event = p.get("event")
         etype = p.get("type")
         if event == "state" and isinstance(p.get("active"), list):
-            d["state"] = {k: p.get(k) for k in ("auto", "online", "active", "next_in", "last", "register", "types")}
+            d["state"] = {k: p.get(k) for k in ("auto", "online", "active", "next_in", "last", "register", "types", "undo")}
             d["state_at"] = ts
         elif event == "started" and isinstance(etype, str):
             d["started"][etype] = {"at": ts, "by": p.get("by")}
@@ -142,6 +142,7 @@ class EventsService:
             "next_in": state.get("next_in"),
             "types": state.get("types") or [],
             "register": state.get("register"),
+            "undo": state.get("undo") or [],
             "state_at": d["state_at"],
             "history": list(reversed(d["history"][-20:])),
             "participations": dict(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0].lower()))),
@@ -193,6 +194,19 @@ class EventsService:
             log.exception("cannot write %s", self.file)
         log.info("build register: %d chunks sent", done)
         return done
+
+    async def undo(self, undo_id: str, user: str) -> None:
+        """Put back the blocks of an event (e.g. a meteor crater) - only ids the events pack reported."""
+        if undo_id not in ((self.data["state"] or {}).get("undo") or []):
+            raise PortalError("Unbekannte Blockänderung", 404)
+        if self.mc.status_word() != "online" or not self.a.console_available():
+            raise PortalError("Der Server ist nicht online.", 409)
+        try:
+            await asyncio.to_thread(self.a.event_undo_live, undo_id)
+        except Exception as e:
+            self.audit.write("EVENT_UNDO", "FAILED", user, value=undo_id, error=str(e))
+            raise PortalError(f"Befehl fehlgeschlagen: {e}", 500)
+        self.audit.write("EVENT_UNDO", "SUCCESS", user, value=undo_id)
 
     async def world(self, kind: str, value: str, user: str) -> None:
         """Weather / time of day through fixed console commands (commands.world_control)."""

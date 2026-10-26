@@ -7,9 +7,11 @@
 const EVENT_NAMES = {
   storm: "🌧️ Unwetter", mining_rush: "💎 Mining Rush", lucky_day: "🍀 Glückstag",
   blood_moon: "🌕 Blutmond", zombie_invasion: "🧟 Zombie-Invasion", bounty: "👑 Kopfgeld",
+  meteor: "☄️ Meteorit", shooting_stars: "🌠 Sternschnuppen", treasure: "🗺️ Schatzsuche", haunted: "👻 Spukort",
 };
+const UNDO_NAMES = { meteor: "☄️ Meteoritenkrater", treasure: "🗺️ Schatztruhe" };
 const EVENT_BY = { auto: "automatisch", console: "Portal/Konsole", time: "Zeit abgelaufen", dawn: "Sonnenaufgang",
-  killed: "besiegt", died: "verunglückt" };
+  killed: "besiegt", died: "verunglückt", found: "gefunden", broken: "Fluch gebrochen", fizzled: "verglüht" };
 const EVENTS_RESYNC_MS = 60_000; // while an event runs: fresh remaining times from the pack every minute
 const WEATHER_TEXT = { clear: "Klar", rain: "Regen", thunder: "Gewitter" };
 const TIME_TEXT = { morning: "Morgen", noon: "Mittag", evening: "Abend", night: "Nacht", midnight: "Mitternacht" };
@@ -48,11 +50,24 @@ function evClock(sec) {
   return h ? `${h}:${two(m)}:${two(s)}` : `${m}:${two(s)}`;
 }
 
+/** what the pack tells about the world-changing events */
+function eventDetail(a) {
+  if (a.meteor) {
+    return a.meteor.impacted ? `eingeschlagen bei X ${a.meteor.x} · Y ${a.meteor.y} · Z ${a.meteor.z}`
+      : `Einschlag gleich bei X ${a.meteor.x} · Y ${a.meteor.y} · Z ${a.meteor.z}`;
+  }
+  if (a.type === "meteor") return "sucht einen Einschlagort";
+  if (a.treasure) return a.treasure.found ? "gefunden" : a.treasure.buried ? "vergraben" : "wird vergraben, sobald jemand in die Nähe kommt";
+  if (a.haunt) return `${a.haunt.village ? "im Dorf" : "bei"} X ${a.haunt.x} · Z ${a.haunt.z} · Fluch ${a.haunt.kills} / 15`;
+  return null;
+}
+
 /** timer text, note and progress (0..1) of a running event */
 function evProgress(a) {
   const left = evRemaining(a);
   const paused = !somebodyOnline();
   const boss = a.boss ? `${a.boss.name} · zuletzt bei X ${a.boss.x}${a.boss.y ? ` · Y ${a.boss.y}` : ""} · Z ${a.boss.z}` : null;
+  const extra = [boss, eventDetail(a)].filter(Boolean).join(" · ") || null;
   if (a.phase === "waiting") {
     return { timer: paused ? "⏸ pausiert" : `in ${evClock(left)}`, done: 0,
       note: `wartet auf die Nacht · beginnt in ca. ${evMinutes(left)} · ${evBy(a.by)}` };
@@ -61,7 +76,7 @@ function evProgress(a) {
     timer: paused ? "⏸ pausiert" : left > 0 ? evClock(left) : "endet gleich …",
     done: Math.min(1, 1 - left / (a.total || 1)),
     note: paused ? `noch ${evClock(left)} · läuft weiter, sobald jemand online ist`
-      : [boss, a.phase === "running" ? "bis Sonnenaufgang" : `von ${evMinutes(a.total)}`, evBy(a.by)].filter(Boolean).join(" · "),
+      : [extra, a.phase === "running" ? "bis Sonnenaufgang" : `von ${evMinutes(a.total)}`, evBy(a.by)].filter(Boolean).join(" · "),
   };
 }
 
@@ -164,6 +179,21 @@ function renderEvents(d) {
   $("#events-register").textContent = d.register != null
     ? `🛡️ Geschützt: ${d.register.toLocaleString("de-DE")} Chunks mit Bauten – dort verändern Events keine Blöcke `
       + "(alles, was Spieler gesetzt haben, und was die Karte als bebaut erkennt)." : "";
+  const undoList = $("#events-undo");
+  undoList.replaceChildren(...(d.undo.length ? d.undo.map((id) => {
+    const [kind, n] = id.split("-");
+    const b = el("button", { className: "btn small danger", textContent: "Rückgängig", type: "button" });
+    b.onclick = async () => {
+      if (!(await dialog(`${UNDO_NAMES[kind] || kind} #${n} rückgängig machen? Alle Blöcke, die noch so sind, wie `
+        + "das Event sie hinterlassen hat, werden wie vorher. Jemand muss in der Nähe sein, damit der Bereich geladen ist."))) return;
+      try {
+        await api("POST", "/api/gameevents/undo", { value: id });
+        toast("Befehl gesendet");
+        setTimeout(loadEvents, 1500);
+      } catch (e) { toast(e.message, true); }
+    };
+    return el("li", {}, el("span", { textContent: `${UNDO_NAMES[kind] || kind} #${n}` }), b);
+  }) : [el("li", { className: "empty", textContent: "Keine Blockänderungen durch Events." })]));
   const people = Object.entries(d.participations || {});
   $("#events-people").textContent = people.length
     ? people.map(([n, c]) => `${n} ${c}×`).join(" · ") : "Noch niemand.";
