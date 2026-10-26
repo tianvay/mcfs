@@ -1,6 +1,6 @@
 # Timed Events – Paket 1 (Plan, Änderung M11)
 
-Stand: 2026-10-26 · Status: **Plan, noch nicht umgesetzt** · nur stabile Script-API (`@minecraft/server` 2.10.0), keine Experimente
+Stand: 2026-10-26 · Status: **E1 gebaut** (Grundgerüst, Bau-Register, Unwetter), E2–E5 offen · nur stabile Script-API (`@minecraft/server` 2.10.0), keine Experimente
 
 ## Ziel
 
@@ -57,15 +57,18 @@ zwischendurch die Restzeit in der Aktionsleiste; am Ende „Mining Rush ist vorb
 | „Mittendrin statt nur dabei“ | 5 Events mitgemacht |
 | „Eventhopper“ | 20 Events mitgemacht |
 | „Partylöwe“ | 50 Events mitgemacht |
-| „Hab ich alles schon gesehen“ | jede Event-Art mindestens einmal mitgemacht (Paket 1: alle 3) |
+| „Hab ich alles schon gesehen“ – **Stufe 1** | jedes Event aus Paket 1 mindestens einmal mitgemacht (Mining Rush, Unwetter, Glückstag) |
 | „Goldrausch“ | 100 Erze während eines Mining Rush abgebaut |
 | „Glückspilz“ | 1.000 Erfahrungspunkte an Glückstagen gesammelt |
 | „Geistesblitz“ | während eines Unwetters von einem Blitz getroffen worden und überlebt |
 
 **Mitgemacht** heißt: mindestens 5 Minuten online, während das Event lief (bei kürzeren Events: bis zum Ende).
 Das Event-Pack meldet das beim Ende per `system.sendScriptEvent("mcfs:event", …)`; das Erfolge-Pack hört darauf
-(`scriptEventReceive`, stabil). Kommen später neue Event-Arten dazu, gilt „alles gesehen“ für die dann bekannten;
-wer den Erfolg schon hat, behält ihn.
+(`scriptEventReceive`, stabil).
+
+**„Hab ich alles schon gesehen“ in Wellen:** Jedes Event-Paket bringt eine eigene Stufe mit genau seinen Events
+(Stufe 2 = Paket 2, Stufe 3 = Paket 3). So ändert sich eine einmal erreichte Stufe nie nachträglich, und neue
+Events machen keinen alten Erfolg ungültig. Im Katalog hängt jede Stufe an einer festen Liste von Event-Arten.
 
 ## Portal: Kachel „Events“ in der Übersicht
 
@@ -74,7 +77,7 @@ wer den Erfolg schon hat, behält ihn.
 - **Knöpfe** (nur mit PIN-Freigabe, falls aktiviert): jedes Event starten, laufendes beenden, Automatik an/aus.
   Das Portal schickt dafür feste Befehle über die Server-Konsole – `scriptevent mcfs:event start mining_rush`
   usw., nur Werte aus einer festen Liste, keine freien Eingaben. Damit lässt sich jedes Event auch gezielt testen.
-- Daten wie bisher aus dem Log: Das Pack schreibt `[mcportal-event] {"v":1,"event":"started"|"ended"|"state",…}`;
+- Daten wie bisher aus dem Log: Das Pack schreibt `[mcportal-events] {"v":1,"event":"started"|"ended"|"state",…}`;
   neuer Dienst `app/services/events.py`, Daten in `/var/lib/mcportal/events.json`.
 
 ## Schritte
@@ -88,6 +91,26 @@ wer den Erfolg schon hat, behält ihn.
 | **E5** | Installation: `install.sh` (Portal), dann beide Packs mit **einem** Neustart, wenn niemand spielt; danach jedes Event einmal über das Portal starten und im Spiel ansehen | |
 
 Nach jedem Schritt zeige ich das Ergebnis; installiert wird erst in E5 (mit deinem Okay).
+
+## E1 – gebaut
+
+- Pack `mcportal/minecraft-pack/mcportal_events` (1.0.0): `scripts/core.js` (reine Logik), `scripts/main.js`.
+- **Steuerung** (Konsole, Portal, Operatoren im Spiel): `/scriptevent mcfs:event start storm` · `stop storm` ·
+  `auto on` / `auto off` · `state`. Nur diese Wörter und Event-Arten aus der festen Liste werden angenommen.
+- **Log** `[mcportal-events]`: `started` (type, by, duration), `ended` (type, by, ran, participants), `state`
+  (auto, online, laufende Events mit Restzeit, `next_in` in Online-Minuten, last, register = Anzahl Chunks,
+  types = verfügbare Events; beim Start, bei jeder Änderung und alle 10 Online-Minuten), `lightning_survived`.
+- **Andere Packs** bekommen dasselbe per `system.sendScriptEvent("mcfs:event_news", …)` (für die Erfolge in E3).
+- **Speicher:** Zustand in `mcfs_ev:state`, Bau-Register in `mcfs_ev_reg:0…n` (je ≤ 30.000 Zeichen).
+- **Blitze:** alle 20–60 s neben einem zufälligen Spieler in der Oberwelt, nur wenn der Chunk nicht im Register ist
+  **und** eine 7 × 7-Fläche ringsum nur natürlichen Boden hat (Gras, Erde, Sand, Stein, Laub, Blumen, Wasser …) –
+  das schützt auch Bauten von vor dem Register (Dächer, Wege, Felder, Laternen = kein Blitz).
+- **Getestet:** 8 Node-Tests (Häufigkeit je Spielerzahl, höchstens 1/Std., Pause ohne Spieler, Zufallsverzug,
+  Auswahl, Teilnahme, Steuerbefehle, Register-Speicherung, natürlicher Boden). Testserver mit simulierten
+  Online-Minuten (nur über die Konsole möglich: `scriptevent mcfs:event test minute <n> <spieler>`):
+  Start/Doppelstart/unbekanntes Event, Blitz auf Naturboden, Automatik aus/an, **Neustart mitten im Unwetter**
+  (Restzeit und „aus“ blieben erhalten), Ende nach Zeit mit Teilnehmern, automatischer Start, Stopp.
+  Im Spiel noch zu sehen: Titel/Chat/Sound, Gewitter, Blitze, Restzeit in der Aktionsleiste.
 
 ## Was sich auf dem Server ändert
 
