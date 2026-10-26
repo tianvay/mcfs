@@ -4,7 +4,7 @@ Stand: 2026-10-25
 
 ## Offen
 
-- [ ] **Wegpunkte 1.1.0 (öffentlich/privat) installieren**; danach „Dorf“ ggf. mit `/warp public Dorf` freigeben.
+- [ ] „Dorf“ ggf. mit `/warp public Dorf` freigeben; Schalter „Öffentlich“ beim nächsten Setzen ausprobieren.
 - [ ] **install.sh**: Korrektur Portal-Anzeige „starting“ nach Neustarts (seit M8 kam systemds „Started“ nach „Server started.“).
 - [ ] Wegpunkte noch ausprobieren: Teleport in den Nether/ins Ende, Diamant abbauen, Xbox (Grafik-Download).
 - [ ] Operator-Nachrichten im Spiel ausprobieren (Vergeben/Entziehen, online und offline).
@@ -32,6 +32,7 @@ Stand: 2026-10-25
 - [x] Korrektur „Update verfügbar“-Hinweis + Portal mit Statistik installiert (2026-10-25)
 - [x] M5 Statistik-Pack in der Welt installiert, Pack meldet sich (2026-10-25 21:19)
 - [x] M6 Statistik-Pack 2.0 in der Welt installiert, meldet sich ohne Script-Fehler (2026-10-26 06:33)
+- [x] Wegpunkte 1.1.0 (öffentlich/privat) installiert (2026-10-26 09:08)
 - [x] Wegpunkte im Spiel bestätigt: craften, setzen, Name, `/warp` (Kurzform funktioniert) (2026-10-26)
 - [x] M9 Wegpunkte + Grafik-Pack installiert, `texturepack-required=true`; drei Packs ohne Script-Fehler (2026-10-26 08:40)
 - [x] Portal mit Operator-Nachrichten installiert (2026-10-26)
