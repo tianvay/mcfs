@@ -66,7 +66,10 @@ Spieler einmal verbunden war (der Server braucht seine XUID).
 
 Wird einem Spieler der Operator-Status entzogen, setzt das Portal seinen Spielmodus auf **Überleben**:
 sofort, wenn er online ist (`gamemode survival <Name>` über die Konsole), sonst beim nächsten Betreten
-(Log-Zeile „Player Spawned“; vorgemerkt in `/var/lib/mcportal/pending_survival.json`, übersteht Neustarts).
+(Log-Zeile „Player Spawned“; vorgemerkt in `/var/lib/mcportal/pending_operator.json`, übersteht Neustarts).
+
+Bei jedem Vergeben/Entziehen bekommt der Spieler eine kurze Chat-Nachricht: „Du bist jetzt Operator.“ bzw.
+„Du bist nicht mehr Operator.“ (`tellraw`, ebenfalls sofort oder beim nächsten Betreten).
 
 ## Server-Update
 

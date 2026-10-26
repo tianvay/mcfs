@@ -49,3 +49,6 @@ class BedrockAdapter:
 
     def set_survival_live(self, name: str) -> None:
         console.send(self.fifo, commands.gamemode_survival(name))
+
+    def tell_operator_status_live(self, name: str, granted: bool) -> None:
+        console.send(self.fifo, commands.tell_operator_status(name, granted))

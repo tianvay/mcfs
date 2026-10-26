@@ -31,10 +31,9 @@ class AllowlistService:
         self.audit = audit
         self.backup_dir = backup_dir
         self.keep = keep
-        # players whose operator status was revoked while they were offline:
-        # they are set to survival as soon as they appear in the world again
+        # operator changes for players who were offline: delivered on their next spawn
         self.pending_file = pending_file
-        self.pending_survival: dict[str, str] = self._load_pending()  # lower name -> name
+        self.pending: dict[str, dict] = self._load_pending()  # lower name -> {name, survival, message}
         mc.line_listeners.append(self._on_line)
 
     def mode(self, file: str = "allowlist.json") -> tuple[str, str | None]:
@@ -74,7 +73,7 @@ class AllowlistService:
                     "xuid": e.get("xuid", ""),
                     "operator": bool(e.get("xuid")) and str(e.get("xuid")) in ops,
                     "online": e.get("name", "").lower() in online,
-                    "survival_pending": e.get("name", "").lower() in self.pending_survival,
+                    "survival_pending": bool(self.pending.get(e.get("name", "").lower(), {}).get("survival")),
                 }
                 for e in entries
             ],
@@ -124,59 +123,79 @@ class AllowlistService:
             raise PortalError(f"Schreiben fehlgeschlagen, Sicherung wiederhergestellt: {e}", 500)
         if mode == "live":
             await asyncio.to_thread(self.a.permissions_reload_live)
-        if operator:
-            self._set_pending(name, False)
-        else:
-            await self._force_survival(name, user)
+        await self._after_operator_change(name, operator, user)
         return name
 
-    # ---------- revoked operators go back to survival ----------
+    # ---------- tell the player; revoked operators go back to survival ----------
+    # Done right away if the player is in the world, otherwise on their next spawn
+    # ("Player Spawned" in the log). Pending items survive portal restarts.
 
-    async def _force_survival(self, name: str, user: str) -> None:
-        """Set survival now if the player is in the world, otherwise on their next spawn."""
-        online = name.lower() in {p.name.lower() for p in self.mc.tracker.players.values()}
-        if online and self.a.console_available():
+    def _online(self, name: str) -> bool:
+        return name.lower() in {p.name.lower() for p in self.mc.tracker.players.values()}
+
+    async def _after_operator_change(self, name: str, granted: bool, user: str) -> None:
+        todo = {"name": name, "survival": not granted, "message": granted}
+        if self._online(name) and self.a.console_available():
             try:
-                await asyncio.to_thread(self.a.set_survival_live, name)
-                self._set_pending(name, False)
-                self.audit.write("GAMEMODE_SURVIVAL", "SUCCESS", user, player=name)
+                await asyncio.to_thread(self._deliver, todo)
+                self._set_pending(name, None)
+                if not granted:
+                    self.audit.write("GAMEMODE_SURVIVAL", "SUCCESS", user, player=name)
                 return
             except Exception as e:
-                log.warning("gamemode survival for %s failed, will retry on spawn: %s", name, e)
-        self._set_pending(name, True)
-        self.audit.write("GAMEMODE_SURVIVAL", "PENDING", user, player=name)
+                log.warning("operator change for %s not delivered, will retry on spawn: %s", name, e)
+        self._set_pending(name, todo)  # replaces an older item, e.g. revoke then grant again
+        if not granted:
+            self.audit.write("GAMEMODE_SURVIVAL", "PENDING", user, player=name)
+
+    def _deliver(self, todo: dict) -> None:
+        if todo.get("survival"):
+            self.a.set_survival_live(todo["name"])
+        if todo.get("message") is not None:
+            self.a.tell_operator_status_live(todo["name"], bool(todo["message"]))
 
     def _on_line(self, line: LogLine) -> None:
         name = parse_spawned(line)
-        if name and name.lower() in self.pending_survival:
+        if name and name.lower() in self.pending:
             asyncio.get_running_loop().create_task(self._apply_pending(name))
 
     async def _apply_pending(self, name: str) -> None:
         await asyncio.sleep(SPAWN_SETTLE)
-        try:
-            await asyncio.to_thread(self.a.set_survival_live, name)
-        except Exception as e:
-            log.warning("gamemode survival for %s on spawn failed: %s", name, e)
-            self.audit.write("GAMEMODE_SURVIVAL", "FAILED", "portal", player=name, error=str(e))
+        todo = self.pending.get(name.lower())
+        if not todo:
             return
-        self._set_pending(name, False)
-        self.audit.write("GAMEMODE_SURVIVAL", "SUCCESS", "portal", player=name, note="beim Betreten")
+        todo = {**todo, "name": name}  # exact spelling as the server reports it
+        try:
+            await asyncio.to_thread(self._deliver, todo)
+        except Exception as e:
+            log.warning("operator change for %s on spawn failed: %s", name, e)
+            if todo.get("survival"):
+                self.audit.write("GAMEMODE_SURVIVAL", "FAILED", "portal", player=name, error=str(e))
+            return
+        self._set_pending(name, None)
+        if todo.get("survival"):
+            self.audit.write("GAMEMODE_SURVIVAL", "SUCCESS", "portal", player=name, note="beim Betreten")
         self.mc.publish()
 
-    def _load_pending(self) -> dict[str, str]:
+    def _load_pending(self) -> dict[str, dict]:
+        source = self.pending_file
+        if not source.exists():
+            source = source.with_name("pending_survival.json")  # name used by the first version
         try:
-            names = json.loads(self.pending_file.read_text(encoding="utf-8"))
-            return {n.lower(): n for n in names if isinstance(n, str)}
+            data = json.loads(source.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             return {}
+        if isinstance(data, list):  # first version: list of names waiting for survival
+            return {n.lower(): {"name": n, "survival": True, "message": None} for n in data if isinstance(n, str)}
+        return {k: v for k, v in data.items() if isinstance(v, dict) and "name" in v}
 
-    def _set_pending(self, name: str, pending: bool) -> None:
-        if pending:
-            self.pending_survival[name.lower()] = name
+    def _set_pending(self, name: str, todo: dict | None) -> None:
+        if todo:
+            self.pending[name.lower()] = todo
         else:
-            self.pending_survival.pop(name.lower(), None)
+            self.pending.pop(name.lower(), None)
         try:
-            self.pending_file.write_text(json.dumps(sorted(self.pending_survival.values())), encoding="utf-8")
+            self.pending_file.write_text(json.dumps(self.pending, ensure_ascii=False), encoding="utf-8")
         except OSError:
             log.exception("cannot write %s", self.pending_file)
 

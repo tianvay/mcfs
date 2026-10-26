@@ -222,6 +222,9 @@ class FakeAdapter:
     def set_survival_live(self, name: str) -> None:
         self._log(f"Set {name}'s game mode to Survival")
 
+    def tell_operator_status_live(self, name: str, granted: bool) -> None:
+        self._log(f"[tellraw {name}] {'Du bist jetzt Operator.' if granted else 'Du bist nicht mehr Operator.'}")
+
     def allowlist_remove_live(self, name: str) -> None:
         entries = [e for e in self.files.read_allowlist() if e.get("name", "").lower() != name.lower()]
         self.files.write_allowlist(entries)

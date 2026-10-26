@@ -1,6 +1,7 @@
 """The only console commands the portal can build. Never pass user input through unchecked."""
 from __future__ import annotations
 
+import json
 import re
 
 # Xbox gamertags: letters, digits, spaces (not leading/trailing), optional #1234 suffix.
@@ -32,6 +33,15 @@ def say_update() -> str:
 
 def gamemode_survival(name: str) -> str:
     return f"gamemode survival {_name_arg(name)}"
+
+
+# fixed texts - only the validated player name comes from outside
+OPERATOR_MESSAGES = {True: "§6Du bist jetzt Operator.", False: "§6Du bist nicht mehr Operator."}
+
+
+def tell_operator_status(name: str, granted: bool) -> str:
+    raw = json.dumps({"rawtext": [{"text": OPERATOR_MESSAGES[granted]}]}, ensure_ascii=False)
+    return f"tellraw {_name_arg(name)} {raw}"
 
 
 def permission_reload() -> str:
