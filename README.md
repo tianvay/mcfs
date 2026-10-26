@@ -12,7 +12,7 @@ Update per Knopfdruck mit Backup und Rollback, Block-Statistik pro Spieler.
 |---|---|
 | [`mcportal/`](mcportal/) | Webportal (Python/FastAPI), Installations- und Änderungs-Scripts, Tests – [README](mcportal/README.md) |
 | [`mcportal/minecraft-pack/`](mcportal/minecraft-pack/) | Behavior Packs: Statistik, Erfolge |
-| [`docs/`](docs/) | Analyse, Architektur, Änderungen M1–M7, To-dos |
+| [`docs/`](docs/) | Analyse, Architektur, Änderungen M1–M8, To-dos |
 | [`analyse/inspect.sh`](analyse/inspect.sh) | Read-only Bestandsaufnahme eines Servers |
 | [`.claude/skills/bedrock-behavior-pack/`](.claude/skills/bedrock-behavior-pack/) | Skill für Claude Code: Behavior Packs für diesen Server bauen, testen, installieren und ans Portal anbinden |
 
@@ -23,7 +23,8 @@ Update per Knopfdruck mit Backup und Rollback, Block-Statistik pro Spieler.
 3. [Statistik](docs/03-block-statistik.md) – Behavior Pack, M5/M6
 4. [Reproduzierbarer Aufbau](docs/04-reproduzierbarer-aufbau.md) – Plan für den echten Server
 5. [Erfolge](docs/05-erfolge.md) – eigene Achievements mit Nachricht im Spiel, M7
-6. [To-dos](docs/TODO.md)
+6. [Zuverlässiger Start & Cheats](docs/06-zuverlaessiger-start.md) – Startprüfung M8
+7. [To-dos](docs/TODO.md)
 
 ## Grundsätze
 
@@ -31,5 +32,5 @@ Update per Knopfdruck mit Backup und Rollback, Block-Statistik pro Spieler.
 - Privilegierte Aktionen nur über polkit für genau benannte systemd-Units.
 - Welt, `allowlist.json`, `permissions.json`, `server.properties` werden nie blind überschrieben;
   jede Änderung wird vorher gesichert.
-- Jede Änderung an der Minecraft-Installation (M1–M7) ist dokumentiert: was, warum, welche Dateien,
+- Jede Änderung an der Minecraft-Installation (M1–M8) ist dokumentiert: was, warum, welche Dateien,
   Sicherung, Rückweg.

@@ -64,7 +64,13 @@ def run_helper(unit: str, timeout: float = 1200) -> tuple[bool, str]:
     return res.returncode == 0, log or (res.stderr or res.stdout).strip()
 
 
-def control(unit: str, verb: str, timeout: float = 120) -> tuple[bool, str]:
+# A start counts only once the start check (M8, deploy/mc-start-check) confirmed that players can
+# join; that may take a few minutes including systemd's automatic retries.
+START_TIMEOUT = 400
+RETRY_WAIT = 900
+
+
+def control(unit: str, verb: str, timeout: float = START_TIMEOUT) -> tuple[bool, str]:
     if verb not in ALLOWED_VERBS:
         raise ValueError(f"verb not allowed: {verb}")
     try:
@@ -72,6 +78,26 @@ def control(unit: str, verb: str, timeout: float = 120) -> tuple[bool, str]:
             ["systemctl", "--no-ask-password", verb, unit],
             capture_output=True, text=True, timeout=timeout,
         )
+        ok, msg = res.returncode == 0, (res.stderr or res.stdout).strip()
     except subprocess.TimeoutExpired:
-        return False, f"systemctl {verb} timed out after {timeout:.0f}s"
-    return res.returncode == 0, (res.stderr or res.stdout).strip()
+        ok, msg = False, f"systemctl {verb} timed out after {timeout:.0f}s"
+    if not ok and verb in ("start", "restart"):
+        # a failed start check makes systemd stop the server and try again (Restart=on-failure);
+        # the first attempt is reported as failed although a retry may well succeed
+        return wait_for_retry(unit, msg)
+    return ok, msg
+
+
+def wait_for_retry(unit: str, first_error: str) -> tuple[bool, str]:
+    deadline = time.monotonic() + RETRY_WAIT
+    given_up = 0  # "failed" can show up briefly before systemd schedules the retry
+    while time.monotonic() < deadline:
+        state = show(unit)
+        if state.active_state == "active":
+            return True, "gestartet nach automatischem Neuversuch"
+        stopped = state.active_state in ("failed", "inactive") and state.sub_state != "auto-restart"
+        given_up = given_up + 1 if stopped else 0
+        if given_up >= 4:
+            break
+        time.sleep(3)
+    return False, f"Start auch nach automatischen Neuversuchen nicht erfolgreich ({first_error})"

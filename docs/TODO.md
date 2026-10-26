@@ -4,6 +4,7 @@ Stand: 2026-10-25
 
 ## Offen
 
+- [ ] **install.sh** für die Startprüfung (M8), danach Neustart: Port offen? Cheats aktiv (`/gamemode survival`)?
 - [ ] **Erfolge im Spiel prüfen**: Beitritt nach dem Neustart ok? Erfolg auslösen (z. B. sterben → „Anfängerfehler“):
       Einblendung, Sound, Chat-Nachricht, Eintrag im Portal.
 - [ ] Kosmetik: Beim Beenden des Portals protokolliert die gerade laufende Statusabfrage einen Fehler
@@ -34,6 +35,7 @@ Stand: 2026-10-25
 - [x] Korrektur „Update verfügbar“-Hinweis + Portal mit Statistik installiert (2026-10-25)
 - [x] M5 Statistik-Pack in der Welt installiert, Pack meldet sich (2026-10-25 21:19)
 - [x] M6 Statistik-Pack 2.0 in der Welt installiert, meldet sich ohne Script-Fehler (2026-10-26 06:33)
+- [x] `allow-cheats=true` gesetzt (wirksam ab nächstem Start), bleibt bei Updates erhalten (2026-10-26)
 - [x] M7 Erfolgs-Pack 1.0 in der Welt installiert, beide Packs ohne Script-Fehler (2026-10-26 07:07)
 - [x] Statistik im Spiel bestätigt: gesetzte/abgebaute Blöcke erscheinen im Tab „Statistik“ (2026-10-25)
 - [x] Windows-PC: Maus/Controller in Minecraft gingen nicht (GameInput-Dienst hing) – per Neustart behoben (2026-10-25)

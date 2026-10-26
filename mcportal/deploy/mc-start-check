@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Minecraft Family Portal - start check for minecraft-bedrock.service (change M8)
+#
+# Called by systemd (drop-in 20-startcheck.conf), as the Minecraft user:
+#   mc-start-check pre            before the start: wait until the game ports are completely free
+#   mc-start-check post <MAINPID>  after the start: wait until the server really accepts players
+#
+# Why: if the server starts while port 19132 is still held (e.g. connections in TIME_WAIT for up
+# to 60 s after a stop), Bedrock silently skips opening it - the server runs, but nobody can join
+# (seen on 2026-10-26 07:09). "post" fails in that case; systemd then stops the server cleanly and
+# starts it again after RestartSec (Restart=on-failure), with "pre" waiting for the port again.
+set -uo pipefail
+
+PORTS="${MC_PORTS:-19132 19133}"
+CONSOLE="${MC_CONSOLE:-/run/minecraft-bedrock/console}"
+PRE_MAX="${PRE_MAX:-120}"     # seconds
+POST_MAX="${POST_MAX:-150}"   # seconds
+
+log() { echo "start-check: $*"; }
+
+port_users() {  # all sockets (any state, tcp+udp) on our ports
+  local p filter=""
+  for p in $PORTS; do filter+="${filter:+ or }sport = :$p"; done
+  ss -Htuan "( $filter )" 2>/dev/null
+}
+
+case "${1:-}" in
+pre)
+  waited=0
+  while [[ -n "$(port_users)" ]]; do
+    if (( waited == 0 )); then log "Port noch belegt, warte: $(port_users | awk '{print $1, $2, $5}' | sort | uniq -c | tr -s ' ' | tr '\n' ';')"; fi
+    if (( waited >= PRE_MAX )); then log "FEHLER: Port nach ${PRE_MAX}s immer noch belegt"; exit 1; fi
+    sleep 2; waited=$((waited + 2))
+  done
+  # a short grace period so the kernel has really released everything
+  sleep 2
+  log "Ports frei (nach ${waited}s Warten)"
+  ;;
+
+post)
+  pid="${2:?MAINPID}"
+  waited=0
+  listening=0 signed=0 started=0
+  while (( waited < POST_MAX )); do
+    kill -0 "$pid" 2>/dev/null || { log "FEHLER: Serverprozess $pid läuft nicht mehr"; exit 1; }
+    logtext="$(journalctl -q -o cat _PID="$pid" --no-pager 2>/dev/null)"
+    ss -Htlnp "( sport = :19132 )" 2>/dev/null | grep -q "pid=$pid," && listening=1
+    grep -q 'Signed in to signaling service successfully' <<<"$logtext" && signed=1
+    grep -q 'Server started\.' <<<"$logtext" && started=1
+    if (( listening && signed && started )); then
+      log "OK nach ${waited}s: Spieler-Port 19132 offen, beim Xbox-Verbindungsdienst angemeldet, Server gestartet"
+      exit 0
+    fi
+    sleep 2; waited=$((waited + 2))
+  done
+  log "FEHLER nach ${POST_MAX}s: Port offen=$listening, Verbindungsdienst=$signed, gestartet=$started - Neustart folgt"
+  # systemd does not run ExecStop for a failed start - stop cleanly ourselves so the world is saved
+  if [[ -p "$CONSOLE" ]] && echo stop > "$CONSOLE"; then
+    for _ in $(seq 1 30); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+    kill -0 "$pid" 2>/dev/null && log "Server reagiert nicht auf stop - systemd beendet ihn" || log "Server sauber gestoppt"
+  fi
+  exit 1
+  ;;
+
+*) echo "Aufruf: $0 pre | post <MAINPID>"; exit 2 ;;
+esac

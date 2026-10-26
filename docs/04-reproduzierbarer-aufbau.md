@@ -17,7 +17,7 @@ steckt in Scripts, nicht in Handarbeit.
 | systemd-Unit von Hand geschrieben, nicht im Repo | geht beim Neuaufsetzen verloren |
 | Läuft als `fred` | Minecraft hätte Zugriff auf alles von fred (inkl. Laravel-Projekt) |
 | M1–M5 nacheinander von Hand ausgeführt, dazu manuelle Korrekturen (chown, chmod) | Reihenfolge und Korrekturen stehen nur im Chatverlauf |
-| `server.properties` | weicht nur in 2 Zeilen (M5) vom Mojang-Standard ab – gut, aber nirgends festgehalten |
+| `server.properties` | weicht nur in 3 Zeilen vom Mojang-Standard ab (M5: Content-Log; `allow-cheats=true`) – gut, aber nirgends festgehalten |
 
 ## Ziel-Aufbau
 
@@ -39,7 +39,7 @@ Der Unit-Name bleibt `minecraft-bedrock.service` – Portal, polkit-Regel und Sc
 ```text
 provision/
 ├── server.conf.example          Einstellungen: Weltname, Servername, Benutzer, Pfade, LAN, Port
-├── server.properties.overrides  nur die Abweichungen vom Mojang-Standard
+├── server.properties.overrides  nur die Abweichungen vom Mojang-Standard (Content-Log, allow-cheats=true, Weltname)
 ├── minecraft-bedrock.service.in Unit (User=minecraft, Sandbox, Restart=on-failure)
 ├── setup.sh                     alles in einem, idempotent (mehrfach ausführbar)
 ├── import-players.sh            Whitelist + Operatoren aus einer bestehenden Installation übernehmen
@@ -54,7 +54,7 @@ provision/
    (nur minecraft.net, Zip-Prüfung, keine `../`-Pfade).
 4. **Konfiguration**: `server.properties` aus dem Zip + Abweichungen aus dem Repo (Weltname, Servername, Content-Log).
 5. **Statistik-Pack** in die neue Welt (M5), bevor sie das erste Mal startet – kein Extra-Neustart.
-6. **systemd**: Unit + Konsole (M2) installieren.
+6. **systemd**: Unit + Konsole (M2) + Startprüfung (M8) installieren.
 7. **Portal**: das bestehende `install.sh` (S1–S5, M3, M4) – zeigt automatisch auf den neuen Ordner.
 8. **Start + `verify.sh`**.
 

@@ -129,6 +129,7 @@ install -m 644 "$SRC/requirements.txt" "$APP/requirements.txt"
 "$APP/venv/bin/pip" install --disable-pip-version-check -q -r "$APP/requirements.txt"
 install -d -m 755 "$APP/bin"
 install -m 755 "$SRC/deploy/mcportal-update-helper" "$APP/bin/mcportal-update-helper"
+install -m 755 "$SRC/deploy/mc-start-check" "$APP/bin/mc-start-check"
 chown -R root:root "$APP"
 chmod -R go-w "$APP"
 
@@ -148,6 +149,11 @@ else
   info "Konfiguration vorhanden, unverändert: $ETC/config.toml"
 fi
 chown root:mcportal "$ETC/config.toml"; chmod 640 "$ETC/config.toml"
+
+# M8: a Minecraft start only counts once players can join (applies from the next start)
+install -d -m 755 "/etc/systemd/system/$UNIT.d"
+install -m 644 "$SRC/deploy/20-startcheck.conf" "/etc/systemd/system/$UNIT.d/20-startcheck.conf"
+info "/etc/systemd/system/$UNIT.d/20-startcheck.conf (wirksam ab dem nächsten Minecraft-Start)"
 
 sed "s#@MC_DIR@#$MC_DIR#" "$SRC/deploy/mcportal.service.in" > /etc/systemd/system/mcportal.service
 systemd-analyze verify /etc/systemd/system/mcportal.service /etc/systemd/system/mcportal-update-apply.service \
