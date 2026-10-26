@@ -44,7 +44,7 @@ Wegpunkte von vor 1.1.0 (z. B. „Dorf“) gelten als privat; freigeben mit `/wa
 |---|---|
 | `/warp Zuhause` | zum Wegpunkt reisen – von überall, auch zwischen Oberwelt, Nether und Ende |
 | `/warp list` | alle Wegpunkte, die man benutzen darf – mit Ort, Besitzer, öffentlich/privat |
-| `/warp delete Zuhause` | eigenen Wegpunkt löschen (Operatoren: jeden); das Bauwerk bleibt stehen |
+| `/warp delete Zuhause` | eigenen Wegpunkt löschen (Operatoren: jeden); das Bauwerk wird zur Ruine (siehe unten) |
 | `/warp rename Zuhause Burg` | eigenen Wegpunkt umbenennen |
 | `/warp public Zuhause` / `/warp private Zuhause` | eigenen Wegpunkt für alle freigeben / wieder privat machen |
 | `/warp set Zuhause` | **nur Operatoren:** Wegpunkt ohne Bauwerk an der aktuellen Position |
@@ -54,7 +54,17 @@ Namen mit Leerzeichen in Anführungszeichen: `/warp "Mein Haus"`. Namen sind ein
 höchstens 24 Zeichen; Befehlswörter (list, set …) sind keine Namen.
 
 **Abbauen:** Wer den Diamantblock abbaut, entfernt den Wegpunkt (Meldung an alle) und bekommt den Diamantblock
-zurück. **Explosionen** (Creeper, TNT) beschädigen Wegpunkt-Bauwerke nicht.
+zurück.
+
+**Ruine** (seit 1.2.0): Ein entfernter Wegpunkt bleibt als Ruine stehen, damit man sieht, dass hier einer war:
+
+| | Mitte | Laternen |
+|---|---|---|
+| `/warp delete` | Diamantblock → **Kohleblock** (der Diamant ist damit weg) | → **Kupferlaternen** (laufen mit der Zeit grün an) |
+| Diamant abgebaut | bleibt leer | → Kupferlaternen |
+
+Nur Originalblöcke werden ersetzt. Ist der Bereich beim Löschen nicht geladen (niemand in der Nähe),
+wird der Umbau vorgemerkt und erledigt, sobald jemand vorbeikommt – außer dort steht inzwischen ein neuer Wegpunkt. **Explosionen** (Creeper, TNT) beschädigen Wegpunkt-Bauwerke nicht.
 
 ## Technik
 
@@ -104,3 +114,10 @@ bash ~/mcportal-src/deploy/world-pack.sh mcportal_waypoints apply
   Testserver: beide vorhandenen Wegpunkte gelesen, „Dorf“ für Besitzer ja / Fremde nein / Operatoren ja,
   nach dem Freigeben auch für Fremde ja; Liste je Spieler korrekt.
 - Installation: `bash ~/mcportal-src/deploy/world-pack.sh mcportal_waypoints apply` (Upgrade 1.0.0 → 1.1.0, ein Neustart).
+
+## Version 1.2.0: Ruinen (2026-10-26)
+
+- Beim Löschen: Diamantblock → Kohleblock, Laternen → Kupferlaternen; beim Abbauen des Diamanten nur die Laternen.
+- Getestet in der echten Engine (Testserver): beide Fälle Block für Block, umgebaute Laterne bleibt unangetastet,
+  nicht geladener Bereich wird vorgemerkt; 7 Node-Tests.
+- Installation: `bash ~/mcportal-src/deploy/world-pack.sh mcportal_waypoints apply` (ein Neustart).

@@ -92,6 +92,19 @@ export function layout() {
   return cells;
 }
 
+/**
+ * What stays of a removed waypoint (a "ruin"): the lanterns become copper lanterns (they oxidize over
+ * time) and - when deleted by command - the diamond block becomes a coal block. Only blocks that are
+ * still the original ones are replaced.
+ */
+export function ruinCells(withCenter) {
+  const cells = CORNERS.map(([dx, dz]) => ({
+    dx, dy: 3, dz, from: "minecraft:lantern", to: "minecraft:copper_lantern", states: { hanging: false },
+  }));
+  if (withCenter) cells.unshift({ dx: 0, dy: 0, dz: 0, from: "minecraft:diamond_block", to: "minecraft:coal_block" });
+  return cells;
+}
+
 /** all positions that have to be free before building: 3 x 3 x 4 */
 export function clearanceCells() {
   const out = [];

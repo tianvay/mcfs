@@ -4,6 +4,7 @@ Stand: 2026-10-25
 
 ## Offen
 
+- [ ] **Wegpunkte 1.2.0 (Ruinen) installieren**; danach im Spiel einen Wegpunkt löschen und ansehen.
 - [ ] „Dorf“ ggf. mit `/warp public Dorf` freigeben; Schalter „Öffentlich“ beim nächsten Setzen ausprobieren.
 - [ ] **install.sh**: Korrektur Portal-Anzeige „starting“ nach Neustarts (seit M8 kam systemds „Started“ nach „Server started.“).
 - [ ] Wegpunkte noch ausprobieren: Teleport in den Nether/ins Ende, Diamant abbauen, Xbox (Grafik-Download).

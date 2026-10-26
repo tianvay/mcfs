@@ -1,7 +1,7 @@
 // Waypoint structure in the world: check the space, build, verify.
 // Separate from main.js so it can be exercised on the test server without a player.
 import { BlockPermutation } from "@minecraft/server";
-import { clearanceCells, layout, REPLACEABLE } from "./core.js";
+import { clearanceCells, layout, REPLACEABLE, ruinCells } from "./core.js";
 
 /** @returns {string|null} why the structure can't be built here, or null */
 export function placementProblem(dim, center) {
@@ -18,6 +18,21 @@ export function build(dim, center) {
     dim.getBlock({ x: center.x + c.dx, y: center.y + c.dy, z: center.z + c.dz })
       ?.setPermutation(BlockPermutation.resolve(c.block, c.states ?? {}));
   }
+}
+
+/**
+ * Turn a removed waypoint into a ruin (see core.ruinCells).
+ * @returns {boolean} false if the area is not loaded - try again later
+ */
+export function ruin(dim, center, withCenter) {
+  const cells = ruinCells(withCenter).map((c) => ({
+    c, block: dim.getBlock({ x: center.x + c.dx, y: center.y + c.dy, z: center.z + c.dz }),
+  }));
+  if (cells.some(({ block }) => !block)) return false;
+  for (const { c, block } of cells) {
+    if (block.typeId === c.from) block.setPermutation(BlockPermutation.resolve(c.to, c.states ?? {}));
+  }
+  return true;
 }
 
 /** list of differences between the world and the plan (empty = structure complete) */

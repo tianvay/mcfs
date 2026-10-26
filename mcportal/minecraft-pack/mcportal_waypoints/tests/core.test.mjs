@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  arrival, canUse, clearanceCells, formatList, keyOf, layout, parseCommand, provisionalName, structureKeys, validateName,
+  arrival, canUse, clearanceCells, formatList, keyOf, layout, parseCommand, provisionalName, ruinCells, structureKeys,
+  validateName,
 } from "../scripts/core.js";
 
 test("names: valid, invalid, duplicate (case-insensitive), reserved", () => {
@@ -49,6 +50,17 @@ test("structure as wished: 3x3 stone bricks, diamond in the middle, 2-high walls
   assert.equal(cells.filter((c) => c.block === "minecraft:diamond_block").length, 1, "exactly one diamond block");
   assert.equal(cells.length, 9 + 12);
   assert.equal(clearanceCells().length, 36);
+});
+
+test("ruin: copper lanterns on the corners, coal block in the middle only after delete", () => {
+  const del = ruinCells(true);
+  assert.deepEqual(del[0], { dx: 0, dy: 0, dz: 0, from: "minecraft:diamond_block", to: "minecraft:coal_block" });
+  assert.equal(del.filter((c) => c.to === "minecraft:copper_lantern" && c.dy === 3).length, 4);
+  const lanterns = layout().filter((c) => c.block === "minecraft:lantern");
+  for (const l of lanterns) assert.ok(del.some((c) => c.dx === l.dx && c.dy === l.dy && c.dz === l.dz), "every lantern is covered");
+  const mined = ruinCells(false);
+  assert.equal(mined.length, 4);
+  assert.ok(!mined.some((c) => c.to === "minecraft:coal_block"), "no coal block when the diamond was mined");
 });
 
 test("arrival on top of the diamond; virtual waypoints exactly where set", () => {

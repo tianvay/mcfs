@@ -7,6 +7,7 @@
 //    /warp set <Name> - operators only: waypoint without structure at the current position
 //  * Waypoints are private (owner only) unless made public; operators can use all of them.
 //  * Mining the diamond block removes the waypoint; explosions don't damage waypoint structures.
+//  * A removed waypoint stays as a ruin: copper lanterns, and after /warp delete a coal block in the middle.
 //  * Stored in world dynamic properties (survives restarts and updates).
 //  * Log lines for the portal: [mcportal-warp] {"v":1,"event":...}
 // Uses only stable APIs (@minecraft/server, @minecraft/server-ui) - no experiments in the world.
@@ -18,10 +19,13 @@ import { ModalFormData } from "@minecraft/server-ui";
 import {
   arrival, canUse, formatList, HELP, ITEM_ID, keyOf, parseCommand, PROP_PREFIX, provisionalName, structureKeys, validateName,
 } from "./core.js";
-import { build, placementProblem } from "./structure.js";
+import { build, placementProblem, ruin } from "./structure.js";
 
 const TAG = "[mcportal-warp]";
 const NAME_FORM_RETRIES = 15; // the form can't open while the player has another screen open
+// ruins that could not be built yet because nobody was near (area not loaded)
+const PENDING_RUINS = "mcfs_wp_pending_ruins";
+const PENDING_CHECK_TICKS = 100; // 5 s
 
 /** key -> waypoint; loaded lazily (dynamic properties are not readable during early execution) */
 let cache;
@@ -160,7 +164,8 @@ function del(player, name) {
   if (!wp) return player.sendMessage(`§cKeinen Wegpunkt „${name}“ gefunden.`);
   if (!mayChange(player, wp)) return player.sendMessage(`§cDer Wegpunkt „${wp.name}“ gehört ${wp.owner}.`);
   remove(keyOf(wp.name));
-  player.sendMessage(`§6Wegpunkt §e${wp.name}§6 gelöscht.${wp.physical ? " Das Bauwerk bleibt stehen." : ""}`);
+  if (wp.physical) makeRuin(wp, true);
+  player.sendMessage(`§6Wegpunkt §e${wp.name}§6 gelöscht.${wp.physical ? " Das Bauwerk bleibt als Ruine stehen." : ""}`);
   report("deleted", { player: player.name, name: wp.name });
 }
 
@@ -270,11 +275,44 @@ world.afterEvents.playerBreakBlock.subscribe((ev) => {
   for (const [key, wp] of all()) {
     if (wp.physical && wp.dim === ev.block.dimension.id && wp.x === l.x && wp.y === l.y && wp.z === l.z) {
       remove(key);
+      makeRuin(wp, false); // the diamond was mined - only the lanterns change
       world.sendMessage(`§6Der Wegpunkt §e${wp.name}§6 wurde abgebaut.`);
       report("destroyed", { player: ev.player.name, name: wp.name });
     }
   }
 });
+
+// ---------- ruins ----------
+
+function makeRuin(wp, withCenter) {
+  const center = { x: wp.x, y: wp.y, z: wp.z };
+  if (ruin(world.getDimension(wp.dim), center, withCenter)) return;
+  const pending = loadPendingRuins();
+  pending.push({ dim: wp.dim, ...center, withCenter });
+  world.setDynamicProperty(PENDING_RUINS, JSON.stringify(pending));
+}
+
+function loadPendingRuins() {
+  try {
+    return JSON.parse(String(world.getDynamicProperty(PENDING_RUINS) ?? "[]"));
+  } catch {
+    return [];
+  }
+}
+
+function processPendingRuins() {
+  const pending = loadPendingRuins();
+  if (!pending.length) return;
+  const rest = pending.filter((r) => {
+    // a new waypoint built on the same spot in the meantime must not be touched
+    const rebuilt = [...all().values()].some((w) => w.physical && w.dim === r.dim && w.x === r.x && w.y === r.y && w.z === r.z);
+    if (rebuilt) return false;
+    return !ruin(world.getDimension(r.dim), r, r.withCenter);
+  });
+  if (rest.length !== pending.length) world.setDynamicProperty(PENDING_RUINS, JSON.stringify(rest));
+}
+
+system.runInterval(processPendingRuins, PENDING_CHECK_TICKS);
 
 world.beforeEvents.explosion.subscribe((ev) => {
   if (!cells || cells.size === 0) return; // nothing loaded yet means no waypoint was touched since start
