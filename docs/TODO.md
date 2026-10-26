@@ -4,6 +4,10 @@ Stand: 2026-10-26
 
 ## Offen
 
+- [ ] **Chatlog im Portal** (eigener Punkt in der Übersicht, nur Nachrichten an alle – keine `/tell`, keine Befehle):
+      warten, bis Mojang das Chat-Ereignis (`world.afterEvents.chatSend`) aus dem Beta-Stadium holt. Stand 2026-10-26:
+      nur in `@minecraft/server` 2.11.0-beta; stabil ist 2.10.0 ohne Chat; der Server-Log enthält keinen Chat.
+      Bei jedem Server-Update prüfen (Probe-Pack wie in der Sitzung vom 26.10., Testserver).
 - [ ] Prüfen, ob der Karten-Nachtlauf am 27.10. um 04:00 kam (Protokoll im Server-Tab).
 - [ ] Später, nicht dringend: Karte K3 Spielerpositionen (Statistik-Pack 2.1.0) · K4 nur Geändertes neu
       zeichnen, Biom-Färbung (Plan: `docs/08-karte.md`).
