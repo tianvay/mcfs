@@ -478,11 +478,10 @@ function renderAllowlist(data) {
     });
     op.addEventListener("click", async () => {
       const q = e.operator
-        ? `${e.name} die Operator-Rechte entziehen?
-
-Der Spielmodus wird dabei auf Überleben gesetzt – sofort, `
-          + "wenn der Spieler online ist, sonst beim nächsten Betreten."
-        : `${e.name} zum Operator machen?\n\nOperatoren dürfen Befehle nutzen, z. B. Spielmodus ändern, teleportieren oder andere Spieler kicken.`;
+        ? `${e.name} die Operator-Rechte entziehen?\n\nDer Spielmodus wird auf Überleben gesetzt und ${e.name} `
+          + "bekommt die Nachricht „Du bist nicht mehr Operator.“ – sofort, wenn online, sonst beim nächsten Betreten."
+        : `${e.name} zum Operator machen?\n\nOperatoren dürfen Befehle nutzen, z. B. Spielmodus ändern, teleportieren `
+          + `oder andere Spieler kicken. ${e.name} bekommt die Nachricht „Du bist jetzt Operator.“`;
       if (!(await dialog(q))) return;
       try {
         renderAllowlist(await api("PUT", `/api/allowlist/${encodeURIComponent(e.name)}/operator`, { operator: !e.operator }));
