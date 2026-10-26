@@ -9,7 +9,8 @@
 #   3. newest official server from minecraft.net (same checks as the portal's update button)
 #   4. server.properties = Mojang's file + provision/server.properties.overrides
 #   5. all packs from packs.list into worlds/<WORLD_NAME>/ BEFORE the first start (no world is generated here)
-#   6. probe start in a throwaway copy (other ports, no LAN) as MC_USER: every pack must report, no script errors;
+#   6. probe start in a throwaway copy (other ports, no LAN) through the real main unit, as a runtime unit
+#      mcportal-probe.service (/run, gone after a reboot): every pack must report, no script errors;
 #      then stop and delete the copy - the real world is only created on the cut-over day (undecided seed)
 # Does NOT install or switch the systemd unit, does NOT touch the running test server, the portal or Laravel.
 # Idempotent: a second run keeps the server program and an existing world, re-applies the overrides and probes again.
@@ -142,28 +143,37 @@ lines = [f"{l.split('=', 1)[0]}={want[l.split('=', 1)[0]]}" if l.split("=", 1)[0
 open(path, "w", encoding="utf-8", newline="\n").write("\n".join(lines) + "\n")
 PY
   chown -R "$MC_USER:$MC_USER" "$PROBE_DIR"
+  # started through the real main unit (same sandbox, user, umask) as a runtime unit under another name -
+  # so the unit itself is tested before the cut-over. Without the drop-ins: the start check (M8) watches the
+  # fixed ports 19132/19133 of the test server, the console (M2) belongs to the real unit. Stop = SIGTERM.
+  PROBE_UNIT=mcportal-probe.service
+  python3 -I "$HERE/properties.py" render "$HERE/minecraft-bedrock.service.in" "$CONF" "MC_DIR=$PROBE_DIR" \
+    | sed 's/^Description=.*/Description=Minecraft Family Portal - probe start (setup.sh --prepare)/; s/^Restart=.*/Restart=no/' \
+    > "/run/systemd/system/$PROBE_UNIT" || fail "Probe-Unit konnte nicht erzeugt werden"
+  systemctl daemon-reload
+  systemctl start --no-block "$PROBE_UNIT"
   LOG="$PROBE_DIR/probe.log"
-  FIFO="$PROBE_DIR/console"
-  as_mc mkfifo "$FIFO"
-  as_mc touch "$LOG"
-  # the console fifo stays open on fd 3 so the server keeps reading until "stop"
-  exec 3<>"$FIFO"
-  (cd "$PROBE_DIR" && LD_LIBRARY_PATH=. timeout "$((PROBE_TIMEOUT + 60))" runuser -u "$MC_USER" -- ./bedrock_server <"$FIFO" >>"$LOG" 2>&1) &
-  PID=$!
+  probe_log() {
+    local inv; inv="$(systemctl show -p InvocationID --value "$PROBE_UNIT")"
+    [[ -n "$inv" ]] && journalctl -q -o cat --no-pager _SYSTEMD_INVOCATION_ID="$inv" > "$LOG" 2>/dev/null
+    return 0
+  }
   ok=0
   for _ in $(seq 1 "$PROBE_TIMEOUT"); do
     sleep 1
-    kill -0 "$PID" 2>/dev/null || break
+    probe_log
+    [[ "$(systemctl is-active "$PROBE_UNIT" || true)" =~ ^(active|activating)$ ]] || break
     all=1
     for pat in 'Server started\.' "${EXPECT[@]}"; do grep -aq -- "$pat" "$LOG" || all=0; done
     [[ $all == 1 ]] && { ok=1; break; }
   done
   sleep 3   # late script errors
-  echo stop >&3
-  for _ in $(seq 1 30); do kill -0 "$PID" 2>/dev/null || break; sleep 1; done
-  kill -0 "$PID" 2>/dev/null && { warn "Probe-Server reagiert nicht auf stop – wird beendet"; kill "$PID" || true; }
-  wait "$PID" 2>/dev/null || true
-  exec 3>&-
+  probe_log
+  info "Unit: $(systemctl show -p ActiveState,SubState,Result --value "$PROBE_UNIT" | tr '\n' ' ')"
+  systemctl stop "$PROBE_UNIT" || true
+  rm -f "/run/systemd/system/$PROBE_UNIT"
+  systemctl daemon-reload
+  systemctl reset-failed "$PROBE_UNIT" 2>/dev/null || true
 
   grep -aE 'Version:|Pack Stack|mcportal-[a-z]*\] \{"v":[0-9]*,"started"|Server started' "$LOG" | sed 's/^/    /' | head -20
   ERRORS="$(log_errors < "$LOG")"

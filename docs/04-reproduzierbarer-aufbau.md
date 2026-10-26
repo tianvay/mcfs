@@ -182,6 +182,30 @@ die Anleitungen, nach denen gearbeitet wird (Skill, dieses Dokument).
     2 Operatoren), ein zweiter Lauf ändert nichts.
   - **Noch offen (R5):** die sudo-Teile.
 
+## R5 – Probelauf (26.10., 22:13–22:15)
+
+- **Vorher umgebaut:** Der Probestart läuft über die **echte Haupt-Unit**. Sie wird als Laufzeit-Unit
+  `mcportal-probe.service` in `/run` gerendert, mit `MC_DIR=/opt/minecraft/probe`, `Restart=no` und ohne die
+  Drop-ins M2/M8. So hat die Unit mit Sandbox, Benutzer und `UMask` vor dem Stichtag schon einmal wirklich
+  gestartet.
+- **`sudo setup.sh --prepare`** (Beispiel-Einstellungen, Namen und Seed noch offen):
+  - Benutzer `minecraft` (uid 994) angelegt, ohne Anmeldung, Home `/opt/minecraft`.
+  - Bedrock 1.26.52.3 nach `/opt/minecraft/bedrock`, ausgegeben „Vorbereitet.“
+  - **Probe-Unit:** In 5 s gestartet, alle 4 Behavior Packs im „Pack Stack“ mit ihren Versionen und mit
+    „started“, keine Fehler. Sie hat sauber gestoppt (220 MB Speicher, 6 s Rechenzeit) und ist danach
+    entfernt.
+  - Rechte unter `/opt/minecraft` sauber. Laravel vorher und nachher HTTP 302. Testserver und Portal liefen
+    durchgehend.
+- **`sudo verify.sh --laravel 302`** gegen den Testserver: alles OK, auch alle Zugriffe des Portals. Einziger
+  FEHLER ist der bekannte 777-Testordner. Die 5 Meldungen von Minecraft über die alte Welt erscheinen als HINWEIS.
+- **Bleibt bis zum Stichtag liegen:** `/opt/minecraft/bedrock` (vorbereitet, ohne Welt) und der Benutzer
+  `minecraft`. `setup.sh` behält das Programm bei einem zweiten Lauf, ein Update geht danach über den Knopf.
+  - Rückgängig: `sudo rm -rf /opt/minecraft` und `sudo userdel minecraft`.
+- **Noch nicht mit sudo gelaufen**, erst am Stichtag:
+  - `import-players.sh`: Die Logik ist mit Kopien der echten Dateien geprüft.
+  - Die neue ACL-Stelle in `install.sh`: Sie bricht ab, wenn das Portal danach etwas nicht lesen kann.
+  - `world-pack.sh` mit sudo.
+
 ## Umstieg am Stichtag (auf diesem Laptop)
 
 ```text
