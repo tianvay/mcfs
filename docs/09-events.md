@@ -1,6 +1,6 @@
 # Timed Events – Paket 1 (Plan, Änderung M11)
 
-Stand: 2026-10-26 · Status: **E1 + E2 gebaut** (Grundgerüst, Bau-Register, Unwetter, Mining Rush, Glückstag), E3–E5 offen · nur stabile Script-API (`@minecraft/server` 2.10.0), keine Experimente
+Stand: 2026-10-26 · Status: **E1–E3 gebaut** (Grundgerüst, Bau-Register, drei Events, Erfolge), E4–E5 offen · nur stabile Script-API (`@minecraft/server` 2.10.0), keine Experimente
 
 ## Ziel
 
@@ -128,6 +128,20 @@ Nach jedem Schritt zeige ich das Ergebnis; installiert wird erst in E5 (mit dein
   Diamant und älterer Smaragd bleiben einfach, zweiter Durchlauf verdoppelt nichts mehr; alle drei Events
   gleichzeitig, Unwetter endet nach 40 Min., Glückstag per Befehl beendet.
   **Im Spiel zu prüfen:** echter Erzabbau (auch mit Glück), Glückstag-Erfahrung.
+
+## E3 – gebaut (Erfolge-Pack 1.1.0)
+
+- Neue Gruppe **„Events“** im Erfolge-Katalog (erscheint automatisch im Portal): Mittendrin statt nur dabei (5),
+  Eventhopper (20), Partylöwe (50), **Hab ich alles schon gesehen** (Welle 1: Unwetter, Mining Rush, Glückstag),
+  Goldrausch, Glückspilz, Geistesblitz.
+- Wellen: `EVENT_WAVES` im Katalog; jede Welle bekommt einen eigenen Erfolg (`seen_wave2` …), gezählt werden die
+  verschiedenen Event-Arten dieser Welle (`ev_<art>` je Spieler).
+- Das Erfolge-Pack hört auf `mcfs:event_news` – **nur aus Skripten/Konsole** (Server-Quelle); ein
+  `/scriptevent` eines Spielers wird ignoriert. Teilnahmen offline gewesener Spieler werden gespeichert und beim
+  nächsten Einloggen freigeschaltet.
+- Neu für die Fehlersuche (nur Konsole): `scriptevent mcfs:ach dump <Spieler>` zeigt Zähler und Erfolge.
+- **Getestet:** 7 Node-Tests (neu: Teilnahmen, Wellen, Spezial-Erfolge). Testserver mit beiden Packs:
+  8 simulierte Events → Zähler beim Erfolge-Pack angekommen (events 8, je Art gezählt, Welle 1 = 3).
 
 ## Was sich auf dem Server ändert
 

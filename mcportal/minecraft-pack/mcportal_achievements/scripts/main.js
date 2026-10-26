@@ -5,11 +5,13 @@
 // title + level-up sound for the player, chat message for everyone, and one log line
 //   [mcportal-ach] {"v":1,"unlocked":[{"player":"Steve","id":"diamonds","tier":1,"name":"Diamant!"}]}
 // for the portal. At startup the catalog is written once: [mcportal-ach] {"v":1,"catalog":[...]}.
+// Event achievements (1.1.0) come from the events pack via system.sendScriptEvent("mcfs:event_news", json):
+// started / ended (with participants) / state (running types) / lightning_survived.
 // Uses only the stable @minecraft/server API - no experiments in the world.
 // console.warn on purpose: the server runs with content-log-level=warning.
-import { EntityInitializationCause, EquipmentSlot, Player, system, world } from "@minecraft/server";
+import { EntityInitializationCause, EquipmentSlot, Player, ScriptEventSource, system, world } from "@minecraft/server";
 import {
-  armorCounters, deathCounters, evaluate, flatCatalog, isDiamondOre, isOre, isSapling, killCounters,
+  armorCounters, deathCounters, evaluate, eventCounters, flatCatalog, isDiamondOre, isOre, isSapling, killCounters,
 } from "./catalog.js";
 
 const TAG = "[mcportal-ach]";
@@ -27,6 +29,8 @@ const last = new Map();
 /** name -> {walk, elytra, boat} fractional blocks */
 const distRest = new Map();
 let feeds = [];
+/** event types running right now (from the events pack) */
+let eventsRunning = new Set();
 
 // ---------- progress storage ----------
 
@@ -74,6 +78,16 @@ function flag(player, counter) {
   check(player, s);
 }
 
+/** counters for a player who may be offline: stored now, announced when online (else at the next check) */
+function setByName(name, values) {
+  const s = load(name);
+  Object.assign(s.c, values);
+  s.dirty = true;
+  const player = world.getAllPlayers().find((p) => p.name === name);
+  if (player) check(player, s);
+  else save(name, s);
+}
+
 function check(player, s) {
   const fresh = evaluate(s.c, s.u);
   if (!fresh.length) return;
@@ -100,6 +114,7 @@ function announce(player, a) {
 world.afterEvents.playerBreakBlock.subscribe((ev) => {
   const id = ev.brokenBlockPermutation.type.id;
   if (isOre(id)) add(ev.player, "ores");
+  if (isOre(id) && eventsRunning.has("mining_rush")) add(ev.player, "rush_ores");
   if (isDiamondOre(id)) add(ev.player, "diamonds");
   if (id === "minecraft:ancient_debris") add(ev.player, "debris");
 });
@@ -198,6 +213,7 @@ function sample() {
     add(p, "time", SAMPLE_TICKS / 20);
     if (prev) {
       if (xp > prev.xp) add(p, "xp", xp - prev.xp);
+      if (xp > prev.xp && eventsRunning.has("lucky_day")) add(p, "lucky_xp", xp - prev.xp);
       if (prev.dim === dim) {
         const step = Math.hypot(loc.x - prev.x, loc.y - prev.y, loc.z - prev.z);
         const m = step > 0.05 && step < MAX_STEP ? travelMode(p) : undefined;
@@ -223,6 +239,37 @@ function sample() {
     }
   }
 }
+
+// ---------- news from the events pack ----------
+
+system.afterEvents.scriptEventReceive.subscribe((ev) => {
+  // only the events pack (script = Server source); /scriptevent by a player can't fake it
+  if (ev.sourceType !== ScriptEventSource.Server) return;
+  if (ev.id === "mcfs:ach" && ev.message.startsWith("dump ")) {
+    // console: show one player's counters and unlocked tiers (troubleshooting)
+    const name = ev.message.slice(5).trim();
+    const s = load(name);
+    console.warn(`${TAG} ${JSON.stringify({ v: 1, dump: { name, c: s.c, u: s.u } })}`);
+    return;
+  }
+  if (ev.id !== "mcfs:event_news") return;
+  let n;
+  try {
+    n = JSON.parse(ev.message);
+  } catch {
+    return;
+  }
+  if (n.event === "state" && Array.isArray(n.active)) eventsRunning = new Set(n.active);
+  else if (n.event === "started") eventsRunning.add(n.type);
+  else if (n.event === "ended") {
+    eventsRunning.delete(n.type);
+    for (const name of n.participants ?? []) {
+      if (typeof name === "string") setByName(name, eventCounters(load(name).c, n.type));
+    }
+  } else if (n.event === "lightning_survived" && typeof n.player === "string") {
+    if (!load(n.player).c.lightning_survived) setByName(n.player, { lightning_survived: 1 });
+  }
+});
 
 system.runInterval(sample, SAMPLE_TICKS);
 system.runInterval(saveDirty, SAVE_TICKS);

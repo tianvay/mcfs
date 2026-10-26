@@ -134,7 +134,48 @@ export const CATALOG = [
   { id: "xp", group: "Dabeisein", counter: "xp", tiers: [
     { at: 5000, name: "Erfahrungsschatz", desc: "5.000 Erfahrungspunkte gesammelt" },
   ] },
+
+  // ---- Events (news from the events pack, mcportal_events)
+  { id: "events", group: "Events", counter: "events", tiers: [
+    { at: 5, name: "Mittendrin statt nur dabei", desc: "5 Events mitgemacht" },
+    { at: 20, name: "Eventhopper", desc: "20 Events mitgemacht" },
+    { at: 50, name: "Partylöwe", desc: "50 Events mitgemacht" },
+  ] },
+  // one achievement per wave of events, so a reached one never changes when new events come
+  { id: "seen_wave1", group: "Events", counter: "seen_wave1", tiers: [
+    { at: 3, name: "Hab ich alles schon gesehen", desc: "Unwetter, Mining Rush und Glückstag mitgemacht" },
+  ] },
+  { id: "rush_ores", group: "Events", counter: "rush_ores", tiers: [
+    { at: 100, name: "Goldrausch", desc: "100 Erze während eines Mining Rush abgebaut" },
+  ] },
+  { id: "lucky_xp", group: "Events", counter: "lucky_xp", tiers: [
+    { at: 1000, name: "Glückspilz", desc: "1.000 Erfahrungspunkte an Glückstagen gesammelt" },
+  ] },
+  { id: "lightning", group: "Events", counter: "lightning_survived", tiers: [
+    { at: 1, name: "Geistesblitz", desc: "Bei einem Unwetter vom Blitz getroffen – und überlebt" },
+  ] },
 ];
+
+/**
+ * Event types per wave (= event package). "Hab ich alles schon gesehen" counts the distinct types of a wave
+ * a player took part in; a new wave gets its own achievement (seen_wave2 ...).
+ */
+export const EVENT_WAVES = {
+  1: ["storm", "mining_rush", "lucky_day"],
+};
+
+/**
+ * Counter changes when a player took part in an event of `type`.
+ * @returns {Record<string, number>} counter -> new absolute value
+ */
+export function eventCounters(counters, type) {
+  const out = { events: (counters.events ?? 0) + 1, [`ev_${type}`]: (counters[`ev_${type}`] ?? 0) + 1 };
+  const after = { ...counters, ...out };
+  for (const [wave, types] of Object.entries(EVENT_WAVES)) {
+    if (types.includes(type)) out[`seen_wave${wave}`] = types.filter((t) => after[`ev_${t}`] > 0).length;
+  }
+  return out;
+}
 
 /**
  * Check counters against the catalog.

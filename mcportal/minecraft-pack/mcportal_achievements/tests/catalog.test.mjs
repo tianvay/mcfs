@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  armorCounters, CATALOG, deathCounters, evaluate, flatCatalog, isDiamondOre, isOre, isSapling, killCounters,
+  armorCounters, CATALOG, deathCounters, evaluate, EVENT_WAVES, eventCounters, flatCatalog, isDiamondOre, isOre, isSapling,
+  killCounters,
 } from "../scripts/catalog.js";
 
 test("catalog is consistent", () => {
@@ -64,4 +65,25 @@ test("armor sets need all four pieces", () => {
   assert.deepEqual(armorCounters([...dia.slice(0, 3), "minecraft:iron_boots"]), []);
   assert.deepEqual(armorCounters([undefined, undefined, undefined, undefined]), []);
   assert.deepEqual(armorCounters(dia.map((id) => id.replace("diamond", "netherite"))), ["armor_netherite"]);
+});
+
+test("events: 5/20/50 taken part, every wave-1 event once, the special ones", () => {
+  let c = {};
+  const take = (type) => { c = { ...c, ...eventCounters(c, type) }; };
+  for (let i = 0; i < 4; i++) take("storm");
+  assert.equal(c.events, 4);
+  assert.equal(c.seen_wave1, 1, "the same event four times is still one kind");
+  take("mining_rush");
+  assert.deepEqual(evaluate(c, {}).map((a) => a.name), ["Mittendrin statt nur dabei"]);
+  take("lucky_day");
+  assert.equal(c.seen_wave1, 3);
+  assert.ok(evaluate(c, {}).map((a) => a.name).includes("Hab ich alles schon gesehen"));
+  for (let i = 0; i < 44; i++) take("storm");
+  assert.ok(evaluate(c, {}).map((a) => a.name).includes("Partylöwe"));
+  assert.deepEqual(eventCounters({}, "meteor"), { events: 1, ev_meteor: 1 }, "types of later waves don't touch wave 1");
+  const first = (counters) => evaluate(counters, {}).map((a) => a.name);
+  assert.deepEqual(first({ rush_ores: 100 }), ["Goldrausch"]);
+  assert.deepEqual(first({ lucky_xp: 1000 }), ["Glückspilz"]);
+  assert.deepEqual(first({ lightning_survived: 1 }), ["Geistesblitz"]);
+  assert.equal(CATALOG.find((a) => a.id === "seen_wave1").tiers[0].at, EVENT_WAVES[1].length);
 });
