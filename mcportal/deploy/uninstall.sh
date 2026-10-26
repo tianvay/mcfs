@@ -23,7 +23,15 @@ rm -f /etc/polkit-1/rules.d/50-mcportal.rules
 ufw status numbered 2>/dev/null | grep -q mcportal && ufw delete allow from "${LAN_CIDR:-192.168.178.0/24}" to any port 8080 proto tcp || true
 
 if [[ -f /var/lib/mcportal/acl-added.txt ]]; then
-  while read -r p; do [[ -e "$p" ]] && setfacl -x u:mcportal "$p" && echo "ACL entfernt: $p"; done < /var/lib/mcportal/acl-added.txt
+  while read -r p; do
+    if [[ "$p" == "-R "* ]]; then   # recursive read access incl. default ACL (install.sh M3)
+      p="${p#-R }"
+      [[ -e "$p" ]] && setfacl -R -x u:mcportal "$p" && find "$p" -type d -exec setfacl -x d:u:mcportal {} + \
+        && echo "ACL entfernt (rekursiv): $p"
+    else
+      [[ -e "$p" ]] && setfacl -x u:mcportal "$p" && echo "ACL entfernt: $p"
+    fi
+  done < /var/lib/mcportal/acl-added.txt
   rm -f /var/lib/mcportal/acl-added.txt
 fi
 

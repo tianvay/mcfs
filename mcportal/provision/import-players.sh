@@ -5,7 +5,7 @@
 #
 # Target is MC_DIR from server.conf. Minecraft must not be running there (the server rewrites both files itself).
 # Entries already in the target stay; for the same player the old folder wins. Backup of the target files first:
-#   <MC_HOME>/backups/<time>_pre_import-players/
+#   <MC_HOME>/mcportal-backups/<time>_pre_import-players/ (same place as deploy/world-pack.sh)
 # Only counts are printed - names and XUIDs stay in the files.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -39,13 +39,13 @@ info "Quelle: $FROM ($SRC_COUNT)"
 info "Ziel:   $MC_DIR ($DST_COUNT)"
 
 step "2/3 Sicherung"
-BK="$MC_HOME/backups/$(date +%Y-%m-%d_%H-%M-%S)_pre_import-players"
+BK="$MC_HOME/mcportal-backups/$(date +%Y-%m-%d_%H-%M-%S)_pre_import-players"
 mkdir -p "$BK"
 for f in allowlist.json permissions.json; do
   [[ -f "$MC_DIR/$f" ]] && cp -a "$MC_DIR/$f" "$BK/"
 done
-chown -R "$MC_USER:$MC_USER" "$MC_HOME/backups"
-chmod 750 "$MC_HOME/backups" "$BK"
+chown -R "$MC_USER:$MC_USER" "$MC_HOME/mcportal-backups"
+chmod 750 "$MC_HOME/mcportal-backups" "$BK"
 info "$BK"
 
 step "3/3 Übernehmen"

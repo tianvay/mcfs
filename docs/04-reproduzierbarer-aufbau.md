@@ -84,10 +84,35 @@ Laravel antwortet wie vorher, Rechte (kein 777, nichts root unter `/opt/minecraf
 
 ## Anpassungen an bestehenden Scripts
 
-- `world-pack.sh` läuft heute als `fred` (Besitzer der Welt) → muss als `minecraft` laufen
-  (`sudo -u minecraft`, oder über die Update-Helfer-Unit).
-- `install.sh`, `m2-console.sh`, Update-Helfer: nehmen Pfad und Benutzer schon aus der Unit; prüfen.
-- Docs/Skill: Pfade `~/Downloads/…` durch `/opt/minecraft/bedrock` ersetzen.
+Umgesetzt in R4 (siehe unten). Die Docs 01–11 beschreiben die Testphase und bleiben, wie sie sind. Angepasst sind
+die Anleitungen, nach denen gearbeitet wird (Skill, dieses Dokument).
+
+## R4 – gebaut
+
+- **Lesezugriff des Portals (wichtigster Fund):** Das Portal liest den ganzen Serverordner: für die Karte, den Seed
+  und die Sicherung vor einem Update (`tar` als `mcportal`). Das ging bisher nur, weil der Testordner für alle
+  lesbar ist. Unter `/opt/minecraft/bedrock` (750, Server mit `UMask 0027`) wären Karte, Seed und Update-Sicherung
+  ausgefallen.
+  - `install.sh` (M3) gibt `mcportal` jetzt rekursiv Lesezugriff und setzt eine **Default-ACL**, damit auch Dateien
+    lesbar sind, die der Server später anlegt. „Andere“ bekommen weiter nichts.
+  - Das passiert **nur, wenn etwas nicht lesbar ist**; im Testordner ist alles lesbar, dort ändert sich nichts.
+  - `install.sh` bricht ab, wenn danach noch etwas nicht lesbar ist. `uninstall.sh` entfernt auch die rekursiven
+    Einträge.
+- **`world-pack.sh`** läuft als Benutzer der Unit (heute `fred`, unverändert) **oder mit sudo**. Das ist später
+  nötig, weil `minecraft` das Repo in `/home/fred` nicht lesen kann. Mit sudo gehört alles, was es schreibt,
+  danach `minecraft`. Sicherungen liegen im Home des Minecraft-Benutzers: heute `~fred/mcportal-backups` wie bisher,
+  später `/opt/minecraft/mcportal-backups`. `import-players.sh` sichert an dieselbe Stelle.
+- **Unverändert passend:** `m2-console.sh`, die Update-Helfer-Units, `mc-start-check` und `no-suspend.sh` nehmen
+  Pfad und Benutzer schon aus der Unit bzw. sind pfadunabhängig.
+  - Der Update-Helfer darf `/opt/minecraft` schreiben (`MC_PARENT`); dort entstehen beim Rollback
+    `bedrock.failed-…`.
+  - `mc-start-check` prüft fest die Ports 19132/19133; das passt, solange `server.conf` die Standard-Ports behält.
+- **Skill:** Abschnitt „Install into the world“ beschreibt beide Phasen. Nach dem Umstieg braucht `world-pack.sh`
+  sudo, Packs installiert dann der Admin mit dem angegebenen Befehl.
+- **Geprüft:** Syntax aller Scripts, `world-pack.sh status` als `fred` wie vorher, Testordner vollständig lesbar
+  (die neue ACL-Stelle greift dort nicht). Die sudo-Wege (ACL, `chown`) laufen in R5.
+- **Für R5 vorgemerkt:** Die neue Haupt-Unit selbst (Sandbox) einmal unter einem eigenen Namen auf den Probe-Ports
+  starten, statt nur das Programm. Sonst würde sie erst am Stichtag zum ersten Mal laufen.
 
 ## R1 – gebaut
 
@@ -143,7 +168,7 @@ Laravel antwortet wie vorher, Rechte (kein 777, nichts root unter `/opt/minecraf
   - Mit `--conf` muss die Unit außerdem auf `MC_DIR` und `MC_USER` zeigen (nach dem Umstieg).
 - `provision/import-players.sh --from <alter Ordner>` mit sudo – übernimmt Whitelist und Operatoren in `MC_DIR`.
   - Läuft nur, wenn dort kein Minecraft läuft. Vorher sichert er die Zieldateien nach
-    `/opt/minecraft/backups/<Zeit>_pre_import-players/`.
+    `/opt/minecraft/mcportal-backups/<Zeit>_pre_import-players/`.
   - Einträge im Ziel bleiben, beim selben Spieler (XUID, sonst Name) gewinnt die Quelle.
   - Prüft streng: Namen, XUIDs nur Ziffern, Rechte nur operator/member/visitor. Er schreibt im Format des Servers
     und gibt **nur Anzahlen** aus.

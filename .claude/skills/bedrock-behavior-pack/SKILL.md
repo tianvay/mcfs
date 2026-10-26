@@ -69,10 +69,18 @@ after installation by the user playing. Delete `~/bds-test` afterwards (≈ 600 
 ### 5. Install into the world
 
 Use `bash ~/mcportal-src/deploy/world-pack.sh <pack_dir> apply` (generic; `rollback`, `status`).
-(`m5-stats-pack.sh` is the older, stats-only variant that also switched on the log output.) It runs as `fred`
-(owner of the world), needs no sudo, and:
+(`m5-stats-pack.sh` is the older, stats-only variant that also switched on the log output.) It runs as the
+unit's user or with sudo:
+- **Test phase** (`~/Downloads/bedrock-server-1.21.51.02`, user `fred`): run it yourself as `fred`, no sudo.
+- **After the cut-over** (`/opt/minecraft/bedrock`, user `minecraft`, docs/04): `minecraft` cannot read the repo
+  in `/home/fred`, so it needs `sudo bash ~/mcportal-src/deploy/world-pack.sh <pack_dir> apply`. You cannot run
+  that - give the user the exact command. With sudo, everything it writes is chowned to `minecraft`.
+- New world files are readable for the portal through a default ACL (install.sh M3); don't chmod anything.
+
+It:
 1. refuses while players are online (`/api/status`),
-2. backs up `world_behavior_packs.json` (and anything else it touches) to `~/mcportal-backups/<time>_pre_<change>/`,
+2. backs up `world_behavior_packs.json` (and anything else it touches) to
+   `<home of the Minecraft user>/mcportal-backups/<time>_pre_<change>/` (`~fred/…`, later `/opt/minecraft/…`),
 3. copies the pack to `worlds/<level>/behavior_packs/<pack_dir>`, fills in the API version,
    appends `{pack_id, version}` to `world_behavior_packs.json` (edited in place, other entries kept),
 4. restarts through the portal (`POST /api/server/restart` - clean stop via console),

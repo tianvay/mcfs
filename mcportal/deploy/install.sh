@@ -108,6 +108,15 @@ for d in "${dirs[@]}"; do
     info "Durchgangsrecht (x) auf $d"
   fi
 done
+# read access to the whole server folder (map snapshot, seed, update backup) - only where it is missing,
+# e.g. /opt/minecraft/bedrock (750, server UMask 0027). The default ACL makes files the server creates later
+# readable too; "other" keeps no access. The test install (readable for all) is left as it is.
+if [[ -n "$(runuser -u mcportal -- find "$MC_DIR" ! -readable -print -quit 2>/dev/null)" ]]; then
+  setfacl -R -m u:mcportal:rX "$MC_DIR"
+  find "$MC_DIR" -type d -exec setfacl -d -m u:mcportal:rX {} +
+  grep -qxF -- "-R $MC_DIR" "$ACL_LOG" || echo "-R $MC_DIR" >> "$ACL_LOG"
+  info "Lesen (rekursiv, auch für künftige Dateien) auf $MC_DIR"
+fi
 for f in allowlist.json permissions.json; do
   setfacl -m u:mcportal:rw "$MC_DIR/$f"
   grep -qxF "$MC_DIR/$f" "$ACL_LOG" || echo "$MC_DIR/$f" >> "$ACL_LOG"
@@ -116,6 +125,8 @@ done
 runuser -u mcportal -- test -r "$MC_DIR/server.properties" || fail "mcportal kann server.properties nicht lesen"
 runuser -u mcportal -- test -w "$MC_DIR/allowlist.json" || fail "mcportal kann allowlist.json nicht schreiben"
 runuser -u mcportal -- test -w "$MC_DIR/permissions.json" || fail "mcportal kann permissions.json nicht schreiben"
+[[ -z "$(runuser -u mcportal -- find "$MC_DIR" ! -readable -print -quit 2>/dev/null)" ]] \
+  || fail "mcportal kann nicht alles unter $MC_DIR lesen (Karte, Update-Sicherung)"
 
 # ---------------------------------------------------------------- S4
 step "8/9 S4: Portal installieren ($APP) und Dienst starten"

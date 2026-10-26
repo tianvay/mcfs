@@ -12,10 +12,13 @@
 #   NO_RESTART=1 bash deploy/world-pack.sh mcportal_waypoints_rp apply
 #                bash deploy/world-pack.sh mcportal_waypoints apply
 #
-# Runs as the Minecraft user, no sudo. Touches only
+# Runs as the Minecraft user (test phase: fred) or with sudo - needed when that user cannot read this repo,
+# e.g. "minecraft" (/opt/minecraft) and the repo in an admin's home; files then get the Minecraft user as owner.
+# Touches only
 #   worlds/<level>/{behavior,resource}_packs/<pack>/  and  worlds/<level>/world_{behavior,resource}_packs.json
 # Requires the content-log settings from M5 (script output reaches the log).
-# Backups: ~/mcportal-backups/<time>_pre_<pack>/  (pack list of the world + previous pack folder)
+# Backups: <home of the Minecraft user>/mcportal-backups/<time>_pre_<pack>/  (pack list of the world + previous
+# pack folder) - test phase ~fred/mcportal-backups, later /opt/minecraft/mcportal-backups
 set -euo pipefail
 
 UNIT=minecraft-bedrock.service
@@ -23,7 +26,6 @@ PORTAL=http://127.0.0.1:8080
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # stable @minecraft/server version, verified on the test server for Bedrock 1.26.52.3
 SERVER_API=2.10.0
-BACKUPS="$HOME/mcportal-backups"
 
 step() { printf '\n\033[1;32m==> %s\033[0m\n' "$*"; }
 info() { printf '    %s\n' "$*"; }
@@ -47,7 +49,13 @@ fi
 
 MC_DIR="$(systemctl show -p WorkingDirectory --value "$UNIT")"
 [[ -x "$MC_DIR/bedrock_server" ]] || fail "Minecraft-Verzeichnis nicht gefunden"
-[[ "$(id -un)" == "$(systemctl show -p User --value "$UNIT")" ]] || fail "Bitte als $(systemctl show -p User --value "$UNIT") ausführen (ohne sudo)"
+MC_USER="$(systemctl show -p User --value "$UNIT")"
+[[ -n "$MC_USER" && "$MC_USER" != root ]] || fail "Minecraft läuft nicht unter einem normalen Benutzer"
+ROOT=0; [[ "$(id -u)" == 0 ]] && ROOT=1
+[[ $ROOT == 1 || "$(id -un)" == "$MC_USER" ]] || fail "Bitte als $MC_USER oder mit sudo ausführen"
+BACKUPS="$(getent passwd "$MC_USER" | cut -d: -f6)/mcportal-backups"
+# with sudo: what was written belongs to the Minecraft user, as if it had written it itself
+own() { [[ $ROOT == 1 ]] && chown -R "$MC_USER:$MC_USER" "$@"; return 0; }
 LEVEL="$(sed -n 's/^level-name=//p' "$MC_DIR/server.properties")"
 WORLD="$MC_DIR/worlds/$LEVEL"
 [[ -d "$WORLD/db" ]] || fail "Welt nicht gefunden: $WORLD"
@@ -112,15 +120,17 @@ apply)
   step "2/4 Sicherung"
   BK="$BACKUPS/$(date +%Y-%m-%d_%H-%M-%S)_pre_$PACK"
   mkdir -p "$BK"
-  [[ -f "$WBP" ]] || echo "[]" > "$WBP"   # world_resource_packs.json may not exist yet
+  [[ -f "$WBP" ]] || { echo "[]" > "$WBP"; own "$WBP"; }   # world_resource_packs.json may not exist yet
   cp -a "$WBP" "$BK/"
   [[ -d "$DST" ]] && mv "$DST" "$BK/previous"   # the old version moves into the backup
+  own "$BACKUPS"
   info "$BK"
 
   step "3/4 Pack einsetzen"
   mkdir -p "$DST"
   (cd "$PACK_SRC" && tar --exclude=./tests --exclude=./tools -cf - .) | tar -xf - -C "$DST"
   sed -i "s/@SERVER_API@/$SERVER_API/" "$DST/manifest.json"
+  own "$DST"
   set_world_entry "$PACK_VERSION"
   info "$(basename "$WBP"): $(tr -d ' \n' < "$WBP")"
 
@@ -146,7 +156,8 @@ rollback)
   [[ -n "$BK" ]] || fail "keine Sicherung für $PACK gefunden"
   step "Rollback aus $BK"
   [[ -d "$DST" ]] && mv "$DST" "$BK/failed-$(date +%H-%M-%S)"
-  if [[ -d "$BK/previous" ]]; then cp -r "$BK/previous" "$DST"; info "vorherige Version zurück"; else info "Pack entfernt (war vorher nicht installiert)"; fi
+  if [[ -d "$BK/previous" ]]; then cp -r "$BK/previous" "$DST"; own "$DST"; info "vorherige Version zurück"; else info "Pack entfernt (war vorher nicht installiert)"; fi
+  own "$BK"
   cat "$BK/$(basename "$WBP")" > "$WBP"
   if [[ "${NO_RESTART:-}" == 1 ]]; then info "wirksam mit dem nächsten Neustart"; exit 0; fi
   restart_and_wait && info "Server läuft wieder" || fail "Server meldet nicht 'Server started.'"
