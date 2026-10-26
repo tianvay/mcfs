@@ -27,7 +27,7 @@ Update per Knopfdruck mit Backup und Rollback, Block-Statistik pro Spieler, Welt
 7. [Wegpunkte](docs/07-wegpunkte.md) – craften, bauen, `/warp`, M9
 8. [Weltkarte](docs/08-karte.md) – eigener Renderer, Kacheln, Tab „Karte“, M10
 9. [Timed Events](docs/09-events.md) – Paket 1: Mining Rush, Unwetter, Glückstag, M11
-10. [Timed Events Paket 2](docs/10-events-paket2.md) – Nachtgefahren: Zombie-Invasion, Blutmond, Kopfgeld-Boss, M12 (Plan)
+10. [Timed Events Paket 2](docs/10-events-paket2.md) – Nachtgefahren: Zombie-Invasion, Blutmond, Kopfgeld-Boss, M12
 8. [To-dos](docs/TODO.md)
 
 ## Grundsätze

@@ -1,6 +1,6 @@
 # Timed Events – Paket 2: Nachtgefahren (Plan, Änderung M12)
 
-Stand: 2026-10-26 · Status: **N1–N5 gebaut** (Events, Erfolge, Portal), N6 (Installation) offen · baut auf Paket 1 auf (`docs/09-events.md`) ·
+Stand: 2026-10-26 · Status: **installiert** 2026-10-26 16:19 (Portal, Events-Pack 1.1.0, Erfolge-Pack 1.2.0) · baut auf Paket 1 auf (`docs/09-events.md`) ·
 nur stabile Script-API, keine Experimente
 
 ## Ziel
@@ -172,6 +172,15 @@ Phasen und Aufräumen lassen sich mit Test-Spielerpositionen prüfen, Kämpfe nu
 - **Getestet:** 7 Python-Tests für Events/Welt (neu: nur feste Wetter-/Zeitwerte, nicht bei Server offline,
   neue Events startbar); lokal mit simuliertem Pack auf PC und Handy: Reiter, Phasen-Countdown, Boss-Info,
   Wetter mit Rückfrage und Protokoll, Übersichtszeile.
+
+## N6 – installiert (2026-10-26 16:19)
+
+- `install.sh`, dann `NO_RESTART=1 world-pack.sh mcportal_events apply` und `world-pack.sh mcportal_achievements
+  apply` – ein Neustart. Sicherungen: `~/mcportal-backups/2026-10-26_16-18-08_pre_mcportal_events`,
+  `…16-18-09_pre_mcportal_achievements`.
+- Alle vier Behavior Packs ohne Script-Fehler; das Events-Pack meldet sechs Events, Zeitplan und Bau-Register
+  blieben erhalten (nächstes in ca. 172 Online-Minuten, 1 Chunk); 12 Event-Erfolge im Katalog. Startprüfung:
+  62 s auf den Port gewartet (TIME-WAIT), dann OK.
 
 ## Was sich auf dem Server ändert
 
