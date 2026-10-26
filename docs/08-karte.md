@@ -1,6 +1,6 @@
 # Weltkarte im Portal (Änderung M10)
 
-Stand: 2026-10-26 · Status: **K1 installiert** (Karte, Knopf, nachts), **K2 gebaut** (Wegpunkte, Spawn), K3–K4 offen · eigener Renderer, keine fremde Software
+Stand: 2026-10-26 · Status: **K1 + K2 installiert** (Karte, Knopf, nachts, Wegpunkte, Spawn), K3–K4 zurückgestellt · eigener Renderer, keine fremde Software
 
 ## Ziel
 

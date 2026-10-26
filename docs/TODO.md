@@ -5,9 +5,8 @@ Stand: 2026-10-26
 ## Offen
 
 - [ ] Prüfen, ob der Karten-Nachtlauf am 27.10. um 04:00 kam (Protokoll im Server-Tab).
-- [ ] **Karte K2 installieren** (Wegpunkte auf der Karte): `install.sh`.
-- [ ] Karte K3: Spielerpositionen (Statistik-Pack 2.1.0) · K4: nur Geändertes neu zeichnen, Biom-Färbung
-      (Plan: `docs/08-karte.md`).
+- [ ] Später, nicht dringend: Karte K3 Spielerpositionen (Statistik-Pack 2.1.0) · K4 nur Geändertes neu
+      zeichnen, Biom-Färbung (Plan: `docs/08-karte.md`).
 
 - [ ] Ruinen im Spiel ansehen: einen Wegpunkt löschen (Kohleblock, Kupferlaternen).
 - [ ] „Dorf“ ggf. mit `/warp public Dorf` freigeben; Schalter „Öffentlich“ beim nächsten Setzen ausprobieren.
@@ -33,6 +32,7 @@ Stand: 2026-10-26
 
 ## Erledigt
 
+- [x] Karte K2 installiert: Wegpunkte + Weltspawn auf der Karte, Marker auf der Blockmitte (2026-10-26)
 - [x] Karte K1 installiert, erster echter Lauf: Welt 0,65 s angehalten, 91 s gesamt, Oberwelt + Ende (2026-10-26 12:14)
 
 - [x] Karte K1 gebaut und gegen eine Kopie der echten Welt getestet (Laptop: 106 s, 200 MB, 5 MB Kacheln) (2026-10-26)
