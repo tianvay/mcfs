@@ -6,7 +6,7 @@
 //    night events (wait for the next night, end at dawn, no sleeping meanwhile): Blutmond (wolf packs),
 //    Zombie-Invasion (waves at the villages near players, better loot, villagers protected);
 //    Kopfgeld (a named boss appears in the wild under a column of light, hints every 5 s, bounty for the hunters,
-//    escapes after 20 min).
+//    escapes after 20 min); Meteorit (crater with netherrack, amethyst and diamond ore - natural ground only, undo log).
 //  * Mobs spawned by events carry the tag "mcfs_ev" + "mcfs_ev_<type>" and are removed when their event is over.
 //  * Build register: every chunk a player placed a block in is remembered; world-changing effects
 //    (lightning now, meteors later) stay away from it.
@@ -19,7 +19,8 @@ import {
   BlockPermutation, EntityDamageCause, ItemStack, Player, ScriptEventSource, system, WeatherType, world,
 } from "@minecraft/server";
 import {
-  activeMinute, beaconColumn, BOSSES, bossHint, BOUNTY_LOOT, bountyHunters, chooseBoss, healthBoostLevel,
+  activeMinute, beaconColumn, BOSSES, bossHint, BOUNTY_LOOT, CRATER_RADIUS, craterGroundOk, IMPACT_COUNTDOWN, isCover,
+  isMeteorReplaceable, planCrater, bountyHunters, chooseBoss, healthBoostLevel,
   chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, formatMinutes, invasionLoot,
   invasionMob, invasionTargets, isBed, isGround, isLeftover, isNaturalTop, isRushOre, lightningOffset, MOB_TAG, mobTag, newActive,
   newSchedule, nightStep, packSize, parseControl, participants, ranSeconds, ringOffset, scheduleMinute, shouldDouble,
@@ -137,6 +138,8 @@ const HANDLERS = {
   },
   // the boss is placed by the bounty interval below (also later, if nobody was online at the start)
   bounty: { start() {}, minute() {}, stop() {} },
+  // target, countdown and impact are handled by the meteor interval below
+  meteor: { start() {}, minute() {}, stop() {} },
 };
 const IMPLEMENTED = Object.keys(HANDLERS);
 
@@ -541,6 +544,171 @@ function bossDied(dead, killer) {
   if (a) stop(a, "killed", `${killer.name} hat ${name} besiegt und das Kopfgeld kassiert!`);
 }
 
+// ---------- Meteorit ----------
+
+const METEOR_SEARCH_SECONDS = 120; // give up ("verglüht") if no suitable place is found in this time
+const METEOR_GLOW_SECONDS = 20;
+const IMPACT_WITNESS_RADIUS = 32;
+
+system.runInterval(() => {
+  const a = active.find((x) => x.type === "meteor");
+  if (!a) return;
+  const dim = overworld();
+  if (!a.meteor) {
+    a.searched = (a.searched ?? 0) + 1;
+    const players = world.getAllPlayers().filter((p) => p.dimension.id === "minecraft:overworld");
+    if (players.length) {
+      const p = players[Math.floor(Math.random() * players.length)];
+      for (let attempt = 0; attempt < 10 && !a.meteor; attempt++) {
+        const spot = ringOffset(p.location.x, p.location.z, 40, 120, Math.random);
+        const top = meteorSite(dim, spot.x, spot.z);
+        if (top !== null) aimMeteor(a, spot.x, top, spot.z);
+      }
+    }
+    if (!a.meteor && a.searched > METEOR_SEARCH_SECONDS) stop(a, "fizzled", "Der Meteor ist in der Atmosphäre verglüht.");
+    return;
+  }
+  const m = a.meteor;
+  const now = system.currentTick;
+  if (!m.impacted) {
+    const left = Math.ceil((m.at - now) / 20);
+    if (left % 5 === 0 && left > 0) {
+      for (const p of world.getAllPlayers()) {
+        try { p.onScreenDisplay.setActionBar(`§cMeteor: Einschlag in ${left} s bei X ${m.x} · Y ${m.y} · Z ${m.z}`); } catch { /* left */ }
+      }
+    }
+    if (left <= 4) meteorTrail(dim, m, 1 - Math.max(0, left - 1) / 3); // the last seconds: a fiery trail from the sky
+    if (now >= m.at) impact(a, dim);
+    return;
+  }
+  if (now < m.glowUntil) {
+    // the crater glows and smokes for a while (particles only - no real fire that could spread)
+    for (let i = 0; i < 4; i++) {
+      const p = { x: m.x + 0.5 + (Math.random() - 0.5) * 6, y: m.y - 1, z: m.z + 0.5 + (Math.random() - 0.5) * 6 };
+      try {
+        dim.spawnParticle("minecraft:lava_particle", p);
+        dim.spawnParticle("minecraft:campfire_smoke_particle", p);
+      } catch { /* unloaded */ }
+    }
+  }
+}, 20);
+
+/** ground y at the impact point if the place suits a crater, else null */
+function meteorSite(dim, x, z) {
+  // no builds in the impact chunk or around it (also builds from before the register: map reader)
+  for (let dx = -16; dx <= 16; dx += 16) {
+    for (let dz = -16; dz <= 16; dz += 16) if (isBuilt(dim.id, x + dx, z + dz)) return null;
+  }
+  const R = CRATER_RADIUS + 1;
+  const columns = [];
+  try {
+    for (let dx = -R; dx <= R; dx++) {
+      for (let dz = -R; dz <= R; dz++) {
+        if (Math.hypot(dx, dz) > R) continue;
+        const g = groundAt(dim, x + dx, z + dz);
+        if (!g) return null;
+        columns.push(g);
+      }
+    }
+  } catch {
+    return null; // not loaded
+  }
+  const center = groundAt(dim, x, z);
+  return center && craterGroundOk(columns, center.top) ? center.top : null;
+}
+
+/** the ground of a column: below plants and snow layers */
+function groundAt(dim, x, z) {
+  let top = dim.getTopmostBlock({ x, z });
+  if (!top) return null;
+  if (isCover(top.typeId)) top = dim.getBlock({ x, y: top.location.y - 1, z });
+  return top ? { top: top.location.y, typeId: top.typeId } : null;
+}
+
+function aimMeteor(a, x, y, z) {
+  schedule.seq = (schedule.seq ?? 0) + 1;
+  a.meteor = { x, y, z, at: system.currentTick + IMPACT_COUNTDOWN * 20, impacted: false, undo: `meteor-${schedule.seq}` };
+  for (const p of world.getAllPlayers()) {
+    try {
+      p.onScreenDisplay.setTitle("§cMeteor im Anflug!", { subtitle: `§7Einschlag in ${IMPACT_COUNTDOWN} Sekunden`, fadeInDuration: 10, stayDuration: 60, fadeOutDuration: 20 });
+    } catch { /* left */ }
+  }
+  world.sendMessage(`§6[Meteor] §fEin Meteor schlägt in ${IMPACT_COUNTDOWN} Sekunden bei §eX ${x} · Y ${y} · Z ${z}§f ein – `
+    + "aus sicherer Entfernung zusehen!");
+  saveState();
+  logState();
+}
+
+function meteorTrail(dim, m, progress) {
+  const from = { x: m.x + 40, y: m.y + 70, z: m.z + 25 };
+  for (let i = 0; i < 12; i++) {
+    const t = Math.min(1, progress * (i / 12) + progress * 0.1);
+    const p = { x: from.x + (m.x - from.x) * t, y: from.y + (m.y - from.y) * t, z: from.z + (m.z - from.z) * t };
+    try {
+      dim.spawnParticle("minecraft:lava_particle", p);
+      dim.spawnParticle("minecraft:basic_flame_particle", p);
+    } catch { /* unloaded */ }
+  }
+}
+
+function impact(a, dim) {
+  const m = a.meteor;
+  m.impacted = true;
+  m.glowUntil = system.currentTick + METEOR_GLOW_SECONDS * 20;
+  const at = { x: m.x + 0.5, y: m.y + 1, z: m.z + 0.5 };
+  try {
+    dim.spawnParticle("minecraft:huge_explosion_emitter", at);
+    dim.playSound("random.explode", at, { volume: 4 });
+  } catch { /* unloaded */ }
+  for (const p of world.getAllPlayers()) {
+    if (p.dimension.id !== dim.id) continue;
+    const d = Math.hypot(p.location.x - at.x, p.location.z - at.z);
+    if (d < 64) {
+      try { p.runCommand(`camerashake add @s ${d < 24 ? 0.6 : 0.3} 1.5 positional`); } catch { /* ignore */ }
+    }
+  }
+  m.changed = craterBlocks(dim, m);
+  // the crater is now "built": no second meteor or treasure there
+  for (let dx = -16; dx <= 16; dx += 16) {
+    for (let dz = -16; dz <= 16; dz += 16) register.add(chunkKey(dim.id, m.x + dx, m.z + dz));
+  }
+  registerDirty = true;
+  saveRegister(); // at once - a restart soon after must not lose it
+  let witnesses = [];
+  try {
+    witnesses = dim.getPlayers({ location: at, maxDistance: IMPACT_WITNESS_RADIUS }).map((p) => p.name);
+  } catch { /* ignore */ }
+  log({ event: "meteor", x: m.x, y: m.y, z: m.z, changed: m.changed, undo: m.undo, witnesses });
+  news({ event: "meteor_hit", players: witnesses });
+  world.sendMessage(`§6[Meteor] §fEinschlag bei §eX ${m.x} · Y ${m.y} · Z ${m.z}§f! Im Krater glitzert etwas …`);
+  saveState();
+  logState();
+}
+
+/** dig the bowl and lay the meteor layer - only where the world's own blocks are; returns changed blocks */
+function craterBlocks(dim, m) {
+  const changes = [];
+  const set = (x, y, z, typeId, states) => {
+    try {
+      const b = dim.getBlock({ x, y, z });
+      if (b && isMeteorReplaceable(b.typeId)) changes.push({ x, y, z, typeId, states });
+    } catch { /* unloaded */ }
+  };
+  for (const c of planCrater(Math.random)) {
+    const x = m.x + c.dx, z = m.z + c.dz;
+    let g;
+    try { g = groundAt(dim, x, z); } catch { continue; }
+    if (!g) continue;
+    const top = dim.getTopmostBlock({ x, z });
+    if (top && top.location.y > g.top) set(x, top.location.y, z, "minecraft:air"); // plants, snow layer
+    for (let y = g.top; y > g.top - c.depth; y--) set(x, y, z, "minecraft:air");
+    const floorY = g.top - c.depth;
+    set(x, floorY, z, c.floor);
+    if (c.cluster && c.depth > 0) set(x, floorY + 1, z, "minecraft:amethyst_cluster", { "minecraft:block_face": "up" });
+  }
+  return changeBlocks(m.undo, dim, changes);
+}
+
 // event mobs: loot and news for the achievements
 world.afterEvents.entityDie.subscribe((ev) => {
   const dead = ev.deadEntity;
@@ -654,7 +822,8 @@ world.afterEvents.entityHurt.subscribe((ev) => {
 // ---------- start / stop ----------
 
 const SOUNDS = { storm: "ambient.weather.thunder", mining_rush: "random.anvil_land", lucky_day: "random.levelup",
-  blood_moon: "mob.wolf.growl", zombie_invasion: "mob.zombie.say", bounty: "mob.wither.spawn" };
+  blood_moon: "mob.wolf.growl", zombie_invasion: "mob.zombie.say", bounty: "mob.wither.spawn",
+  meteor: "ambient.weather.lightning.impact" };
 
 function start(type, by) {
   if (!HANDLERS[type] || active.some((a) => a.type === type)) return false;
@@ -709,6 +878,8 @@ function logState() {
   log({
     event: "state", auto: schedule.auto, online,
     active: active.map((a) => ({ type: a.type, remaining: a.remaining, total: a.total, by: a.by, phase: a.phase,
+      meteor: a.meteor ? { x: a.meteor.x, y: a.meteor.y, z: a.meteor.z, impacted: a.meteor.impacted, undo: a.meteor.undo }
+        : undefined,
       boss: a.boss ? { name: a.boss.name, x: Math.round(a.boss.x), y: Math.round(a.boss.y ?? 0), z: Math.round(a.boss.z) }
         : undefined })),
     next_in: estimateNext(schedule, online), last: schedule.last, register: register?.size ?? 0,
@@ -746,7 +917,7 @@ function minute() {
 system.afterEvents.scriptEventReceive.subscribe((ev) => {
   if (ev.id !== "mcfs:event" || !schedule) return;
   const fromConsole = ev.sourceType === ScriptEventSource.Server;
-  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers|boss|despawn|undo)\b/.exec(ev.message);
+  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers|boss|despawn|undo|meteor)\b/.exec(ev.message);
   if (test && fromConsole) return runTest(ev.message);
   const cmd = parseControl(ev.message);
   const reply = (msg) => {
@@ -781,6 +952,10 @@ system.afterEvents.scriptEventReceive.subscribe((ev) => {
   }
   if (cmd.verb === "undo") {
     const res = undoChanges(cmd.id);
+    if (res?.notLoaded) {
+      return reply(`${cmd.id}: Bereich bei X ${res.notLoaded.x} · Z ${res.notLoaded.z} ist nicht geladen – `
+        + "jemand muss in der Nähe sein. Nichts verändert.");
+    }
     return reply(res ? `${cmd.id}: ${res.restored} Blöcke zurückgesetzt, ${res.skipped} inzwischen verändert.`
       : `${cmd.id}: nichts zum Zurücksetzen.`);
   }
@@ -822,20 +997,32 @@ function changeBlocks(undoId, dim, changes) {
   return entries.length;
 }
 
-/** put everything back that is still as the event left it; blocks players changed since then stay */
+/**
+ * Put everything back that is still as the event left it; blocks players changed since then stay.
+ * Only when the whole area is loaded (somebody nearby) - otherwise nothing happens and the log is kept.
+ */
 function undoChanges(undoId) {
   const first = world.getDynamicProperty(UNDO_PREFIX + undoId);
   if (typeof first !== "string") return null;
   let text = first;
+  const partIds = [];
   for (let i = 1; ; i++) {
     const more = world.getDynamicProperty(`${UNDO_PREFIX}${undoId}#${i}`);
     if (typeof more !== "string") break;
     text += more;
-    world.setDynamicProperty(`${UNDO_PREFIX}${undoId}#${i}`, undefined);
+    partIds.push(`${UNDO_PREFIX}${undoId}#${i}`);
   }
-  world.setDynamicProperty(UNDO_PREFIX + undoId, undefined);
   const { dim, entries } = JSON.parse(text);
   const d = world.getDimension(dim);
+  for (const [x, y, z] of entries) {
+    try {
+      if (!d.getBlock({ x, y, z })) throw new Error("unloaded");
+    } catch {
+      log({ event: "undone", id: undoId, error: "not loaded", x, z });
+      return { restored: 0, skipped: 0, notLoaded: { x, z } };
+    }
+  }
+  for (const id of [UNDO_PREFIX + undoId, ...partIds]) world.setDynamicProperty(id, undefined);
   let restored = 0, skipped = 0;
   for (const [x, y, z, oldId, oldStates, newId] of entries.reverse()) {
     try {
@@ -852,7 +1039,7 @@ function undoChanges(undoId) {
 
 /** console-only test hooks for the throwaway test server (no players there) */
 function runTest(message) {
-  const [, kind, a, b, c] = message.split(/\s+/);
+  let [, kind, a, b, c] = message.split(/\s+/); // eslint-disable-line prefer-const
   if (kind === "rush") {
     // simulated drops at (a, top, b) while a Mining Rush runs; only raw_iron may be doubled
     const dim = overworld();
@@ -935,6 +1122,38 @@ function runTest(message) {
     const res = undoChanges("test-1");
     log({ event: "test", changed: n, before, mid, ids, res, after: dim.getBlock({ x: Number(a), y, z: Number(b) }).typeId,
       corner: dim.getBlock({ x: Number(a) + 1, y, z: Number(b) + 1 }).typeId, left: undoIds() });
+  } else if (kind === "meteor") {
+    // aim a running meteor exactly at (a, b) (if the place suits), impact 3 s later, then count the crater blocks
+    const m = active.find((x) => x.type === "meteor");
+    const dim = overworld();
+    // the test world changes with every new test server: look for a suitable spot near (a, b)
+    let y = null, tx = Number(a), tz = Number(b);
+    for (let r = 0; r <= 40 && y === null; r += 8) {
+      for (let dx = -r; dx <= r && y === null; dx += 8) {
+        for (let dz = -r; dz <= r && y === null; dz += 8) {
+          y = meteorSite(dim, Number(a) + dx, Number(b) + dz);
+          if (y !== null) { tx = Number(a) + dx; tz = Number(b) + dz; }
+        }
+      }
+    }
+    log({ event: "test", site: y, x: tx, z: tz, built: isBuilt(dim.id, tx, tz) });
+    if (!m || y === null) return;
+    a = String(tx); b = String(tz);
+    aimMeteor(m, tx, y, tz);
+    m.meteor.at = system.currentTick + 60;
+    system.runTimeout(() => {
+      const counts = {};
+      for (let dx = -6; dx <= 6; dx++) {
+        for (let dz = -6; dz <= 6; dz++) {
+          for (let dy = -4; dy <= 1; dy++) {
+            const id = dim.getBlock({ x: Number(a) + dx, y: y + dy, z: Number(b) + dz })?.typeId.replace("minecraft:", "");
+            if (["netherrack", "amethyst_block", "amethyst_cluster", "diamond_ore"].includes(id)) counts[id] = (counts[id] ?? 0) + 1;
+          }
+        }
+      }
+      log({ event: "test", impacted: m.meteor.impacted, changed: m.meteor.changed, counts, undo: m.meteor.undo,
+        center: dim.getBlock({ x: Number(a), y: y - 3, z: Number(b) })?.typeId });
+    }, 100);
   } else if (kind === "villagers") {
     // a small "village": 4 villagers on the ground at (a, b)
     const dim = overworld();

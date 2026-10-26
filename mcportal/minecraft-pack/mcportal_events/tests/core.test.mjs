@@ -7,7 +7,7 @@ import {
   isBed, isLeftover, isNight, isRushOre, lightningOffset, MIN_GAP, mobTag, newActive, newSchedule, nightStep, packSize,
   parseControl, participants, ranSeconds, ringOffset, scheduleMinute, secondsUntilDawn, secondsUntilNight,
   shouldDouble, TYPES, xpBonus, invasionLoot, invasionMob, invasionTargets, waveSize, ZOMBIES,
-  beaconColumn, isGround, BOSSES, BOUNTY_LOOT, bossHint, bountyHunters, chooseBoss, healthBoostLevel,
+  beaconColumn, isGround, BOSSES, CRATER_RADIUS, craterDepth, craterGroundOk, isCover, isMeteorReplaceable, planCrater, BOUNTY_LOOT, bossHint, bountyHunters, chooseBoss, healthBoostLevel,
 } from "../scripts/core.js";
 
 test("night events: wait for the night, run until dawn", () => {
@@ -158,7 +158,7 @@ test("control commands from console and portal", () => {
     "undo", "undo ../x", "undo meteor-1;start"]) {
     assert.equal(parseControl(bad), null, bad);
   }
-  for (const bad of ["start", "start meteor", "auto maybe", "start storm now", "", "state x", "rm -rf"]) {
+  for (const bad of ["start", "start volcano", "auto maybe", "start storm now", "", "state x", "rm -rf"]) {
     assert.equal(parseControl(bad), null, bad);
   }
 });
@@ -252,4 +252,37 @@ test("Kopfgeld-Boss: health, hints, loot, hunters", () => {
 test("mobs only on real ground: no tree tops, no water", () => {
   assert.ok(isGround("minecraft:grass_block") && isGround("minecraft:sand") && isGround("minecraft:snow_layer"));
   assert.ok(!isGround("minecraft:oak_leaves") && !isGround("minecraft:water") && !isGround("minecraft:oak_planks"));
+});
+
+test("meteor crater: bowl shape, materials, 3-5 diamonds, only natural ground", () => {
+  assert.equal(craterDepth(0), 3);
+  assert.equal(craterDepth(2.5), 2);
+  assert.equal(craterDepth(4.5), 1);
+  assert.equal(craterDepth(5), 0);
+  for (let i = 0; i < 30; i++) {
+    const plan = planCrater(Math.random);
+    const diamonds = plan.filter((c) => c.floor === "minecraft:diamond_ore");
+    assert.ok(diamonds.length >= 3 && diamonds.length <= 5, `diamonds ${diamonds.length}`);
+    assert.ok(diamonds.every((c) => c.depth >= 2), "diamonds in the deep middle");
+    assert.ok(plan.every((c) => Math.hypot(c.dx, c.dz) <= CRATER_RADIUS + 1));
+    assert.ok(plan.every((c) => !c.cluster || c.floor === "minecraft:amethyst_block"), "clusters only on amethyst");
+    assert.ok(plan.some((c) => c.floor === "minecraft:netherrack"));
+  }
+  assert.ok(isMeteorReplaceable("minecraft:grass_block") && isMeteorReplaceable("minecraft:stone")
+    && isMeteorReplaceable("minecraft:iron_ore") && isMeteorReplaceable("minecraft:short_grass") && isMeteorReplaceable("minecraft:air"));
+  for (const no of ["minecraft:oak_planks", "minecraft:water", "minecraft:chest", "minecraft:torch", "minecraft:farmland"]) {
+    assert.ok(!isMeteorReplaceable(no), no);
+  }
+  const flat = Array.from({ length: 10 }, () => ({ top: 70, typeId: "minecraft:grass_block" }));
+  assert.ok(craterGroundOk(flat, 70));
+  assert.ok(!craterGroundOk([...flat, { top: 70, typeId: "minecraft:oak_leaves" }], 70), "trees in the way");
+  assert.ok(!craterGroundOk([...flat, { top: 75, typeId: "minecraft:stone" }], 70), "too steep");
+  assert.ok(!craterGroundOk([...flat, { top: 70, typeId: "minecraft:water" }], 70), "lake");
+});
+
+test("cover on the ground: plants and snow layers, not the ground itself", () => {
+  for (const c of ["minecraft:short_grass", "minecraft:tall_grass", "minecraft:poppy", "minecraft:snow_layer", "minecraft:fern",
+    "minecraft:red_tulip", "minecraft:dead_bush"]) assert.ok(isCover(c), c);
+  for (const g of ["minecraft:grass_block", "minecraft:sand", "minecraft:stone", "minecraft:snow", "minecraft:oak_leaves",
+    "minecraft:water", "minecraft:packed_ice", "minecraft:iron_ore", "minecraft:cactus"]) assert.ok(!isCover(g), g);
 });

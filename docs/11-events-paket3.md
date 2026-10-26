@@ -1,6 +1,6 @@
 # Timed Events – Paket 3: Die Welt verändert sich (Plan, Änderung M13)
 
-Stand: 2026-10-26 · Status: **W1 gebaut** (Bestandsaufnahme, Register-Abgleich, Rückgängig-Protokoll), W2–W7 offen · baut auf Paket 1 und 2 auf · nur stabile
+Stand: 2026-10-26 · Status: **W1–W2 gebaut** (Grundlage, Meteorit), W3–W7 offen · baut auf Paket 1 und 2 auf · nur stabile
 Script-API, keine Experimente
 
 ## Ziel
@@ -104,6 +104,26 @@ zusätzlich mit einem Vorher/Nachher-Vergleich und dem Rückgängig-Befehl.
   Blöcke, Abgleich in 100er-Paketen, nur neue, nicht bei Server offline). Testserver: Import (doppelte
   übersprungen, ungültige abgelehnt), importierter Chunk schützt vor Blitz, Rückgängig 8 von 9 Blöcken (einer war
   „von einem Spieler“ verändert und bleibt). Lokal: Kartenlauf → 1.087 Chunks übergeben.
+
+## W2 – gebaut (Meteorit)
+
+- **Ziel:** 40–120 Blöcke von einem zufälligen Spieler in der Oberwelt; der Einschlag-Chunk und alle 8 Nachbarn
+  nicht im Bau-Register; jede Säule im Umkreis von 6 Blöcken echter Boden (kein Laub, kein Wasser) und höchstens
+  3 Blöcke Höhenunterschied. Je Sekunde 10 Versuche; nach 2 Minuten ohne passenden Ort „verglüht“ der Meteor.
+- **Ablauf:** Titel „Meteor im Anflug!“ + Chat mit X/Y/Z, Countdown 30 s (alle 5 s in der Aktionsleiste), in den
+  letzten Sekunden Feuerspur vom Himmel, dann großer Explosions-Effekt, Knall, Kamerawackeln bis 64 Blöcke –
+  **keine echte Explosion, kein Feuer** (Lava- und Rauchpartikel 20 s lang).
+- **Krater** (`planCrater`): Mulde Radius 5, Mitte 3 tief; Boden aus Netherrack und ~25 % Amethyst (teils mit
+  Kristallen), 3–5 Diamanterze in der tiefen Mitte, Netherrack-Spritzer am Rand. Verändert werden nur Blöcke, die
+  die Welt selbst erzeugt hat (`isMeteorReplaceable`). Jeder Block steht im Rückgängig-Protokoll `meteor-<n>`.
+- Danach gelten Einschlag-Chunk und Nachbarn als bebaut (kein zweiter Meteor, kein Schatz dort); sofort gespeichert.
+- Wer beim Einschlag im Umkreis von 32 Blöcken war → Meldung `meteor_hit` (Erfolg „Volltreffer“, W6).
+- **Rückgängig** nur, wenn der ganze Bereich geladen ist (jemand in der Nähe); sonst Hinweis, Protokoll bleibt.
+- **Getestet:** 18 Node-Tests (neu: Krater-Profil, Materialien, 3–5 Diamanten, ersetzbare Blöcke, Boden-Prüfung,
+  Pflanzen/Schnee). Testserver: Krater mit 215 Blöcken (60 Netherrack, 20 Amethyst, 11 Kristalle, 3 Diamanterze);
+  nach Neustart Register erhalten; Rückgängig bei nicht geladenem Bereich abgelehnt, danach alle 215 zurück.
+  Zwei Fehler dabei gefunden und behoben (Rückgängig löschte sein Protokoll bei ungeladenem Bereich; Register
+  wurde nach dem Einschlag erst nach 30 s gespeichert).
 
 ## Was sich auf dem Server ändert
 
