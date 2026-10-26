@@ -1,0 +1,15 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": { "identifier": "mcfs:waypoint" },
+    "tags": ["crafting_table"],
+    "pattern": ["LWL", "WDW", "LWL"],
+    "key": {
+      "L": { "item": "minecraft:lantern" },
+      "W": { "item": "minecraft:stone_brick_wall" },
+      "D": { "item": "minecraft:diamond_block" }
+    },
+    "unlock": [{ "item": "minecraft:diamond_block" }],
+    "result": { "item": "mcfs:waypoint", "count": 1 }
+  }
+}

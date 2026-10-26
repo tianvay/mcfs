@@ -4,6 +4,8 @@ Stand: 2026-10-25
 
 ## Offen
 
+- [ ] **Wegpunkte (M9) installieren** (siehe `docs/07-wegpunkte.md`), dann im Spiel testen: craften, setzen, Name,
+      `/warp` vs. `/mcfs:warp`, Teleport (auch Nether), abbauen.
 - [ ] Operator-Nachrichten im Spiel ausprobieren (Vergeben/Entziehen, online und offline).
 - [ ] Kosmetik: Beim Beenden des Portals protokolliert die gerade laufende Statusabfrage einen Fehler
       („status poll failed … SIGTERM“) – beim Herunterfahren nicht mehr als Fehler loggen.

@@ -1,0 +1,15 @@
+{
+  "format_version": "1.21.50",
+  "minecraft:item": {
+    "description": {
+      "identifier": "mcfs:waypoint",
+      "menu_category": { "category": "items" }
+    },
+    "components": {
+      "minecraft:icon": "mcfs_waypoint",
+      "minecraft:display_name": { "value": "Wegpunkt" },
+      "minecraft:max_stack_size": 16,
+      "minecraft:glint": true
+    }
+  }
+}

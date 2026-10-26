@@ -111,6 +111,17 @@ the service fills missing fields for data stored by older versions).
 - Keep game rules (thresholds, classification) in a separate pure module without
   `@minecraft/server` imports and test it with `node --test` - player events can't be produced
   on the test server (see `mcportal_achievements/scripts/catalog.js`). `world-pack.sh` leaves `tests/` out.
+- Resource packs (textures, e.g. an item icon) are separate packs (`"type": "resources"`), listed in
+  `world_resource_packs.json`; `world-pack.sh` handles both kinds. Install several packs with one restart:
+  `NO_RESTART=1 world-pack.sh <rp> apply` then `world-pack.sh <bp> apply`. The test server takes a
+  comma-separated list of absolute pack paths (`~` is not expanded inside the list).
+- Data-driven content (items/, recipes/) needs a `"type": "data"` module next to the script module.
+  1.20+ recipes need `"unlock"`; otherwise the server logs `[Recipes] … require unlock data`.
+- Custom commands: register in `system.beforeEvents.startup` via `customCommandRegistry`
+  (namespace required, e.g. `mcfs:warp`); the callback runs read-only - do world changes in `system.run`.
+- Code that only runs for players can still be checked in the engine: put it in its own module and call it
+  from a test entry via `scriptevent` on the test server (after `tickingarea add` for the area; stay inside the chunk).
+- Stable UI module: `@minecraft/server-ui` 2.2.0 (forms with text fields); `cancelationReason` "UserBusy" = retry later.
 - In-game text: Minecraft colour codes (`§6`, `§e`, `§f`, `§7`) work in chat and titles; emojis don't render.
 
 - The version in `world_behavior_packs.json` must equal the manifest version exactly -

@@ -1,0 +1,13 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Family Portal Wegpunkte (Grafik)",
+    "description": "Bild für das Wegpunkt-Item.",
+    "uuid": "70370a54-f03d-4164-a819-02a5954766e3",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 21, 0]
+  },
+  "modules": [
+    { "type": "resources", "uuid": "85354d83-1970-4b28-b4e4-582e8e2590a5", "version": [1, 0, 0] }
+  ]
+}
