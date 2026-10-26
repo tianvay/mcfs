@@ -30,6 +30,10 @@ def say_update() -> str:
     return "say Der Server wird gleich für ein Update neu gestartet (ca. 1 Minute)."
 
 
+def gamemode_survival(name: str) -> str:
+    return f"gamemode survival {_name_arg(name)}"
+
+
 def permission_reload() -> str:
     # re-read permissions.json (documented in bedrock_server_how_to.html)
     return "permission reload"

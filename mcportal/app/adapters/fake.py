@@ -219,6 +219,9 @@ class FakeAdapter:
     def permissions_reload_live(self) -> None:
         self._log("Permissions reloaded")
 
+    def set_survival_live(self, name: str) -> None:
+        self._log(f"Set {name}'s game mode to Survival")
+
     def allowlist_remove_live(self, name: str) -> None:
         entries = [e for e in self.files.read_allowlist() if e.get("name", "").lower() != name.lower()]
         self.files.write_allowlist(entries)

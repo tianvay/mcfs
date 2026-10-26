@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 # "[2026-09-20 13:54:34:524 INFO] Player connected: Steve, xuid: 2535400000000001"
 _PREFIX_RE = re.compile(r"^\[\d{4}-\d\d-\d\d \d\d:\d\d:\d\d:\d+ (?P<level>[A-Z]+)\] ?(?P<msg>.*)$")
 _CONNECT_RE = re.compile(r"^Player connected: (?P<name>.+?), xuid: (?P<xuid>\d*)")
+_SPAWNED_RE = re.compile(r"^Player Spawned: (?P<name>.+?) xuid:")
 _DISCONNECT_RE = re.compile(r"^Player disconnected: (?P<name>.+?), xuid: (?P<xuid>\d*)")
 _VERSION_RE = re.compile(r"^Version: (?P<version>\d+(?:\.\d+)+)\s*$")
 _LIST_RE = re.compile(r"^There are (?P<count>\d+)/(?P<max>\d+) players online:")
@@ -44,6 +45,14 @@ def parse_journal_line(raw: str) -> LogLine | None:
     ident = parts[2]
     source = "systemd" if ident.startswith("systemd") else "server"
     return LogLine(ts=ts, source=source, text=parts[3])
+
+
+def parse_spawned(line: LogLine) -> str | None:
+    """Name from "Player Spawned: <name> xuid: ..." - the player is in the world now."""
+    if line.source != "server":
+        return None
+    m = _SPAWNED_RE.match(line.message)
+    return m.group("name") if m else None
 
 
 def parse_version(line: LogLine) -> str | None:

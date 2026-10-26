@@ -64,6 +64,10 @@ Knopf ★/☆ je Spieler in der Whitelist. Das Portal sichert `permissions.json`
 Server-Format und schickt bei laufendem Server `permission reload`. Erst möglich, nachdem ein
 Spieler einmal verbunden war (der Server braucht seine XUID).
 
+Wird einem Spieler der Operator-Status entzogen, setzt das Portal seinen Spielmodus auf **Überleben**:
+sofort, wenn er online ist (`gamemode survival <Name>` über die Konsole), sonst beim nächsten Betreten
+(Log-Zeile „Player Spawned“; vorgemerkt in `/var/lib/mcportal/pending_survival.json`, übersteht Neustarts).
+
 ## Server-Update
 
 Tab „Server“ → „Server-Update“. Ablauf, Schutz von Welt/Whitelist/Operatoren, Rollback und

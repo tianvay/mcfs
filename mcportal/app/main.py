@@ -76,7 +76,8 @@ def create_app(cfg: Config) -> FastAPI:
     adapter = create_adapter(cfg)
     audit = AuditLog(cfg.audit_file)
     mc = MinecraftService(adapter, audit, cfg.data_dir)
-    allow = AllowlistService(adapter, mc, audit, cfg.backup_dir, cfg.allowlist_backups_keep)
+    allow = AllowlistService(adapter, mc, audit, cfg.backup_dir, cfg.allowlist_backups_keep,
+                             cfg.data_dir / "pending_survival.json")
     update = UpdateService(adapter, mc, audit, cfg.data_dir, cfg.backup_dir, cfg.update_backups_keep)
     stats = StatsService(adapter, mc, cfg.data_dir)
     achievements = AchievementsService(adapter, mc, cfg.data_dir)

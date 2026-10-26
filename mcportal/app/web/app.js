@@ -14,7 +14,7 @@ const AUDIT_TEXT = {
   SERVER_START: "Server gestartet", SERVER_STOP: "Server gestoppt", SERVER_RESTART: "Server neu gestartet",
   WHITELIST_ADD: "Whitelist: hinzugefügt", WHITELIST_REMOVE: "Whitelist: entfernt", LOGIN: "PIN-Anmeldung",
   OPERATOR_GRANT: "Operator-Rechte vergeben", OPERATOR_REVOKE: "Operator-Rechte entzogen",
-  UPDATE: "Server-Update",
+  UPDATE: "Server-Update", GAMEMODE_SURVIVAL: "Spielmodus auf Überleben gesetzt",
 };
 
 let state = null;
@@ -464,7 +464,8 @@ function renderAllowlist(data) {
     return;
   }
   ul.replaceChildren(...data.entries.map((e) => {
-    const tags = [e.online ? "online" : null, e.xuid ? null : "noch nie verbunden"]
+    const tags = [e.online ? "online" : null, e.xuid ? null : "noch nie verbunden",
+      e.survival_pending ? "wird beim nächsten Betreten auf Überleben gesetzt" : null]
       .filter(Boolean).join(" · ");
     const opBlocked = data.op_mode === "blocked" || !e.xuid;
     const op = el("button", {
@@ -477,7 +478,10 @@ function renderAllowlist(data) {
     });
     op.addEventListener("click", async () => {
       const q = e.operator
-        ? `${e.name} die Operator-Rechte entziehen?`
+        ? `${e.name} die Operator-Rechte entziehen?
+
+Der Spielmodus wird dabei auf Überleben gesetzt – sofort, `
+          + "wenn der Spieler online ist, sonst beim nächsten Betreten."
         : `${e.name} zum Operator machen?\n\nOperatoren dürfen Befehle nutzen, z. B. Spielmodus ändern, teleportieren oder andere Spieler kicken.`;
       if (!(await dialog(q))) return;
       try {
@@ -524,7 +528,7 @@ async function loadAudit() {
     if (!items.length) { ul.replaceChildren(el("li", { className: "empty", textContent: "Noch keine Aktionen." })); return; }
     ul.replaceChildren(...items.map((a) => el("li", {},
       el("div", {}, `${AUDIT_TEXT[a.action] || a.action}${a.player ? `: ${a.player}` : ""}${a.from ? `: ${a.from} → ${a.to}` : ""} `,
-        el("span", { className: a.result, textContent: a.result === "SUCCESS" ? "✓" : "✗ fehlgeschlagen" })),
+        el("span", { className: a.result, textContent: a.result === "SUCCESS" ? "✓" : a.result === "PENDING" ? "⏳ vorgemerkt" : "✗ fehlgeschlagen" })),
       el("div", { className: "meta", textContent: `${a.time} · ${a.user}${a.error ? ` · ${a.error}` : ""}` }))));
   } catch (e) { /* not critical */ }
 }

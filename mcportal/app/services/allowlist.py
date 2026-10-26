@@ -6,26 +6,36 @@ updates its own file and memory. While it is stopped, the file is edited directl
 from __future__ import annotations
 
 import asyncio
+import json
+import logging
 import shutil
 import time
 from pathlib import Path
 
 from ..adapters.base import MinecraftAdapter
 from ..adapters.bedrock.commands import valid_player_name
+from ..adapters.bedrock.logparse import LogLine, parse_spawned
 from ..audit import AuditLog
 from .minecraft import MinecraftService, PortalError
 
+log = logging.getLogger("mcportal.allowlist")
 CONFIRM_TIMEOUT = 6.0
+SPAWN_SETTLE = 2.0  # seconds after "Player Spawned" before the gamemode command
 
 
 class AllowlistService:
     def __init__(self, adapter: MinecraftAdapter, mc: MinecraftService, audit: AuditLog,
-                 backup_dir: Path, keep: int):
+                 backup_dir: Path, keep: int, pending_file: Path):
         self.a = adapter
         self.mc = mc
         self.audit = audit
         self.backup_dir = backup_dir
         self.keep = keep
+        # players whose operator status was revoked while they were offline:
+        # they are set to survival as soon as they appear in the world again
+        self.pending_file = pending_file
+        self.pending_survival: dict[str, str] = self._load_pending()  # lower name -> name
+        mc.line_listeners.append(self._on_line)
 
     def mode(self, file: str = "allowlist.json") -> tuple[str, str | None]:
         """("live" | "file" | "blocked", reason) for changes to `file`."""
@@ -64,6 +74,7 @@ class AllowlistService:
                     "xuid": e.get("xuid", ""),
                     "operator": bool(e.get("xuid")) and str(e.get("xuid")) in ops,
                     "online": e.get("name", "").lower() in online,
+                    "survival_pending": e.get("name", "").lower() in self.pending_survival,
                 }
                 for e in entries
             ],
@@ -82,9 +93,9 @@ class AllowlistService:
 
     async def set_operator(self, name: str, operator: bool, user: str) -> None:
         action = "OPERATOR_GRANT" if operator else "OPERATOR_REVOKE"
-        await self._locked(action, name, user, lambda: self._do_set_operator(name, operator))
+        await self._locked(action, name, user, lambda: self._do_set_operator(name, operator, user))
 
-    async def _do_set_operator(self, name: str, operator: bool) -> str:
+    async def _do_set_operator(self, name: str, operator: bool, user: str) -> str:
         files = self.a.files
         entry = next((e for e in files.read_allowlist() if e.get("name", "").lower() == name.lower()), None)
         if entry is None:
@@ -113,7 +124,61 @@ class AllowlistService:
             raise PortalError(f"Schreiben fehlgeschlagen, Sicherung wiederhergestellt: {e}", 500)
         if mode == "live":
             await asyncio.to_thread(self.a.permissions_reload_live)
+        if operator:
+            self._set_pending(name, False)
+        else:
+            await self._force_survival(name, user)
         return name
+
+    # ---------- revoked operators go back to survival ----------
+
+    async def _force_survival(self, name: str, user: str) -> None:
+        """Set survival now if the player is in the world, otherwise on their next spawn."""
+        online = name.lower() in {p.name.lower() for p in self.mc.tracker.players.values()}
+        if online and self.a.console_available():
+            try:
+                await asyncio.to_thread(self.a.set_survival_live, name)
+                self._set_pending(name, False)
+                self.audit.write("GAMEMODE_SURVIVAL", "SUCCESS", user, player=name)
+                return
+            except Exception as e:
+                log.warning("gamemode survival for %s failed, will retry on spawn: %s", name, e)
+        self._set_pending(name, True)
+        self.audit.write("GAMEMODE_SURVIVAL", "PENDING", user, player=name)
+
+    def _on_line(self, line: LogLine) -> None:
+        name = parse_spawned(line)
+        if name and name.lower() in self.pending_survival:
+            asyncio.get_running_loop().create_task(self._apply_pending(name))
+
+    async def _apply_pending(self, name: str) -> None:
+        await asyncio.sleep(SPAWN_SETTLE)
+        try:
+            await asyncio.to_thread(self.a.set_survival_live, name)
+        except Exception as e:
+            log.warning("gamemode survival for %s on spawn failed: %s", name, e)
+            self.audit.write("GAMEMODE_SURVIVAL", "FAILED", "portal", player=name, error=str(e))
+            return
+        self._set_pending(name, False)
+        self.audit.write("GAMEMODE_SURVIVAL", "SUCCESS", "portal", player=name, note="beim Betreten")
+        self.mc.publish()
+
+    def _load_pending(self) -> dict[str, str]:
+        try:
+            names = json.loads(self.pending_file.read_text(encoding="utf-8"))
+            return {n.lower(): n for n in names if isinstance(n, str)}
+        except (OSError, ValueError):
+            return {}
+
+    def _set_pending(self, name: str, pending: bool) -> None:
+        if pending:
+            self.pending_survival[name.lower()] = name
+        else:
+            self.pending_survival.pop(name.lower(), None)
+        try:
+            self.pending_file.write_text(json.dumps(sorted(self.pending_survival.values())), encoding="utf-8")
+        except OSError:
+            log.exception("cannot write %s", self.pending_file)
 
     async def _change(self, action: str, name: str, user: str, add: bool) -> None:
         await self._locked(action, name, user, lambda: self._do_change(action, name, add))

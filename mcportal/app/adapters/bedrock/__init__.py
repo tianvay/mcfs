@@ -46,3 +46,6 @@ class BedrockAdapter:
 
     def permissions_reload_live(self) -> None:
         console.send(self.fifo, commands.permission_reload())
+
+    def set_survival_live(self, name: str) -> None:
+        console.send(self.fifo, commands.gamemode_survival(name))

@@ -4,8 +4,9 @@ Stand: 2026-10-25
 
 ## Offen
 
-- [ ] **Erfolge im Spiel prüfen**: Beitritt nach dem Neustart ok? Erfolg auslösen (z. B. sterben → „Anfängerfehler“):
-      Einblendung, Sound, Chat-Nachricht, Eintrag im Portal.
+- [ ] **Ruhezustand abschalten** (sudo, siehe `docs/06-zuverlaessiger-start.md`): Nach dem Hochfahren mit
+      geschlossenem Deckel geht der Laptop sonst sofort schlafen – Server 7 Minuten weg beim Test.
+- [ ] **install.sh** für „Operator entziehen → Überleben“; danach im Spiel testen.
 - [ ] Kosmetik: Beim Beenden des Portals protokolliert die gerade laufende Statusabfrage einen Fehler
       („status poll failed … SIGTERM“) – beim Herunterfahren nicht mehr als Fehler loggen.
 - [ ] **Beobachten: Beitritt nach Neustart gescheitert** (2026-10-26). Nach dem Neustart fürs Pack-Upgrade
@@ -16,10 +17,6 @@ Stand: 2026-10-25
       passiert: Zeitpunkt notieren, Server über das Portal neu starten, Bescheid geben.
 - [ ] **Statistik 2.0 im Spiel prüfen**: Tode, Mobs, Essen, XP, Setzlinge, Züchten, Strecke (Boot/Elytra …), Spielzeit –
       nach dem nächsten Spielen im Tab „Statistik“ ansehen; Auffälligkeiten melden.
-- [ ] **Echten Neustart testen**, wenn niemand spielt (`sudo reboot`). Danach prüfen: Minecraft online,
-      Konsole (M2) verbunden, Portal erreichbar, Laravel (HTTP 302), Whitelist und Operatoren unverändert.
-- [ ] **WLAN vor der Anmeldung**: Beim Neustart-Test prüfen, ob die WLAN-Verbindung „für alle Benutzer“
-      freigegeben ist, also ohne Anmeldung am Laptop verbindet.
 - [ ] Optional **Platz schaffen** im Serverordner: `bedrock-server.zip` (95 MB) und
       `xampp-linux-x64-8.2.12-0-installer.run` (160 MB) braucht der Server nicht.
 - [ ] **Sunny** kann erst Operator werden, nachdem Sunny einmal verbunden war.
@@ -34,6 +31,9 @@ Stand: 2026-10-25
 - [x] Korrektur „Update verfügbar“-Hinweis + Portal mit Statistik installiert (2026-10-25)
 - [x] M5 Statistik-Pack in der Welt installiert, Pack meldet sich (2026-10-25 21:19)
 - [x] M6 Statistik-Pack 2.0 in der Welt installiert, meldet sich ohne Script-Fehler (2026-10-26 06:33)
+- [x] Neustart-Test (`sudo reboot`): alle Dienste kommen von selbst, Startprüfung OK, WLAN ohne Anmeldung –
+      aber Ruhezustand wegen geschlossenem Deckel gefunden (2026-10-26)
+- [x] Erfolge im Spiel ausgelöst: „Anfängerfehler“, „Die Schwerkraft gewinnt immer“ (2026-10-26 07:54)
 - [x] Cheats im Spiel bestätigt: `/gamemode survival` funktioniert, Beitritt nach M8-Neustart ok (2026-10-26)
 - [x] M8 Startprüfung installiert; erster Neustart damit: 48 s auf TIME-WAIT gewartet, dann Port offen (2026-10-26 07:50)
 - [x] `allow-cheats=true` gesetzt (wirksam ab nächstem Start), bleibt bei Updates erhalten (2026-10-26)
