@@ -4,8 +4,8 @@ Stand: 2026-10-25
 
 ## Offen
 
-- [ ] **Wegpunkte (M9) installieren** (siehe `docs/07-wegpunkte.md`), dann im Spiel testen: craften, setzen, Name,
-      `/warp` vs. `/mcfs:warp`, Teleport (auch Nether), abbauen.
+- [ ] **Wegpunkte im Spiel testen**: craften, setzen, Name, `/warp` vs. `/mcfs:warp`, Teleport (auch Nether), abbauen,
+      Grafik-Pack-Download beim Beitreten (PC und Xbox).
 - [ ] Operator-Nachrichten im Spiel ausprobieren (Vergeben/Entziehen, online und offline).
 - [ ] Kosmetik: Beim Beenden des Portals protokolliert die gerade laufende Statusabfrage einen Fehler
       („status poll failed … SIGTERM“) – beim Herunterfahren nicht mehr als Fehler loggen.
@@ -31,6 +31,7 @@ Stand: 2026-10-25
 - [x] Korrektur „Update verfügbar“-Hinweis + Portal mit Statistik installiert (2026-10-25)
 - [x] M5 Statistik-Pack in der Welt installiert, Pack meldet sich (2026-10-25 21:19)
 - [x] M6 Statistik-Pack 2.0 in der Welt installiert, meldet sich ohne Script-Fehler (2026-10-26 06:33)
+- [x] M9 Wegpunkte + Grafik-Pack installiert, `texturepack-required=true`; drei Packs ohne Script-Fehler (2026-10-26 08:40)
 - [x] Portal mit Operator-Nachrichten installiert (2026-10-26)
 - [x] „Operator entziehen → Überleben“ im Spiel bestätigt (2026-10-26)
 - [x] Ruhezustand abgeschaltet (no-suspend.sh): logind ignoriert den Deckel, Suspend gesperrt (2026-10-26)
