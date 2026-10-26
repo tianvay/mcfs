@@ -4,7 +4,7 @@ Stand: 2026-10-25
 
 ## Offen
 
-- [ ] **install.sh** für die Operator-Nachrichten („Du bist jetzt/nicht mehr Operator.“); danach im Spiel testen.
+- [ ] Operator-Nachrichten im Spiel ausprobieren (Vergeben/Entziehen, online und offline).
 - [ ] Kosmetik: Beim Beenden des Portals protokolliert die gerade laufende Statusabfrage einen Fehler
       („status poll failed … SIGTERM“) – beim Herunterfahren nicht mehr als Fehler loggen.
 - [ ] **Beobachten: Beitritt nach Neustart gescheitert** (2026-10-26). Nach dem Neustart fürs Pack-Upgrade
@@ -29,6 +29,7 @@ Stand: 2026-10-25
 - [x] Korrektur „Update verfügbar“-Hinweis + Portal mit Statistik installiert (2026-10-25)
 - [x] M5 Statistik-Pack in der Welt installiert, Pack meldet sich (2026-10-25 21:19)
 - [x] M6 Statistik-Pack 2.0 in der Welt installiert, meldet sich ohne Script-Fehler (2026-10-26 06:33)
+- [x] Portal mit Operator-Nachrichten installiert (2026-10-26)
 - [x] „Operator entziehen → Überleben“ im Spiel bestätigt (2026-10-26)
 - [x] Ruhezustand abgeschaltet (no-suspend.sh): logind ignoriert den Deckel, Suspend gesperrt (2026-10-26)
 - [x] Portal mit „Operator entziehen → Überleben“ installiert (2026-10-26)
