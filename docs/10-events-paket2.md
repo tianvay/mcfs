@@ -1,6 +1,6 @@
 # Timed Events – Paket 2: Nachtgefahren (Plan, Änderung M12)
 
-Stand: 2026-10-26 · Status: **N1–N4 gebaut** (alle drei Events, Erfolge), N5–N6 offen · baut auf Paket 1 auf (`docs/09-events.md`) ·
+Stand: 2026-10-26 · Status: **N1–N5 gebaut** (Events, Erfolge, Portal), N6 (Installation) offen · baut auf Paket 1 auf (`docs/09-events.md`) ·
 nur stabile Script-API, keine Experimente
 
 ## Ziel
@@ -157,6 +157,21 @@ Phasen und Aufräumen lassen sich mit Test-Spielerpositionen prüfen, Kämpfe nu
 - **Getestet:** 8 Node-Tests im Erfolge-Pack (neu: Welle 2, Gemeinsam stark, beste Invasionsnacht, Wölfe, Kopfgeld).
   Testserver mit beiden Packs und nachgestellten Meldungen: Invasion je Nacht gezählt (beste Nacht 3, neue Nacht
   beginnt bei 1), 2 Wölfe, Kopfgeld für beide Jäger, „Gemeinsam stark“ bei 3 Teilnehmern.
+
+## N5 – gebaut (Portal)
+
+- **Eigener Reiter „Events“** (die Übersicht bleibt kurz): laufende Events mit Countdown und Fortschrittsbalken,
+  Nacht-Events erst „in mm:ss“ (wartet auf die Nacht), dann bis Sonnenaufgang; beim Kopfgeld Name und letzter
+  Ort des Bosses. Automatik an/aus, Start-Knöpfe für alle sechs Events, Verlauf (auch „besiegt“, „verunglückt“,
+  „Sonnenaufgang“), wer wie oft mitgemacht hat.
+- **Karte „Welt“** im selben Reiter: Wetter (Klar, Regen, Gewitter) und Tageszeit (Morgen 1000, Mittag 6000,
+  Abend 12000, Nacht 13000, Mitternacht 18000), jeweils mit Rückfrage. Feste Konsolenbefehle
+  (`commands.world_control`, `POST /api/world/{weather|time}`), nur Werte aus der Liste; Protokoll „Wetter“/„Tageszeit“.
+- **Übersicht:** nur noch eine Zeile, solange ein Event läuft („🌕 Blutmond 5:22 · 👑 Kopfgeld 14:42“ + Ansehen).
+- **Reiter auf dem Handy:** sechs Reiter in zwei Reihen à drei (statt gequetscht oder seitlich zu scrollen).
+- **Getestet:** 7 Python-Tests für Events/Welt (neu: nur feste Wetter-/Zeitwerte, nicht bei Server offline,
+  neue Events startbar); lokal mit simuliertem Pack auf PC und Handy: Reiter, Phasen-Countdown, Boss-Info,
+  Wetter mit Rückfrage und Protokoll, Übersichtszeile.
 
 ## Was sich auf dem Server ändert
 

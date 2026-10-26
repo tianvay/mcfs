@@ -18,6 +18,7 @@
     <button role="tab" data-tab="home" aria-selected="true">Übersicht</button>
     <button role="tab" data-tab="allow" aria-selected="false">Whitelist</button>
     <button role="tab" data-tab="stats" aria-selected="false">Statistik</button>
+    <button role="tab" data-tab="events" aria-selected="false">Events</button>
     <button role="tab" data-tab="map" aria-selected="false">Karte</button>
     <button role="tab" data-tab="server" aria-selected="false">Server</button>
   </nav>
@@ -30,6 +31,10 @@
         <div class="players-count"><span id="player-count">–</span></div>
         <ul id="player-list" class="player-list"></ul>
       </div>
+      <div id="home-event" class="card update-hint event-hint" hidden>
+        <span>🎉 <span id="home-event-text"></span></span>
+        <button class="btn primary small" data-goto="events">Ansehen</button>
+      </div>
       <div id="home-update" class="card update-hint" hidden>
         <span id="home-update-text"></span>
         <button class="btn primary small" data-goto="server">Ansehen</button>
@@ -41,19 +46,6 @@
         <div><dt>Letztes Update</dt><dd id="f-update">–</dd></div>
         <div><dt>Whitelist</dt><dd id="f-allow">–</dd></div>
       </dl>
-      <div id="events-card" class="card events-card" hidden>
-        <div class="events-head">
-          <h2>🎉 Events</h2>
-          <button id="events-auto" class="btn small" type="button">Automatik</button>
-        </div>
-        <p id="events-missing" class="note small">Das Events-Pack ist noch nicht installiert.</p>
-        <div id="events-body">
-          <ul id="events-running" class="events-list"></ul>
-          <div id="events-start" class="row wrap events-start"></div>
-          <h3 class="events-sub">Zuletzt</h3>
-          <ul id="events-history" class="events-list history"></ul>
-        </div>
-      </div>
       <div class="row">
         <button class="btn" data-goto="allow">📋 Whitelist</button>
         <button class="btn" data-goto="server">⚙️ Server</button>
@@ -86,6 +78,35 @@
     </section>
 
     <!-- Server -->
+    <!-- Events -->
+    <section id="tab-events" class="tab" hidden>
+      <div class="card events-card">
+        <div class="events-head">
+          <h2>🎉 Events</h2>
+          <button id="events-auto" class="btn small" type="button">Automatik</button>
+        </div>
+        <p id="events-missing" class="note small">Das Events-Pack ist noch nicht installiert.</p>
+        <div id="events-body" hidden>
+          <ul id="events-running" class="events-list"></ul>
+          <h3 class="events-sub">Event starten</h3>
+          <div id="events-start" class="events-start"></div>
+          <h3 class="events-sub">Zuletzt</h3>
+          <ul id="events-history" class="events-list history"></ul>
+          <h3 class="events-sub">Mitgemacht</h3>
+          <p id="events-people" class="note small"></p>
+        </div>
+      </div>
+      <div class="card">
+        <h2>🌍 Welt</h2>
+        <h3 class="events-sub">Wetter</h3>
+        <div id="world-weather" class="events-start"></div>
+        <h3 class="events-sub">Tageszeit</h3>
+        <div id="world-time" class="events-start"></div>
+        <p class="note small">Wirkt sofort für alle Spieler. Während eines Unwetters stellt das Event das Gewitter
+          nach spätestens einer Minute wieder her; Tageszeit „Morgen“ beendet ein laufendes Nacht-Event.</p>
+      </div>
+    </section>
+
     <!-- Karte -->
     <section id="tab-map" class="tab" hidden>
       <div class="card">

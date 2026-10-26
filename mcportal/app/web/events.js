@@ -1,11 +1,18 @@
 "use strict";
-// Card "Events" on the overview: running timed events with a live countdown, automatic on/off,
-// start/stop buttons, history.
+// Tab "Events": running timed events with a live countdown (night events: "beginnt in …" until nightfall),
+// automatic on/off, start/stop buttons, history, weather and time of day.
+// The overview only gets a one-line hint while an event runs.
 // Loaded before app.js; uses its helpers ($, el, api, toast, dialog, fmtDate, now, state) only inside functions.
 
-const EVENT_NAMES = { storm: "🌧️ Unwetter", mining_rush: "💎 Mining Rush", lucky_day: "🍀 Glückstag" };
-const EVENT_BY = { auto: "automatisch", console: "Portal/Konsole", time: "Zeit abgelaufen" };
+const EVENT_NAMES = {
+  storm: "🌧️ Unwetter", mining_rush: "💎 Mining Rush", lucky_day: "🍀 Glückstag",
+  blood_moon: "🌕 Blutmond", zombie_invasion: "🧟 Zombie-Invasion", bounty: "👑 Kopfgeld",
+};
+const EVENT_BY = { auto: "automatisch", console: "Portal/Konsole", time: "Zeit abgelaufen", dawn: "Sonnenaufgang",
+  killed: "besiegt", died: "verunglückt" };
 const EVENTS_RESYNC_MS = 60_000; // while an event runs: fresh remaining times from the pack every minute
+const WEATHER_TEXT = { clear: "Klar", rain: "Regen", thunder: "Gewitter" };
+const TIME_TEXT = { morning: "Morgen", noon: "Mittag", evening: "Abend", night: "Nacht", midnight: "Mitternacht" };
 let eventsKey = null;
 let eventsData = null;
 let eventsLoadedAt = 0;
@@ -16,16 +23,17 @@ const evMinutes = (sec) => {
   return m >= 60 ? `${Math.floor(m / 60)} Std.${m % 60 ? ` ${m % 60} Min.` : ""}` : `${m} Min.`;
 };
 const evBy = (by) => (by && by.startsWith("player:") ? by.slice(7) : EVENT_BY[by] || by || "–");
+const eventsVisible = () => !$("#tab-events").hidden || !$("#tab-home").hidden;
 
 async function loadEvents() {
   eventsLoadedAt = Date.now();
   try {
     renderEvents(await api("GET", "/api/gameevents"));
-  } catch (e) { /* card stays as it is */ }
+  } catch (e) { /* stays as it is */ }
 }
 
-// Event time only runs while somebody is online (the pack counts online minutes).
-// Between two reports of the pack the countdown runs here; it is corrected with every new report.
+// Event time only runs while somebody is online (the pack counts online minutes; Minecraft time stands
+// still without players). Between two reports of the pack the countdown runs here and is corrected later.
 const somebodyOnline = () => !!(state && state.status === "online" && state.players.length);
 
 function evRemaining(a) {
@@ -40,26 +48,50 @@ function evClock(sec) {
   return h ? `${h}:${two(m)}:${two(s)}` : `${m}:${two(s)}`;
 }
 
-function tickEvents() {
-  if (!eventsData || !eventsData.active.length || $("#tab-home").hidden) return;
+/** timer text, note and progress (0..1) of a running event */
+function evProgress(a) {
+  const left = evRemaining(a);
   const paused = !somebodyOnline();
-  for (const a of eventsData.active) {
-    const row = document.querySelector(`[data-event="${a.type}"]`);
-    if (!row) continue;
-    const left = evRemaining(a);
-    row.querySelector(".ev-timer").textContent = paused ? "⏸ pausiert" : left > 0 ? evClock(left) : "endet gleich …";
-    row.querySelector(".ev-note").textContent = paused
-      ? `noch ${evClock(left)} · läuft weiter, sobald jemand online ist`
-      : `von ${evMinutes(a.total)} · ${evBy(a.by)}`;
-    row.querySelector(".ev-bar > span").style.width = `${Math.min(100, 100 * (1 - left / (a.total || 1)))}%`;
+  const boss = a.boss ? `${a.boss.name} · zuletzt bei X ${a.boss.x} · Z ${a.boss.z}` : null;
+  if (a.phase === "waiting") {
+    return { timer: paused ? "⏸ pausiert" : `in ${evClock(left)}`, done: 0,
+      note: `wartet auf die Nacht · beginnt in ca. ${evMinutes(left)} · ${evBy(a.by)}` };
   }
-  if (Date.now() - eventsLoadedAt > EVENTS_RESYNC_MS) loadEvents();
+  return {
+    timer: paused ? "⏸ pausiert" : left > 0 ? evClock(left) : "endet gleich …",
+    done: Math.min(1, 1 - left / (a.total || 1)),
+    note: paused ? `noch ${evClock(left)} · läuft weiter, sobald jemand online ist`
+      : [boss, a.phase === "running" ? "bis Sonnenaufgang" : `von ${evMinutes(a.total)}`, evBy(a.by)].filter(Boolean).join(" · "),
+  };
+}
+
+function tickEvents() {
+  if (!eventsData || !eventsVisible()) return;
+  for (const a of eventsData.active) {
+    const row = document.querySelector(`#events-running [data-event="${a.type}"]`);
+    if (!row) continue;
+    const p = evProgress(a);
+    row.querySelector(".ev-timer").textContent = p.timer;
+    row.querySelector(".ev-note").textContent = p.note;
+    row.querySelector(".ev-bar > span").style.width = `${100 * p.done}%`;
+  }
+  renderHomeHint();
+  if (eventsData.active.length && Date.now() - eventsLoadedAt > EVENTS_RESYNC_MS) loadEvents();
 }
 setInterval(tickEvents, 1000);
 
+/** overview: one line per running event, link to the Events tab */
+function renderHomeHint() {
+  const card = $("#home-event");
+  const list = eventsData ? eventsData.active : [];
+  card.hidden = !list.length;
+  if (!list.length) return;
+  $("#home-event-text").textContent = list.map((a) => `${eventName(a.type)} ${evProgress(a).timer}`).join(" · ");
+}
+
 function eventsOnState(s) {
   const key = String(s.events && s.events.updated);
-  if (eventsKey !== null && key !== eventsKey && !$("#tab-home").hidden) loadEvents();
+  if (eventsKey !== key && eventsVisible()) loadEvents();
   eventsKey = key;
 }
 
@@ -72,12 +104,19 @@ async function eventCommand(action, type, question) {
   } catch (e) { toast(e.message, true); }
 }
 
+async function worldCommand(kind, value, question) {
+  if (!(await dialog(question))) return;
+  try {
+    await api("POST", `/api/world/${kind}`, { value });
+    toast(kind === "weather" ? `Wetter: ${WEATHER_TEXT[value]}` : `Tageszeit: ${TIME_TEXT[value]}`);
+  } catch (e) { toast(e.message, true); }
+}
+
 function renderEvents(d) {
   eventsData = d;
-  const card = $("#events-card");
-  card.hidden = false;
   $("#events-missing").hidden = d.installed;
   $("#events-body").hidden = !d.installed;
+  renderHomeHint();
   if (!d.installed) return;
 
   const auto = $("#events-auto");
@@ -110,14 +149,38 @@ function renderEvents(d) {
 
   const runningTypes = new Set(d.active.map((a) => a.type));
   $("#events-start").replaceChildren(...d.types.filter((t) => !runningTypes.has(t)).map((t) => {
-    const b = el("button", { className: "btn small", textContent: `${eventName(t)} starten`, type: "button" });
+    const b = el("button", { className: "btn small", textContent: eventName(t), type: "button", title: `${eventName(t)} starten` });
     b.onclick = () => eventCommand("start", t, `${eventName(t)} jetzt starten? Alle Spieler sehen die Ankündigung.`);
     return b;
   }));
 
   const hist = $("#events-history");
-  hist.replaceChildren(...(d.history.length ? d.history.slice(0, 5).map((h) => el("li", {},
-    el("span", { textContent: `${eventName(h.type)} · ${fmtDate(h.started || h.ended)}${h.ran ? ` · ${evMinutes(h.ran)}` : ""}` }),
+  hist.replaceChildren(...(d.history.length ? d.history.slice(0, 8).map((h) => el("li", {},
+    el("span", { textContent: `${eventName(h.type)} · ${fmtDate(h.started || h.ended)}${h.ran ? ` · ${evMinutes(h.ran)}` : ""}`
+      + (h.stopped_by && h.stopped_by !== "time" ? ` · ${evBy(h.stopped_by)}` : "") }),
     el("small", { textContent: h.participants.length ? `dabei: ${h.participants.join(", ")}` : "niemand lange genug dabei" })))
     : [el("li", { className: "empty", textContent: "Noch keine Events." })]));
+
+  const people = Object.entries(d.participations || {});
+  $("#events-people").textContent = people.length
+    ? people.map(([n, c]) => `${n} ${c}×`).join(" · ") : "Noch niemand.";
 }
+
+function setupWorldButtons() {
+  const weather = document.getElementById("world-weather");
+  for (const [value, label] of [["clear", "☀️ Klar"], ["rain", "🌧️ Regen"], ["thunder", "⛈️ Gewitter"]]) {
+    const b = document.createElement("button");
+    Object.assign(b, { className: "btn small", type: "button", textContent: label });
+    b.onclick = () => worldCommand("weather", value, `Wetter auf „${WEATHER_TEXT[value]}“ stellen?`);
+    weather.append(b);
+  }
+  const time = document.getElementById("world-time");
+  for (const [value, label] of [["morning", "🌅 Morgen"], ["noon", "☀️ Mittag"], ["evening", "🌇 Abend"],
+    ["night", "🌙 Nacht"], ["midnight", "🌌 Mitternacht"]]) {
+    const b = document.createElement("button");
+    Object.assign(b, { className: "btn small", type: "button", textContent: label });
+    b.onclick = () => worldCommand("time", value, `Tageszeit auf „${TIME_TEXT[value]}“ stellen? Alle Spieler sehen es sofort.`);
+    time.append(b);
+  }
+}
+setupWorldButtons();

@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 
 from ..adapters.base import MinecraftAdapter
-from ..adapters.bedrock.commands import EVENT_TYPES
+from ..adapters.bedrock.commands import DAYTIME, EVENT_TYPES, WEATHER
 from ..adapters.bedrock.logparse import LogLine, parse_events
 from ..audit import AuditLog
 from .logcursor import LogCursor
@@ -156,6 +156,22 @@ class EventsService:
             self.a.event_control_live("state")
         except Exception:
             log.debug("state refresh failed", exc_info=True)
+
+    async def world(self, kind: str, value: str, user: str) -> None:
+        """Weather / time of day through fixed console commands (commands.world_control)."""
+        if kind not in ("weather", "time") or value not in (WEATHER if kind == "weather" else DAYTIME):
+            raise PortalError("Unbekannte Einstellung", 400)
+        if self.mc.status_word() != "online":
+            raise PortalError("Der Server ist nicht online.", 409)
+        if not self.a.console_available():
+            raise PortalError("Server-Konsole nicht verfügbar.", 409)
+        action = "WORLD_WEATHER" if kind == "weather" else "WORLD_TIME"
+        try:
+            await asyncio.to_thread(self.a.world_control_live, kind, value)
+        except Exception as e:
+            self.audit.write(action, "FAILED", user, value=value, error=str(e))
+            raise PortalError(f"Befehl fehlgeschlagen: {e}", 500)
+        self.audit.write(action, "SUCCESS", user, value=value)
 
     async def control(self, action: str, event_type: str | None, user: str) -> None:
         if action not in ACTIONS:

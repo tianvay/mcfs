@@ -102,7 +102,13 @@ h2 { font-size: 1.05rem; margin: 0 0 12px; }
 .ev-bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
 .ev-bar > span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 1s linear; }
 .events-list .empty { color: var(--muted); }
-.events-start { flex-wrap: wrap; margin-bottom: 12px; }
+.events-start { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; margin-bottom: 12px; }
+.event-hint { border-color: var(--accent); }
+/* six tabs: two rows of three on phones instead of squeezing or hiding some */
+@media (max-width: 520px) {
+  .tabs { flex-wrap: wrap; }
+  .tabs button { flex: 1 1 30%; }
+}
 .events-sub { font-size: .95rem; margin: 4px 0 6px; color: var(--muted); }
 
 /* map: wider than the other cards on large screens */

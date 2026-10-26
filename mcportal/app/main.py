@@ -49,6 +49,10 @@ class EventControlIn(BaseModel):
     type: str | None = None
 
 
+class WorldIn(BaseModel):
+    value: str
+
+
 class SecurityHeaders:
     """Plain ASGI middleware (BaseHTTPMiddleware does not cope well with SSE streams)."""
 
@@ -238,6 +242,11 @@ def create_app(cfg: Config) -> FastAPI:
     async def game_events_control(action: str, body: EventControlIn, user: str = Depends(require_write)):
         await game_events.control(action, body.type, user)
         return {"accepted": action}
+
+    @app.post("/api/world/{kind}", status_code=202)
+    async def world_control(kind: str, body: WorldIn, user: str = Depends(require_write)):
+        await game_events.world(kind, body.value, user)
+        return {"accepted": kind}
 
     # ---------- map ----------
 

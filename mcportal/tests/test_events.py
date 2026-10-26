@@ -128,6 +128,27 @@ class EventsTest(unittest.TestCase):
         with self.assertRaises(PortalError):
             asyncio.run(s2.control("start", "storm", "admin"))
 
+    def test_weather_and_time_only_fixed_values(self):
+        s, mc, adapter = self.service(LINES)
+        sent = []
+        adapter.world_control_live = lambda kind, value: sent.append(commands.world_control(kind, value))
+        asyncio.run(s.world("weather", "thunder", "admin"))
+        asyncio.run(s.world("time", "midnight", "admin"))
+        self.assertEqual(sent, ["weather thunder", "time set 18000"])
+        for kind, value in [("weather", "snow"), ("time", "25000"), ("time", "set 0"), ("gamerule", "x"),
+                            ("weather", "clear; op Steve")]:
+            with self.assertRaises(PortalError):
+                asyncio.run(s.world(kind, value, "admin"))
+        mc.status = "offline"
+        with self.assertRaises(PortalError):
+            asyncio.run(s.world("weather", "clear", "admin"))
+
+    def test_night_and_boss_events_can_be_started(self):
+        s, _, adapter = self.service(LINES)
+        for t in ("blood_moon", "zombie_invasion", "bounty"):
+            asyncio.run(s.control("start", t, "admin"))
+        self.assertEqual(adapter.sent[-1], "scriptevent mcfs:event start bounty")
+
     def test_summary_asks_for_fresh_state_at_most_every_30_seconds(self):
         s, _, adapter = self.service(LINES)
         s.summary()

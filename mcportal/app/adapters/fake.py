@@ -261,18 +261,22 @@ class FakeAdapter:
         self._log("[Scripting] [mcportal-events] " + json.dumps({"v": 1, **payload}), ts=ts)
 
     def _ev_state(self, ts: float | None = None) -> None:
-        active = [{"type": t, "remaining": r, "total": {"storm": 2400}.get(t, 7200), "by": "console"}
+        night = {"blood_moon", "zombie_invasion"}
+        active = [{"type": t, "remaining": r, "total": 500 if t in night else {"storm": 2400, "bounty": 1200}.get(t, 7200),
+                   "by": "console", "phase": ("waiting" if r > 500 else "running") if t in night else None,
+                   "boss": {"name": "Bernd der Zombiekönig", "x": -120, "z": 48} if t == "bounty" else None}
                   for t, r in self._ev_active.items()]
         self._ev_log({"event": "state", "auto": self._ev_auto, "online": len(self._online), "active": active,
                       "next_in": 95 if self._ev_auto else None, "last": "storm", "register": 12,
-                      "types": ["storm", "mining_rush", "lucky_day"]}, ts)
+                      "types": ["storm", "mining_rush", "lucky_day", "blood_moon", "zombie_invasion", "bounty"]}, ts)
 
     def event_control_live(self, action: str, event_type: str | None = None) -> None:
         """Like the events pack: start/stop/auto/state; running events lose 5 minutes per state request."""
         from .bedrock.commands import event_control
         event_control(action, event_type)  # same validation as the real console command
         if action == "start" and event_type not in self._ev_active:
-            self._ev_active[event_type] = {"storm": 2400}.get(event_type, 7200)
+            self._ev_active[event_type] = {"storm": 2400, "bounty": 1200, "blood_moon": 640,
+                                           "zombie_invasion": 400}.get(event_type, 7200)
             self._ev_log({"event": "started", "type": event_type, "by": "console", "duration": self._ev_active[event_type]})
         elif action == "stop" and event_type in self._ev_active:
             ran = {"storm": 2400}.get(event_type, 7200) - self._ev_active.pop(event_type)
@@ -283,6 +287,11 @@ class FakeAdapter:
             for t in self._ev_active:
                 self._ev_active[t] = max(60, self._ev_active[t] - 300)
         self._ev_state()
+
+    def world_control_live(self, kind: str, value: str) -> None:
+        from .bedrock.commands import world_control
+        cmd = world_control(kind, value)  # same validation as the real console command
+        self._log("Changing to clear weather" if cmd == "weather clear" else f"[console] {cmd}")
 
     def world_save_live(self, step: str) -> None:
         """Like the real server; the "world" is whatever lies in <server_dir>/worlds/<level-name>."""

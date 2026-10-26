@@ -60,7 +60,19 @@ def world_save(step: str) -> str:
 
 
 # timed events (pack mcportal_events): fixed words only
-EVENT_TYPES = ("storm", "mining_rush", "lucky_day")
+EVENT_TYPES = ("storm", "mining_rush", "lucky_day", "blood_moon", "zombie_invasion", "bounty")
+
+# weather and time of day from the portal: fixed values only
+WEATHER = {"clear": "weather clear", "rain": "weather rain", "thunder": "weather thunder"}
+DAYTIME = {"morning": 1000, "noon": 6000, "evening": 12000, "night": 13000, "midnight": 18000}
+
+
+def world_control(kind: str, value: str) -> str:
+    if kind == "weather" and value in WEATHER:
+        return WEATHER[value]
+    if kind == "time" and value in DAYTIME:
+        return f"time set {DAYTIME[value]}"
+    raise ValueError("unknown world setting")
 
 
 def event_control(action: str, event_type: str | None = None) -> str:
