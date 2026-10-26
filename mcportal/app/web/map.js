@@ -101,7 +101,7 @@ function renderWaypointList() {
 function mapFocus(w) {
   const dim = MAP_WP_DIM[w.dim];
   if (dim !== mapView.dim) { mapView.dim = dim; mapView.images.clear(); renderDimButtons(); }
-  mapView.cx = w.x; mapView.cz = w.z;
+  [mapView.cx, mapView.cz] = mapPos(w);
   mapView.scale = Math.max(mapView.scale, 1);
   mapView.selected = { kind: "wp", item: w };
   $("#map-canvas").scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -139,6 +139,11 @@ function mapTile(level, tx, tz) {
     mapView.images.set(key, img);
   }
   return img.complete && img.naturalWidth ? img : null;
+}
+
+// map position of a marker: physical waypoints sit on their diamond block -> middle of that block
+function mapPos(w) {
+  return w.physical ? [Math.floor(w.x) + 0.5, Math.floor(w.z) + 0.5] : [w.x, w.z];
 }
 
 function mapMarkers() {
@@ -197,7 +202,7 @@ function mapDrawNow() {
   }
   const labels = mapView.scale >= 1 / 4;
   for (const wp of mapMarkers()) {
-    const [px, pz] = toScreen(wp.x, wp.z);
+    const [px, pz] = toScreen(...mapPos(wp));
     if (px < -200 * dpr || pz < -50 * dpr || px > w + 50 * dpr || pz > h + 50 * dpr) continue;
     const sel = mapView.selected && mapView.selected.item === wp;
     g.beginPath();
@@ -238,7 +243,7 @@ function mapPopup(toScreen, dpr) {
              `X ${Math.floor(w.x)} · Y ${Math.floor(w.y)} · Z ${Math.floor(w.z)}`, travel];
   }
   box.replaceChildren(el("strong", { textContent: title }), ...lines.map((t) => el("div", { textContent: t })));
-  const [px, pz] = toScreen(sel.kind === "spawn" ? sel.item.x + 0.5 : sel.item.x, sel.kind === "spawn" ? sel.item.z + 0.5 : sel.item.z);
+  const [px, pz] = toScreen(...(sel.kind === "spawn" ? [sel.item.x + 0.5, sel.item.z + 0.5] : mapPos(sel.item)));
   box.style.left = `${px / dpr}px`;
   box.style.top = `${pz / dpr}px`;
   box.hidden = false;
@@ -249,7 +254,7 @@ function mapHitTest(sx, sz) {
   const at = (x, z) => [(x - mapView.cx) * mapView.scale + r.width / 2, (z - mapView.cz) * mapView.scale + r.height / 2];
   let best = null, bestD = MAP_HIT;
   for (const w of mapMarkers()) {
-    const [px, pz] = at(w.x, w.z);
+    const [px, pz] = at(...mapPos(w));
     const d = Math.hypot(px - sx, pz - sz);
     if (d <= bestD) { best = { kind: "wp", item: w }; bestD = d; }
   }
