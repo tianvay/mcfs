@@ -87,12 +87,21 @@
             <button id="map-home" class="btn small" type="button" aria-label="Zum Spawn">⭐</button>
           </div>
           <div class="map-info"><span id="map-coords">X – · Z –</span> · <span id="map-scale"></span></div>
+          <div id="map-popup" class="map-popup" hidden></div>
+        </div>
+        <div class="map-legend">
+          <label><input id="map-wp-toggle" type="checkbox" checked> Wegpunkte zeigen</label>
+          <span><span class="wp-dot public"></span>öffentlich</span>
+          <span><span class="wp-dot"></span>privat</span>
+          <span>⭐ Weltspawn</span>
         </div>
         <dl class="facts plain map-facts">
           <div><dt>Stand der Karte</dt><dd id="map-stand">–</dd></div>
           <div><dt>Nächstes Neuzeichnen</dt><dd id="map-next">–</dd></div>
           <div class="wide"><dt>Seed</dt><dd id="map-seed" class="seed" title="Anklicken markiert den Seed zum Kopieren">–</dd></div>
         </dl>
+        <h3 class="map-wp-head">📍 Wegpunkte <span id="map-wp-count"></span></h3>
+        <ul id="map-wp-list" class="map-wp-list"></ul>
         <p id="map-error" class="note error" hidden></p>
         <button id="map-render" class="btn" type="button">🔄 Jetzt neu zeichnen</button>
         <p class="note small">Die Karte zeigt die Welt von oben, so wie sie gebaut ist. Schwarz = noch nie betreten.

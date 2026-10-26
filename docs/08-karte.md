@@ -1,6 +1,6 @@
 # Weltkarte im Portal (Änderung M10)
 
-Stand: 2026-10-26 · Status: **K1 gebaut** (Karte, Knopf, nachts), K2–K4 offen · eigener Renderer, keine fremde Software
+Stand: 2026-10-26 · Status: **K1 installiert** (Karte, Knopf, nachts), **K2 gebaut** (Wegpunkte, Spawn), K3–K4 offen · eigener Renderer, keine fremde Software
 
 ## Ziel
 
@@ -69,14 +69,18 @@ von 60 s; zusätzlich schreibt das Portal vor `hold` eine Markierungsdatei und s
 
 ## Einzeichnungen
 
-- **Wegpunkte:** kommen schon heute über `WaypointsService`; Symbol je Wegpunkt, Farbe öffentlich/privat,
-  Tooltip mit Name, Besitzer, Reisen. Gelöschte Wegpunkte (Ruinen) erscheinen nicht.
+- **Wegpunkte (K2, gebaut):** aus `/api/waypoints` (alle, auch private – das Portal ruft nur der Admin auf).
+  Punkt je Wegpunkt, gelb = öffentlich, blau = privat; ab 1 px = 4 Blöcke mit Namen. Klick auf den Punkt →
+  Kästchen mit Name, Besitzer, öffentlich/privat, Koordinaten, Reisen. Unter der Karte die Liste aller
+  Wegpunkte; Klick springt hin (auch ins Ende). Nether-Wegpunkte stehen in der Liste, sind aber nicht
+  anklickbar (Nether wird nicht gezeichnet). Schalter „Wegpunkte zeigen“. Neue, umbenannte oder gelöschte
+  Wegpunkte erscheinen ohne Neuzeichnen der Karte nach wenigen Sekunden. Gelöschte (Ruinen) erscheinen nicht.
 - **Spieler:** braucht eine kleine Erweiterung des Statistik-Packs (2.1.0): alle 30 s je Online-Spieler
   eine Zeile `{"v":1,"event":"pos","player":…,"dim":…,"x":…,"y":…,"z":…}`. Das Portal zeigt
   Online-Spieler live (SSE) und offline Spieler mit „zuletzt gesehen“. Das ist eine Änderung an der
   Minecraft-Installation und läuft nach dem üblichen Ablauf (Backup → Upgrade → Prüfen, Rückweg über
   `world-pack.sh … rollback`).
-- **Weltspawn** als festes Symbol.
+- **Weltspawn** als ⭐ (aus `level.dat`, `SpawnX`/`SpawnZ`), anklickbar.
 
 ## Phasen
 
