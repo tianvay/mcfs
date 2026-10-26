@@ -1,9 +1,11 @@
-"""Server files: allowlist.json, permissions.json, server.properties."""
+"""Server files: allowlist.json, permissions.json, server.properties, the world seed."""
 from __future__ import annotations
 
 import json
 import os
 from pathlib import Path
+
+from . import leveldat
 
 
 def _write_in_place(path: Path, entries: list[dict], **dump_args) -> None:
@@ -30,6 +32,7 @@ class ServerFiles:
         self.allowlist = self.dir / "allowlist.json"
         self.permissions = self.dir / "permissions.json"
         self.properties = self.dir / "server.properties"
+        self._seed: tuple[object, int | None] = (None, None)
 
     def read_allowlist(self) -> list[dict]:
         data = json.loads(self.allowlist.read_text(encoding="utf-8") or "[]")
@@ -75,3 +78,18 @@ class ServerFiles:
         except OSError:
             pass
         return props
+
+    def world_dir(self) -> Path:
+        return self.dir / "worlds" / self.read_properties().get("level-name", "Bedrock level")
+
+    def seed(self) -> int | None:
+        """RandomSeed from level.dat; re-read only when the file changed."""
+        world = self.world_dir()
+        try:
+            st = (world / "level.dat").stat()
+            stamp = (str(world), st.st_mtime_ns, st.st_size)
+        except OSError:
+            return None
+        if self._seed[0] != stamp:
+            self._seed = (stamp, leveldat.read_seed(world))
+        return self._seed[1]

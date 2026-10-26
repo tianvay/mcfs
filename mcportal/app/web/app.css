@@ -88,6 +88,7 @@ h2 { font-size: 1.05rem; margin: 0 0 12px; }
 .facts div { min-width: 0; }
 .facts dt { color: var(--muted); font-size: .85rem; }
 .facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.facts dd.seed { font-family: ui-monospace, monospace; font-weight: 500; user-select: all; cursor: text; }
 
 .row { display: flex; gap: 8px; }
 .row > * { flex: 1; }

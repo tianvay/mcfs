@@ -193,6 +193,7 @@ class MinecraftService:
             "started_at": u.started_at if u and active else None,
             "last_start": u.started_at if u else None,
             "version": self.versions[-1][1] if self.versions else None,
+            "seed": str(seed) if (seed := self.a.files.seed()) is not None else None,
             "last_update": last_update,
             "players": sorted(
                 ({"name": p.name, "since": p.since} for p in self.tracker.players.values()),

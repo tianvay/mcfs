@@ -127,6 +127,7 @@ function render(s) {
   $("#f-start").textContent = fmtDate(s.last_start);
   $("#f-update").textContent = fmtDate(s.last_update);
   $("#f-allow").textContent = s.allowlist_count == null ? "–" : `${s.allowlist_count} Spieler`;
+  $("#f-seed").textContent = s.seed || "–";
   tickUptime();
 
   // server tab
