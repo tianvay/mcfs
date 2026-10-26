@@ -4,6 +4,8 @@ Stand: 2026-10-25
 
 ## Offen
 
+- [ ] **Statistik 2.0 im Spiel prüfen**: Tode, Mobs, Essen, XP, Setzlinge, Züchten, Strecke (Boot/Elytra …), Spielzeit –
+      nach dem nächsten Spielen im Tab „Statistik“ ansehen; Auffälligkeiten melden.
 - [ ] **Echten Neustart testen**, wenn niemand spielt (`sudo reboot`). Danach prüfen: Minecraft online,
       Konsole (M2) verbunden, Portal erreichbar, Laravel (HTTP 302), Whitelist und Operatoren unverändert.
 - [ ] **WLAN vor der Anmeldung**: Beim Neustart-Test prüfen, ob die WLAN-Verbindung „für alle Benutzer“
@@ -21,6 +23,7 @@ Stand: 2026-10-25
 - [x] Feste IP 192.168.178.38 in der FRITZ!Box zugewiesen (2026-10-25)
 - [x] Korrektur „Update verfügbar“-Hinweis + Portal mit Statistik installiert (2026-10-25)
 - [x] M5 Statistik-Pack in der Welt installiert, Pack meldet sich (2026-10-25 21:19)
+- [x] M6 Statistik-Pack 2.0 in der Welt installiert, meldet sich ohne Script-Fehler (2026-10-26 06:33)
 - [x] Statistik im Spiel bestätigt: gesetzte/abgebaute Blöcke erscheinen im Tab „Statistik“ (2026-10-25)
 - [x] Windows-PC: Maus/Controller in Minecraft gingen nicht (GameInput-Dienst hing) – per Neustart behoben (2026-10-25)
 - [x] Phase 1: Dashboard, Start/Stop/Restart, Whitelist, Protokoll
