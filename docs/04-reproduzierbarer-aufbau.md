@@ -100,10 +100,30 @@ Laravel antwortet wie vorher, Rechte (kein 777, nichts root unter `/opt/minecraf
 - `provision/properties.py` – prüft `server.conf` streng (jeder Wert landet in einer Unit bzw. in
   `server.properties`), setzt die Abweichungen in Mojangs Datei (Kommentare und Reihenfolge bleiben) und füllt
   Vorlagen; unbekannte Platzhalter sind ein Fehler.
-- **Geprüft:** 4 Tests (`python -m unittest discover -s provision/tests`): gültige/ungültige Einstellungen,
+- **Geprüft:** 4 Tests (`python -m unittest discover -s provision/tests` in `mcportal/`): gültige/ungültige Einstellungen,
   Zusammenführen, Unit. Auf dem Laptop: Mojangs `server.properties` aus dem Zip + heutige Werte ergibt **genau** die
   heutige `server.properties`; die erzeugte Unit besteht `systemd-analyze verify` (bis auf das noch fehlende
   Serverprogramm am Zielort).
+
+## R2 – gebaut
+
+- `provision/` liegt jetzt in `mcportal/provision/` – neben `deploy/`, damit die eine Kopie `~/mcportal-src` alles
+  enthält.
+- `provision/fetch_server.py` – lädt die neueste offizielle Version mit dem unveränderten `release.py` des Portals
+  (dieselben Prüfungen wie der Update-Knopf), nur Python-Standardbibliothek.
+- `provision/setup.sh --prepare [--conf DATEI]` (mit sudo) – Prüfungen (Werkzeuge, ≥ 2 GB frei, Probe-Ports frei,
+  Laravel-Antwort als Vergleich) → Systembenutzer `minecraft` → Serverprogramm nach `/opt/minecraft/bedrock` →
+  `server.properties` + Overrides → alle Packs aus `packs.list` in `worlds/<Weltname>/` (noch **ohne** Welt) →
+  Probestart in einer Kopie `/opt/minecraft/probe` auf Ports 19160/19161 ohne LAN als `minecraft`: jedes Behavior
+  Pack muss im „Pack Stack“ mit seiner Version stehen und seine „started“-Zeile schreiben, keine Script-/Inhalts-
+  fehler; danach Stopp und Kopie löschen. Am Ende: Laravel-Antwort unverändert, unter `/opt/minecraft` gehört alles
+  `minecraft`, nichts ist für alle schreibbar.
+- Fasst **nicht** an: systemd-Units, Testserver, Portal, Laravel. Mehrfach ausführbar (Programm und eine vorhandene
+  Welt bleiben).
+- **Geprüft** (als `fred`, ohne Systemänderung): Download 1.26.52.3 (319 MB, Rechte 755/644); dieselben Schritte in
+  einem Wegwerf-Ordner auf 19160/19161 – Bedrock übernimmt die vorab eingetragenen Packs beim Anlegen der Welt, alle
+  4 Behavior Packs melden sich, keine Fehler. Das Log enthält ein NUL-Byte → `grep -a`. Der Lauf mit `sudo`
+  (Benutzer, `/opt/minecraft`) ist R5.
 
 ## Umstieg am Stichtag (auf diesem Laptop)
 
