@@ -4,9 +4,7 @@ Stand: 2026-10-25
 
 ## Offen
 
-- [ ] **Ruhezustand abschalten** (sudo, siehe `docs/06-zuverlaessiger-start.md`): Nach dem Hochfahren mit
-      geschlossenem Deckel geht der Laptop sonst sofort schlafen – Server 7 Minuten weg beim Test.
-- [ ] **install.sh** für „Operator entziehen → Überleben“; danach im Spiel testen.
+- [ ] „Operator entziehen → Überleben“ im Spiel ausprobieren (online und offline).
 - [ ] Kosmetik: Beim Beenden des Portals protokolliert die gerade laufende Statusabfrage einen Fehler
       („status poll failed … SIGTERM“) – beim Herunterfahren nicht mehr als Fehler loggen.
 - [ ] **Beobachten: Beitritt nach Neustart gescheitert** (2026-10-26). Nach dem Neustart fürs Pack-Upgrade
@@ -31,6 +29,8 @@ Stand: 2026-10-25
 - [x] Korrektur „Update verfügbar“-Hinweis + Portal mit Statistik installiert (2026-10-25)
 - [x] M5 Statistik-Pack in der Welt installiert, Pack meldet sich (2026-10-25 21:19)
 - [x] M6 Statistik-Pack 2.0 in der Welt installiert, meldet sich ohne Script-Fehler (2026-10-26 06:33)
+- [x] Ruhezustand abgeschaltet (no-suspend.sh): logind ignoriert den Deckel, Suspend gesperrt (2026-10-26)
+- [x] Portal mit „Operator entziehen → Überleben“ installiert (2026-10-26)
 - [x] Neustart-Test (`sudo reboot`): alle Dienste kommen von selbst, Startprüfung OK, WLAN ohne Anmeldung –
       aber Ruhezustand wegen geschlossenem Deckel gefunden (2026-10-26)
 - [x] Erfolge im Spiel ausgelöst: „Anfängerfehler“, „Die Schwerkraft gewinnt immer“ (2026-10-26 07:54)
