@@ -1,0 +1,9 @@
+# Packs that go into a new world before its first start, in this order (= order in world_*_packs.json).
+# <kind> <directory under mcportal/minecraft-pack>; the version always comes from the pack's manifest.json.
+# Same order as the test world on 26.10.2026.
+behavior mcportal_stats
+behavior mcportal_waypoints
+behavior mcportal_events
+behavior mcportal_achievements
+resource mcportal_waypoints_rp
+resource mcportal_events_rp

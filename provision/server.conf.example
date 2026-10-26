@@ -1,0 +1,27 @@
+# Settings for the real server - copy to /etc/mcportal/server.conf (or pass with --conf) and adjust.
+# Read by provision/setup.sh. Plain KEY=value, no spaces around "=", no quotes needed.
+# Personal data (whitelist, operators) does NOT belong here - see import-players.sh.
+
+# --- names (shown in the server list / used as world folder) ---
+SERVER_NAME=Family Server
+WORLD_NAME=Bedrock level
+
+# --- world generation (only used when the world is created) ---
+# empty = random seed
+LEVEL_SEED=
+
+# --- game ---
+GAMEMODE=survival
+DIFFICULTY=easy
+MAX_PLAYERS=10
+VIEW_DISTANCE=32
+TICK_DISTANCE=4
+
+# --- network ---
+PORT_V4=19132
+PORT_V6=19133
+LAN_VISIBILITY=true
+
+# --- system ---
+MC_USER=minecraft
+MC_DIR=/opt/minecraft/bedrock

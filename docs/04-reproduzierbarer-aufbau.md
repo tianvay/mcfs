@@ -89,6 +89,22 @@ Laravel antwortet wie vorher, Rechte (kein 777, nichts root unter `/opt/minecraf
 - `install.sh`, `m2-console.sh`, Update-Helfer: nehmen Pfad und Benutzer schon aus der Unit; prüfen.
 - Docs/Skill: Pfade `~/Downloads/…` durch `/opt/minecraft/bedrock` ersetzen.
 
+## R1 – gebaut
+
+- `provision/server.conf.example` – alle Einstellungen des echten Servers (Namen, Seed, Spiel, Ports, Benutzer,
+  Ordner); Werte wie heute, nur der Servername ist ein Platzhalter (Entscheidung offen).
+- `provision/server.properties.overrides` – die 4 festen Abweichungen + Platzhalter aus `server.conf`.
+- `provision/packs.list` – die 6 Packs in der Reihenfolge der heutigen Welt; Versionen kommen immer aus den Manifests.
+- `provision/minecraft-bedrock.service.in` – Haupt-Unit als Benutzer `minecraft` mit Sandbox (schreibt nur den
+  eigenen Ordner; Netz nur IPv4/IPv6/Unix/Netlink). Die Drop-ins für Konsole und Startprüfung bleiben getrennt.
+- `provision/properties.py` – prüft `server.conf` streng (jeder Wert landet in einer Unit bzw. in
+  `server.properties`), setzt die Abweichungen in Mojangs Datei (Kommentare und Reihenfolge bleiben) und füllt
+  Vorlagen; unbekannte Platzhalter sind ein Fehler.
+- **Geprüft:** 4 Tests (`python -m unittest discover -s provision/tests`): gültige/ungültige Einstellungen,
+  Zusammenführen, Unit. Auf dem Laptop: Mojangs `server.properties` aus dem Zip + heutige Werte ergibt **genau** die
+  heutige `server.properties`; die erzeugte Unit besteht `systemd-analyze verify` (bis auf das noch fehlende
+  Serverprogramm am Zielort).
+
 ## Umstieg am Stichtag (auf diesem Laptop)
 
 ```text

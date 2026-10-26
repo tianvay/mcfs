@@ -1,0 +1,24 @@
+# Deviations from Mojang's server.properties - everything else stays as in the official zip.
+# provision/properties.py replaces these keys (or appends them); the @...@ values come from server.conf.
+
+# --- from the test phase (fixed) ---
+# operators may switch game mode etc. (wish 26.10.; must survive updates - the update keeps server.properties)
+allow-cheats=true
+# the behavior packs report to the portal through the content log
+content-log-console-output-enabled=true
+content-log-level=warning
+# waypoint item icon, boss looks, haunt fog: every client loads the resource packs
+texturepack-required=true
+
+# --- from server.conf ---
+server-name=@SERVER_NAME@
+level-name=@WORLD_NAME@
+level-seed=@LEVEL_SEED@
+gamemode=@GAMEMODE@
+difficulty=@DIFFICULTY@
+max-players=@MAX_PLAYERS@
+view-distance=@VIEW_DISTANCE@
+tick-distance=@TICK_DISTANCE@
+server-port=@PORT_V4@
+server-portv6=@PORT_V6@
+enable-lan-visibility=@LAN_VISIBILITY@

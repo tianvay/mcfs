@@ -1,0 +1,40 @@
+# Bedrock Dedicated Server - main unit, rendered by provision/setup.sh (@MC_USER@, @MC_DIR@ from server.conf).
+# Drop-ins from the portal installation stay as they are:
+#   10-portal.conf     console socket + clean stop (M2, deploy/m2-console.sh)
+#   20-startcheck.conf start check, restart limits (M8, deploy/install.sh)
+[Unit]
+Description=Minecraft Bedrock Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=@MC_USER@
+Group=@MC_USER@
+WorkingDirectory=@MC_DIR@
+ExecStart=@MC_DIR@/bedrock_server
+Restart=on-failure
+UMask=0027
+
+# Sandbox: the server only writes its own directory (world, logs, allowlist/permissions)
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=@MC_DIR@
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+# IPv4/IPv6 for players and the Xbox connection service (NetherNet/WebRTC), netlink for the network interfaces
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target
