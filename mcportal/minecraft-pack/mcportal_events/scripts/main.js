@@ -8,7 +8,8 @@
 //    Kopfgeld (a named boss appears in the wild under a column of light, hints every 5 s, bounty for the hunters,
 //    escapes after 20 min); Meteorit (crater with netherrack, amethyst and diamond ore - natural ground only, undo log);
 //    Sternschnuppen-Nacht (night: shooting stars, star pieces with loot fall near players);
-//    Schatzsuche (a chest buried 150-400 blocks away, warmer/colder hints, gone again if not found).
+//    Schatzsuche (a chest buried 150-400 blocks away, warmer/colder hints, gone again if not found);
+//    Spukort (night: a village near a player is haunted - fog, bells, waves; 15 defeated breaks the curse).
 //  * Mobs spawned by events carry the tag "mcfs_ev" + "mcfs_ev_<type>" and are removed when their event is over.
 //  * Build register: every chunk a player placed a block in is remembered; world-changing effects
 //    (lightning now, meteors later) stay away from it.
@@ -23,7 +24,7 @@ import {
 import {
   activeMinute, beaconColumn, BOSSES, bossHint, BOUNTY_LOOT, CRATER_RADIUS, craterGroundOk, IMPACT_COUNTDOWN, isCover,
   isMeteorReplaceable, linePoints, planCrater, shootingStarPath, STAR_TAG, starLoot, TREASURE_DEPTH, TREASURE_DISTANCE,
-  treasureHint, treasureLoot, bountyHunters, chooseBoss, healthBoostLevel,
+  treasureHint, treasureLoot, HAUNT_GOAL, HAUNT_RADIUS, hauntLoot, hauntMob, hauntWaveSize, bountyHunters, chooseBoss, healthBoostLevel,
   chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, formatMinutes, invasionLoot,
   invasionMob, invasionTargets, isBed, isGround, isLeftover, isNaturalTop, isRushOre, lightningOffset, MOB_TAG, mobTag, newActive,
   newSchedule, nightStep, packSize, parseControl, participants, ranSeconds, ringOffset, scheduleMinute, shouldDouble,
@@ -148,6 +149,13 @@ const HANDLERS = {
     minute() {},
     // not found in time: the chest goes again (also later, if its area is not loaded right now)
     stop(a) { if (a.treasure?.buried && !a.treasure.found) queueUndo(a.treasure.undo); },
+  },
+  haunted: {
+    start() {},
+    minute() {},
+    night(a) { hauntNight(a); },
+    tick(a) { hauntTick(a); },
+    stop() { hauntEnd(); },
   },
   shooting_stars: {
     start() {},
@@ -863,6 +871,146 @@ function retryUndos() {
 }
 system.runInterval(() => { if (schedule?.pendingUndo?.length) retryUndos(); }, MINUTE);
 
+// ---------- Spukort ----------
+
+const HAUNT_FOG = "mcfs_haunt";
+const HAUNT_WAVE_EVERY = 45 * 20;
+const HAUNT_BELL_EVERY = 20 * 20;
+let nextHauntWave = 0;
+let nextBell = 0;
+const hauntFogged = new Set();
+
+function hauntNight(a) {
+  nextHauntWave = system.currentTick + 10 * 20; // first wave after 10 s
+  nextBell = 0;
+  if (!a.haunt) chooseHauntPlace(a);
+}
+
+/** the village nearest to a random player (3+ villagers within 96 blocks), else the player's place */
+function chooseHauntPlace(a) {
+  const dim = overworld();
+  const players = world.getAllPlayers().filter((p) => p.dimension.id === "minecraft:overworld");
+  if (!players.length) return false;
+  const p = players[Math.floor(Math.random() * players.length)];
+  let villagers = [];
+  try {
+    villagers = dim.getEntities({ type: "minecraft:villager_v2", location: p.location, maxDistance: VILLAGE_RADIUS })
+      .map((v) => v.location);
+  } catch { /* ignore */ }
+  const village = villagers.length >= 3;
+  const x = Math.round(village ? villagers.reduce((s, v) => s + v.x, 0) / villagers.length : p.location.x);
+  const z = Math.round(village ? villagers.reduce((s, v) => s + v.z, 0) / villagers.length : p.location.z);
+  a.haunt = { x, z, village, kills: 0, broken: false };
+  world.sendMessage(`§6[Spuk] §f${village ? "Im Dorf" : "Ganz in der Nähe"} bei §eX ${x} · Z ${z}§f spukt es! `
+    + `Besiegt ${HAUNT_GOAL} Spukgestalten, um den Fluch zu brechen.`);
+  saveState();
+  logState();
+  return true;
+}
+
+function hauntTick(a) {
+  if (!a.haunt && !chooseHauntPlace(a)) return;
+  const h = a.haunt;
+  const dim = overworld();
+  const center = { x: h.x + 0.5, y: 64, z: h.z + 0.5 };
+  const players = world.getAllPlayers().filter((p) => p.dimension.id === "minecraft:overworld");
+  const inArea = players.filter((p) => Math.hypot(p.location.x - center.x, p.location.z - center.z) < HAUNT_RADIUS);
+  // soul sand valley fog for everybody inside the haunted area, gone again when leaving
+  for (const p of players) {
+    const inside = inArea.includes(p);
+    if (inside && !hauntFogged.has(p.name)) {
+      try { p.runCommand(`fog @s push minecraft:fog_soulsand_valley ${HAUNT_FOG}`); } catch (e) { log({ error: `fog: ${e}` }); }
+      hauntFogged.add(p.name);
+    } else if (!inside && hauntFogged.has(p.name)) {
+      try { p.runCommand(`fog @s remove ${HAUNT_FOG}`); } catch { /* had none */ }
+      hauntFogged.delete(p.name);
+    }
+  }
+  if (!players.some((p) => Math.hypot(p.location.x - center.x, p.location.z - center.z) < 96)) return; // nobody near
+  try {
+    const g = groundAt(dim, h.x, h.z);
+    if (g) center.y = g.top + 1;
+    for (let i = 0; i < 4; i++) {
+      dim.spawnParticle("minecraft:soul_particle",
+        { x: center.x + (Math.random() - 0.5) * 30, y: center.y + Math.random() * 3, z: center.z + (Math.random() - 0.5) * 30 });
+    }
+  } catch { /* unloaded */ }
+  const now = system.currentTick;
+  if (now >= nextBell) {
+    nextBell = now + HAUNT_BELL_EVERY;
+    try { dim.playSound("block.bell.hit", center, { volume: 3, pitch: 0.6 }); } catch { /* unloaded */ }
+  }
+  if (now >= nextHauntWave) {
+    nextHauntWave = now + HAUNT_WAVE_EVERY;
+    hauntWave(dim, h, inArea.length);
+  }
+}
+
+function hauntWave(dim, h, playersNear) {
+  const center = { x: h.x + 0.5, y: 64, z: h.z + 0.5 };
+  if (h.village) protectVillagers(dim, center);
+  let alive = 0;
+  try { alive = dim.getEntities({ tags: [mobTag("haunted")], location: center, maxDistance: 96 }).length; } catch { /* ignore */ }
+  const want = hauntWaveSize(playersNear, alive);
+  let spawned = 0;
+  for (let attempt = 0; spawned < want && attempt < want * 4; attempt++) {
+    const spot = ringOffset(h.x, h.z, 16, 32, Math.random);
+    const at = zombieSpot(dim, spot.x, spot.z);
+    if (!at) continue;
+    try {
+      spawnEventMob(dim, hauntMob(Math.random), "haunted", at);
+      spawned++;
+    } catch { /* ignore */ }
+  }
+  return spawned;
+}
+
+/** a haunted mob defeated by a player: count towards breaking the curse */
+function hauntKill(killer) {
+  const a = active.find((x) => x.type === "haunted" && x.phase === "running");
+  if (!a?.haunt || a.haunt.broken) return;
+  a.haunt.kills += 1;
+  const h = a.haunt;
+  for (const p of world.getAllPlayers()) {
+    if (Math.hypot(p.location.x - h.x, p.location.z - h.z) >= HAUNT_RADIUS) continue;
+    try { p.onScreenDisplay.setActionBar(`§5Fluch: ${Math.min(h.kills, HAUNT_GOAL)} / ${HAUNT_GOAL} Spukgestalten besiegt`); } catch { /* left */ }
+  }
+  if (h.kills >= HAUNT_GOAL) breakCurse(a, killer);
+}
+
+function breakCurse(a, killer) {
+  const h = a.haunt;
+  h.broken = true;
+  const dim = overworld();
+  let at = { x: h.x + 0.5, y: 70, z: h.z + 0.5 };
+  try {
+    const g = groundAt(dim, h.x, h.z);
+    if (g) at = { x: h.x + 0.5, y: g.top + 2, z: h.z + 0.5 };
+    for (const [id, n] of hauntLoot(Math.random)) dim.spawnItem(new ItemStack(id, n), at);
+    dim.spawnParticle("minecraft:totem_particle", at);
+    dim.playSound("random.totem", at, { volume: 2 });
+  } catch { /* unloaded */ }
+  let breakers = [];
+  try {
+    breakers = dim.getPlayers({ location: at, maxDistance: HAUNT_RADIUS }).map((p) => p.name);
+  } catch { /* ignore */ }
+  if (killer?.name && !breakers.includes(killer.name)) breakers.push(killer.name);
+  log({ event: "curse_broken", x: h.x, z: h.z, players: breakers });
+  news({ event: "curse_broken", players: breakers });
+  for (const p of world.getAllPlayers()) {
+    try { p.onScreenDisplay.setTitle("§5Der Fluch ist gebrochen!", { subtitle: "§7Auf dem Platz wartet die Belohnung", fadeInDuration: 10, stayDuration: 70, fadeOutDuration: 20 }); } catch { /* left */ }
+  }
+  stop(a, "broken", "Der Fluch ist gebrochen – der Spuk ist vorbei!");
+}
+
+function hauntEnd() {
+  for (const p of world.getAllPlayers()) {
+    if (!hauntFogged.has(p.name)) continue;
+    try { p.runCommand(`fog @s remove ${HAUNT_FOG}`); } catch { /* had none */ }
+  }
+  hauntFogged.clear();
+}
+
 // ---------- Sternschnuppen-Nacht ----------
 
 const STREAK_EVERY = [15, 30];   // seconds between shooting stars
@@ -975,6 +1123,7 @@ world.afterEvents.entityDie.subscribe((ev) => {
   try { tags = dead.getTags(); } catch { return; }
   if (!tags.includes(MOB_TAG)) return;
   if (tags.includes(mobTag("bounty"))) return bossDied(dead, killer);
+  if (tags.includes(mobTag("haunted")) && killer instanceof Player) return hauntKill(killer);
   if (tags.includes(mobTag("blood_moon"))) {
     try {
       dead.dimension.spawnItem(new ItemStack("minecraft:bone", 1 + Math.floor(Math.random() * 2)), dead.location);
@@ -1073,7 +1222,7 @@ world.afterEvents.entityHurt.subscribe((ev) => {
 
 const SOUNDS = { storm: "ambient.weather.thunder", mining_rush: "random.anvil_land", lucky_day: "random.levelup",
   blood_moon: "mob.wolf.growl", zombie_invasion: "mob.zombie.say", bounty: "mob.wither.spawn",
-  meteor: "ambient.weather.lightning.impact", shooting_stars: "random.orb", treasure: "random.chestopen" };
+  meteor: "ambient.weather.lightning.impact", shooting_stars: "random.orb", treasure: "random.chestopen", haunted: "block.bell.hit" };
 
 function start(type, by) {
   if (!HANDLERS[type] || active.some((a) => a.type === type)) return false;
@@ -1128,6 +1277,7 @@ function logState() {
   log({
     event: "state", auto: schedule.auto, online,
     active: active.map((a) => ({ type: a.type, remaining: a.remaining, total: a.total, by: a.by, phase: a.phase,
+      haunt: a.haunt ? { x: a.haunt.x, z: a.haunt.z, village: a.haunt.village, kills: a.haunt.kills } : undefined,
       treasure: a.treasure ? { buried: a.treasure.buried, found: a.treasure.found, undo: a.treasure.undo } : undefined,
       meteor: a.meteor ? { x: a.meteor.x, y: a.meteor.y, z: a.meteor.z, impacted: a.meteor.impacted, undo: a.meteor.undo }
         : undefined,
@@ -1168,7 +1318,7 @@ function minute() {
 system.afterEvents.scriptEventReceive.subscribe((ev) => {
   if (ev.id !== "mcfs:event" || !schedule) return;
   const fromConsole = ev.sourceType === ScriptEventSource.Server;
-  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers|boss|despawn|undo|meteor|stars|treasure)\b/.exec(ev.message);
+  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers|boss|despawn|undo|meteor|stars|treasure|haunt)\b/.exec(ev.message);
   if (test && fromConsole) return runTest(ev.message);
   const cmd = parseControl(ev.message);
   const reply = (msg) => {
@@ -1431,6 +1581,21 @@ function runTest(message) {
         block: tt.buried ? dim.getBlock({ x: tt.x, y: tt.y, z: tt.z })?.typeId : null, loot,
         hint: treasureHint({ x: Number(a), z: Number(b) }, tt).text });
     }, 40);
+  } else if (kind === "haunt") {
+    // haunted place at (a, b) as if a player stood there; one wave; then 15 "kills" by a test player
+    const h = active.find((x) => x.type === "haunted");
+    const dim = overworld();
+    if (!h) return;
+    h.haunt = { x: Number(a), z: Number(b), village: false, kills: 0, broken: false };
+    const n = hauntWave(dim, h.haunt, 1);
+    const mobs = dim.getEntities({ tags: [mobTag("haunted")] }).map((e) => e.typeId.slice(10));
+    for (let i = 0; i < 15; i++) hauntKill({ name: "Test1" });
+    system.runTimeout(() => {
+      const loot = dim.getEntities({ type: "minecraft:item", location: { x: Number(a), y: 80, z: Number(b) }, maxDistance: 40 })
+        .map((e) => e.getComponent("minecraft:item").itemStack.typeId.slice(10));
+      log({ event: "test", spawned: n, mobs, broken: h.haunt.broken, still: active.some((x) => x.type === "haunted"),
+        left: dim.getEntities({ tags: [mobTag("haunted")] }).length, loot });
+    }, 20);
   } else if (kind === "villagers") {
     // a small "village": 4 villagers on the ground at (a, b)
     const dim = overworld();

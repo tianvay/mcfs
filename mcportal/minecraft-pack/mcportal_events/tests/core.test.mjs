@@ -7,7 +7,7 @@ import {
   isBed, isLeftover, isNight, isRushOre, lightningOffset, MIN_GAP, mobTag, newActive, newSchedule, nightStep, packSize,
   parseControl, participants, ranSeconds, ringOffset, scheduleMinute, secondsUntilDawn, secondsUntilNight,
   shouldDouble, TYPES, xpBonus, invasionLoot, invasionMob, invasionTargets, waveSize, ZOMBIES,
-  beaconColumn, isGround, BOSSES, CRATER_RADIUS, craterDepth, craterGroundOk, isCover, isMeteorReplaceable, linePoints, planCrater, shootingStarPath, starLoot, distanceBand, treasureHint, treasureLoot, BOUNTY_LOOT, bossHint, bountyHunters, chooseBoss, healthBoostLevel,
+  beaconColumn, isGround, BOSSES, CRATER_RADIUS, craterDepth, craterGroundOk, isCover, isMeteorReplaceable, linePoints, planCrater, shootingStarPath, starLoot, distanceBand, treasureHint, treasureLoot, HAUNT_GOAL, hauntLoot, hauntMob, hauntWaveSize, BOUNTY_LOOT, bossHint, bountyHunters, chooseBoss, healthBoostLevel,
 } from "../scripts/core.js";
 
 test("night events: wait for the night, run until dawn", () => {
@@ -327,4 +327,19 @@ test("treasure hunt: loot, rough distance, warmer and colder", () => {
   assert.doesNotMatch(treasureHint({ x: 0, z: -1 }, t, first.dist).text, /wärmer|kälter/, "a step doesn't count");
   assert.equal(treasureHint({ x: 3, z: -298 }, t, 20).text, "Schatz: direkt hier – grabt nach!");
   assert.equal(TYPES.treasure.category, "ressourcen");
+});
+
+test("haunted place: mobs, waves, reward", () => {
+  const c = {};
+  for (let i = 0; i < 1000; i++) { const m = hauntMob(Math.random); c[m] = (c[m] ?? 0) + 1; }
+  assert.deepEqual(Object.keys(c).sort(), ["minecraft:skeleton", "minecraft:stray", "minecraft:zombie"]);
+  assert.equal(hauntWaveSize(2, 0), 5);
+  assert.equal(hauntWaveSize(2, 18), 2, "cap of 20");
+  assert.equal(hauntWaveSize(2, 25), 0);
+  const loot = hauntLoot(Math.random);
+  assert.equal(loot.length, 5);
+  assert.ok(loot.some(([id]) => id === "minecraft:golden_apple"));
+  assert.equal(HAUNT_GOAL, 15);
+  assert.equal(TYPES.haunted.night, true);
+  assert.equal(TYPES.haunted.category, "mobs");
 });

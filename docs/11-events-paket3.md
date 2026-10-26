@@ -1,6 +1,6 @@
 # Timed Events – Paket 3: Die Welt verändert sich (Plan, Änderung M13)
 
-Stand: 2026-10-26 · Status: **W1–W4 gebaut** (Grundlage, Meteorit, Sternschnuppen, Schatzsuche), W5–W7 offen · baut auf Paket 1 und 2 auf · nur stabile
+Stand: 2026-10-26 · Status: **W1–W5 gebaut** (alle vier Events), W6–W7 offen · baut auf Paket 1 und 2 auf · nur stabile
 Script-API, keine Experimente
 
 ## Ziel
@@ -155,6 +155,23 @@ zusätzlich mit einem Vorher/Nachher-Vergleich und dem Rückgängig-Befehl.
 - **Getestet:** 20 Node-Tests (neu: Beute, Entfernungsstufen, wärmer/kälter). Testserver: Truhe 3 unter der
   Oberfläche mit 5 Beute-Stapeln, Hinweis „Richtung Osten, nah“, beim Beenden Truhe weg und Boden zurück.
   Öffnen durch einen Spieler nur im Spiel prüfbar.
+
+## W5 – gebaut (Spukort)
+
+- Nacht-Event. Bei Einbruch der Nacht: das Dorf bei einem zufälligen Spieler (≥ 3 Dorfbewohner im Umkreis von
+  96 Blöcken, Mittelpunkt), sonst der Ort des Spielers. Chatmeldung mit X/Z und dem Ziel „15 Spukgestalten“.
+- Im Spukgebiet (48 Blöcke): **Seelensand-Nebel** (`fog_soulsand_valley`, beim Verlassen und am Ende entfernt),
+  Seelen-Funken, alle 20 s eine tiefe Glocke. **Kein Dunkelheits-Effekt** (wie besprochen).
+- Alle 45 s eine Welle (erste nach 10 s), solange jemand im Umkreis von 96 Blöcken ist: 3 + 1 je Spieler im
+  Gebiet, höchstens 20 gleichzeitig; Skelette 50 %, Zombies 40 %, Eiswanderer 10 %; 16–32 Blöcke vom Platz, nicht
+  in bebauten Chunks; Dorfbewohner geschützt wie bei der Invasion.
+- Jede von einem Spieler besiegte Spukgestalt zählt (Aktionsleiste „Fluch: 7 / 15“). Bei 15: **„Der Fluch ist
+  gebrochen!“**, Belohnung auf dem Platz (3–6 Smaragde, 4–8 Eisen, 4–8 Erfahrungsfläschchen, Goldener Apfel,
+  Amethyst- oder Echo-Splitter), Meldung `curse_broken` an alle im Gebiet (Erfolg „Geisterjäger“), Spuk endet,
+  übrige Spukgestalten verschwinden. Sonst endet er bei Sonnenaufgang.
+- **Getestet:** 21 Node-Tests (neu: Mob-Auswahl, Wellen, Belohnung). Testserver: Welle mit 4 Spukgestalten,
+  15 Siege → Fluch gebrochen, Belohnung auf dem Platz, alle Spukgestalten weg; ohne Siege Ende bei Sonnenaufgang.
+  Nebel, Glocke und Kämpfe nur im Spiel prüfbar.
 
 ## Was sich auf dem Server ändert
 

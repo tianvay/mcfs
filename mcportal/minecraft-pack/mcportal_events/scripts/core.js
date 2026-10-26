@@ -47,6 +47,11 @@ export const TYPES = {
     name: "Schatzsuche", minutes: 30, color: "§6", category: "ressourcen",
     subtitle: "§7Ein Schatz ist vergraben – folgt den Hinweisen!", end: "Der Schatz ist wieder verschwunden.",
   },
+  haunted: {
+    name: "Spukort", night: true, color: "§5", category: "mobs",
+    subtitle: "§7Heute Nacht spukt es in der Nähe!", end: "Die Sonne geht auf – der Spuk ist vorbei.",
+    nightTitle: "§5Es spukt!", nightSubtitle: "§7Besiegt die Spukgestalten und brecht den Fluch!",
+  },
   shooting_stars: {
     name: "Sternschnuppen-Nacht", night: true, color: "§e", category: "welt",
     subtitle: "§7Heute Nacht fallen Sterne vom Himmel!", end: "Die Sternschnuppen-Nacht ist vorbei.",
@@ -94,6 +99,32 @@ export function treasureHint(from, to, lastDist) {
     else if (d > lastDist + 2) trend = "§9 kälter§6 · ";
   }
   return { text: d < 12 ? `Schatz: ${distanceBand(d)}` : `Schatz:${trend} Richtung ${dir}, ${distanceBand(d)}`, dist: d };
+}
+
+// ---------- Spukort ----------
+
+export const HAUNT_GOAL = 15;          // haunted mobs to defeat to break the curse
+export const HAUNT_RADIUS = 48;        // the haunted area around its centre
+export const MAX_HAUNT_MOBS = 20;
+
+/** mostly skeletons and zombies, sometimes a stray */
+export function hauntMob(rand) {
+  const r = rand();
+  if (r < 0.5) return "minecraft:skeleton";
+  if (r < 0.9) return "minecraft:zombie";
+  return "minecraft:stray";
+}
+
+/** haunted mobs per wave: 3 + 1 per player in the area, never above the cap */
+export function hauntWaveSize(playersNear, alive) {
+  return Math.max(0, Math.min(3 + playersNear, MAX_HAUNT_MOBS - alive));
+}
+
+/** the reward when the curse is broken - dropped above the village square. [item, amount][] */
+export function hauntLoot(rand) {
+  const n = (min, max) => min + Math.floor(rand() * (max - min + 1));
+  return [["minecraft:emerald", n(3, 6)], ["minecraft:iron_ingot", n(4, 8)], ["minecraft:experience_bottle", n(4, 8)],
+    ["minecraft:golden_apple", 1], [rand() < 0.5 ? "minecraft:amethyst_shard" : "minecraft:echo_shard", n(1, 3)]];
 }
 
 // ---------- Sternschnuppen-Nacht ----------
