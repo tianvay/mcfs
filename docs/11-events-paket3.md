@@ -1,6 +1,6 @@
 # Timed Events – Paket 3: Die Welt verändert sich (Plan, Änderung M13)
 
-Stand: 2026-10-26 · Status: **W1–W7 gebaut**, Installation offen · baut auf Paket 1 und 2 auf · nur stabile
+Stand: 2026-10-26 · Status: **installiert** 2026-10-26 18:51 (Portal, Events-Pack 1.3.0, Erfolge-Pack 1.3.0) · baut auf Paket 1 und 2 auf · nur stabile
 Script-API, keine Experimente
 
 ## Ziel
@@ -205,6 +205,13 @@ zusätzlich mit einem Vorher/Nachher-Vergleich und dem Rückgängig-Befehl.
    (Events-Pack 1.3.0, Erfolge-Pack 1.3.0, ein Neustart).
 3. **Sofort danach einen Kartenlauf** starten: Er liefert die Bestandsaufnahme der alten Bauten an das neue
    Events-Pack – bevor ein automatischer Meteorit oder Schatz kommen kann.
+
+## Installiert (2026-10-26 18:51)
+
+- Sicherungen: `~/mcportal-backups/2026-10-26_18-51-09_pre_mcportal_events` und `…_pre_mcportal_achievements`.
+- Alle vier Behavior Packs ohne Script-/Inhaltsfehler; Startprüfung nach 4 s OK; Portal sieht zehn Events.
+- Kartenlauf direkt danach (96 s): 1.087 Chunks mit Bauten in 11 Paketen ans Events-Pack übergeben,
+  Bau-Register von 1 auf **1.087** Chunks. Ab jetzt hält es jeder nächtliche Kartenlauf aktuell.
 
 ## Was sich auf dem Server ändert
 

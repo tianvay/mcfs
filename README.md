@@ -28,7 +28,7 @@ Update per Knopfdruck mit Backup und Rollback, Block-Statistik pro Spieler, Welt
 8. [Weltkarte](docs/08-karte.md) – eigener Renderer, Kacheln, Tab „Karte“, M10
 9. [Timed Events](docs/09-events.md) – Paket 1: Mining Rush, Unwetter, Glückstag, M11
 10. [Timed Events Paket 2](docs/10-events-paket2.md) – Nachtgefahren: Zombie-Invasion, Blutmond, Kopfgeld-Boss, M12
-11. [Timed Events Paket 3](docs/11-events-paket3.md) – Meteorit, Sternschnuppen, Schatzsuche, Spukort, Meta-Erfolge, M13 (Plan)
+11. [Timed Events Paket 3](docs/11-events-paket3.md) – Meteorit, Sternschnuppen, Schatzsuche, Spukort, Meta-Erfolge, M13
 8. [To-dos](docs/TODO.md)
 
 ## Grundsätze

@@ -7,14 +7,13 @@ Stand: 2026-10-26
 - [ ] **Events im Spiel prüfen** (über die Kachel „Events“ starten): Titel/Chat/Sound, Unwetter mit Blitzen
       (nicht bei Bauten), Mining Rush (Erze doppelt, mit Glück; Silk Touch einfach), Glückstag (Erfahrung doppelt),
       Restzeit in der Aktionsleiste, Erfolge „Mittendrin…“ usw. nach dem 5. Event.
-- [ ] Idee **Meta-Erfolge**: Erfolge, die Kategorien zusammenfassen, z. B. „Mob-Events“ (alle Nachtgefahren),
-      „Natur/Welt“ (Unwetter, Meteorit, Sternschnuppen …), „Ressourcen“ (Mining Rush, Glückstag, Schatzsuche),
-      „Community“ (Events mit 3+ Spielern gleichzeitig). Beim Bau von Paket 2/3 mit einplanen; Kategorie je
-      Event-Art im Event-Katalog führen, damit Meta-Erfolge daraus abgeleitet werden können.
 - [ ] **Paket 2 im Spiel prüfen** (Reiter „Events“): Blutmond (Nebel, roter Bildschirm, Wölfe greifen an,
       Schlafsperre), Zombie-Invasion (Wellen am Dorf, Dorfbewohner bleiben heil, Extra-Beute), Kopfgeld (Lichtsäule von
       weitem sichtbar? Helm/Schwert, Hinweise mit Höhe, Kopfgeld). Wetter-/Tageszeit-Knöpfe ausprobieren.
-- [ ] Timed Events **Paket 3 – Die Welt verändert sich**: Plan `docs/11-events-paket3.md` (Schritte W1–W7).
+- [ ] **Paket 3 im Spiel prüfen** (Reiter Events): Meteorit (Countdown, Feuerspur, Krater mit Diamanten; nicht bei
+      Bauten), Sternschnuppen (Spuren am Himmel, Sternenstücke aufsammeln), Schatzsuche (Hinweise, Truhe öffnen),
+      Spukort (Nebel, Glocke, Fluch brechen). Erfolge: Welle III, Volltreffer, Sterntaler, Schatzsucher, Geisterjäger,
+      Meta-Erfolge.
 - [ ] **Boss-Aussehen im Spiel ansehen** (installiert 26.10. 16:57): Bosse 1,5-fach groß und eingefärbt
       (Bernd violett, Sven gold, Susi rot).
 - [ ] Nach größeren Minecraft-Updates: `tools/make_bosses.py` neu laufen lassen (Bosse folgen dem Vanilla-Verhalten).
@@ -50,6 +49,7 @@ Stand: 2026-10-26
 
 ## Erledigt
 
+- [x] Timed Events Paket 3 installiert (Events-Pack 1.3.0, Erfolge-Pack 1.3.0 mit Meta-Erfolgen); Bau-Register mit 1.087 Chunks aus der Karte (2026-10-26 18:53)
 - [x] Events-Pack 1.1.2 installiert: verschwundener Boss kommt zurück, Spawns nur auf echtem Boden (2026-10-26)
 - [x] Events-Pack 1.1.1 installiert: Boss mit Lichtsäule, Hinweis alle 5 s mit Höhe, Y-Koordinate (2026-10-26 16:33)
 - [x] Timed Events Paket 2 installiert: Portal (Reiter Events, Wetter/Zeit), Events-Pack 1.1.0, Erfolge-Pack 1.2.0 (2026-10-26 16:19)
