@@ -2,7 +2,7 @@
 // World map tab: tiles from /api/map/tiles, pan (drag/touch), zoom (wheel, pinch, buttons).
 // Loaded before app.js; uses its helpers ($, el, api, toast, fmtDate) only inside functions.
 
-const MAP_DIMS = { overworld: "Oberwelt", nether: "Nether", the_end: "Ende" };
+const MAP_DIMS = { overworld: "Oberwelt", the_end: "Ende" };
 const MAP_MIN_SCALE = 1 / 256, MAP_MAX_SCALE = 8;
 const mapView = { index: null, dim: "overworld", cx: 0, cz: 0, scale: 0.5, images: new Map(), placed: false };
 let mapBuild = null;

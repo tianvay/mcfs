@@ -35,7 +35,7 @@ RENDER_MEMORY = 1536 * 1024 * 1024
 APP_ROOT = Path(__file__).resolve().parents[2]
 _BUILD_RE = re.compile(r"^build-\d{8}-\d{6}$")
 _TILE_RE = re.compile(r"^-?\d{1,6}_-?\d{1,6}\.png$")
-DIMS = ("overworld", "nether", "the_end")
+DIMS = ("overworld", "the_end")
 
 
 def _limit_child() -> None:  # runs in the render child before exec

@@ -14,7 +14,8 @@ from .leveldb import iterate
 
 TAG_DATA3D = 0x2B      # heightmap (256 x int16) + biomes
 TAG_SUBCHUNK = 0x2F    # 16 x 16 x 16 blocks
-DIMENSIONS = {0: "overworld", 1: "nether", 2: "the_end"}
+# the Nether is left out on purpose: from above it is only its bedrock roof
+DIMENSIONS = {0: "overworld", 2: "the_end"}
 MIN_Y = {0: -64, 1: 0, 2: 0}
 AIR = "minecraft:air"
 

@@ -22,10 +22,12 @@ inkrementellem Zeichnen (K4) danach Sekunden.
 
 ## K1 – so ist es gebaut
 
-- Tab **„Karte“**: Oberwelt, Nether, Ende umschaltbar; ziehen, Mausrad/Pinch, ＋/－, ⭐ = zurück zum Spawn;
+- Tab **„Karte“**: Oberwelt und Ende umschaltbar (der Nether wird bewusst nicht gezeichnet – von oben sieht man
+  nur seine Grundgesteindecke); ziehen, Mausrad/Pinch, ＋/－, ⭐ = zurück zum Spawn;
   unten links Koordinaten unter der Maus. Darunter Stand, nächstes Neuzeichnen, **Seed** (aus der Übersicht
   hierher verschoben) und der Knopf **„Jetzt neu zeichnen“**.
-- Gemessen auf dem Laptop (echte Welt, 20 404 + 1 404 + 666 Chunks): **106 s**, **200 MB RAM**, **5 MB Kacheln**.
+- Gemessen auf dem Laptop (echte Welt, damals noch mit Nether: 20 404 + 1 404 + 666 Chunks): **106 s**, **200 MB RAM**,
+  **5 MB Kacheln**; ohne Nether am PC 28 statt 33 s.
 - Abweichung vom Plan: Statt eigener systemd-Unit und Timer startet das Portal den Renderer selbst als
   Kindprozess (`nice 19`, `ionice -c3`, Speichergrenze 1,5 GB) und plant den Nachtlauf (04:00) selbst.
   Dadurch braucht es **keine** neue Unit, keine polkit-Änderung und keine Änderung an `install.sh`.
@@ -58,7 +60,7 @@ von 60 s; zusätzlich schreibt das Portal vor `hold` eine Markierungsdatei und s
 |---|---|---|
 | LevelDB-Leser | `app/map/leveldb.py` | MANIFEST, `.ldb`-Tabellen, `.log`; nur lesend, neueste Sequenz gewinnt |
 | Chunk-Leser | `app/map/chunk.py` | Höhenkarte (Data3D), Subchunks v8/v9 mit Paletten, Biome |
-| Renderer | `app/map/render.py` | oberster Block je Spalte, Wasser mit Tiefe, Relief-Schattierung, Nether unter der Decke |
+| Renderer | `app/map/render.py` | oberster Block je Spalte, Wasser mit Tiefe, Relief-Schattierung; Oberwelt und Ende |
 | Farben | `app/map/colors.json` | 1 334 Blöcke, Durchschnittsfarbe der Oberseite aus Mojangs offiziellen Texturen (`Mojang/bedrock-samples` 1.26.50.4) mit `tools/make_colors.py` auf dem PC; der Server lädt nichts herunter |
 | Kacheln | `/var/lib/mcportal/map/build-<zeit>/<dim>/<stufe>/<x>_<z>.png` | 256 × 256 px, Stufe 0 = 1 px je Block, jede Stufe halbiert; `current.json` zeigt auf den gültigen Stand, alte Stände werden gelöscht |
 | Ansicht | `web/map.js` | eigener kleiner Canvas-Viewer (Ziehen, Zoomen, Koordinaten unter der Maus); keine externe Bibliothek, CSP bleibt `'self'` |

@@ -103,6 +103,7 @@ def make_world(root: Path):
         (chunk_key(0, 0, 0x2F, sy=4), 3, 1, subchunk(blocks, pal)),           # newer version wins
         (chunk_key(5, 5, 0x2B), 4, 1, hm),
         (b"~local_player", 5, 1, b"x"),
+        (chunk_key(0, 0, 0x2B, dim=1), 6, 1, hm),                               # Nether: not drawn
     ], compression=4)
     (db / "000006.log").write_bytes(log_file([
         batch(10, [(1, chunk_key(1, 0, 0x2B), hm),
@@ -127,7 +128,7 @@ class LevelDbTest(unittest.TestCase):
             sc = SubChunk.parse(got[chunk_key(0, 0, 0x2F, sy=4)])
             self.assertEqual(sc.block(3, 2, 3), "minecraft:stone", "newer sub-chunk version")
             found = [(c.dim, c.x, c.z) for c in chunks(db)]
-            self.assertEqual(found, [(0, 0, 0), (0, 1, 0)])
+            self.assertEqual(found, [(0, 0, 0), (0, 1, 0)], "no Nether chunks")
 
     def test_subchunk_decoding_matches_direct_formula(self):
         pal = ["minecraft:air", "a", "b", "c"]

@@ -22,7 +22,6 @@ from .png import encode_rgba
 
 TILE = 256
 MAX_LEVELS = 8
-NETHER_SCAN_FROM = 117          # below the bedrock roof
 WATER = {"minecraft:water", "minecraft:flowing_water", "minecraft:bubble_column",
          "minecraft:seagrass", "minecraft:kelp", "minecraft:tall_seagrass"}
 INVISIBLE = {AIR, "minecraft:structure_void", "minecraft:barrier", "minecraft:light_block"}
@@ -103,16 +102,10 @@ def column(chunk: Chunk, x: int, z: int, y_from: int):
 
 def shade(palette: Palette, chunk: Chunk, x: int, z: int) -> tuple[int, int] | None:
     """(packed colour, surface height) of one column, or None if there is nothing."""
-    if chunk.dim == 1:
-        it = column(chunk, x, z, NETHER_SCAN_FROM)
-        for _, name in it:  # skip the roof down to the first cave air
-            if palette.get(name) is None:
-                break
-    else:
-        top = chunk.top_y(x, z)
-        if top is None:
-            return None
-        it = column(chunk, x, z, top)
+    top = chunk.top_y(x, z)
+    if top is None:
+        return None
+    it = column(chunk, x, z, top)
     overlay = c = None
     depth = 0
     surface = None
