@@ -1,0 +1,64 @@
+{
+  "format_version": "1.8.0",
+  "render_controllers": {
+    "controller.render.mcfs_boss_zombie": {
+      "geometry": "Geometry.default",
+      "materials": [
+        {
+          "*": "Material.default"
+        }
+      ],
+      "textures": [
+        "Texture.default"
+      ],
+      "overlay_color": {
+        "r": "0.45",
+        "g": "0.0",
+        "b": "0.65",
+        "a": "0.45"
+      }
+    },
+    "controller.render.mcfs_boss_skeleton": {
+      "geometry": "Geometry.default",
+      "materials": [
+        {
+          "*": "Material.default"
+        }
+      ],
+      "textures": [
+        "Texture.default"
+      ],
+      "overlay_color": {
+        "r": "1.0",
+        "g": "0.75",
+        "b": "0.1",
+        "a": "0.45"
+      }
+    },
+    "controller.render.mcfs_boss_spider": {
+      "geometry": "Geometry.default",
+      "materials": [
+        {
+          "*": "Array.materials[query.is_invisible]"
+        }
+      ],
+      "textures": [
+        "Texture.default"
+      ],
+      "overlay_color": {
+        "r": "0.85",
+        "g": "0.0",
+        "b": "0.1",
+        "a": "0.45"
+      },
+      "arrays": {
+        "materials": {
+          "Array.materials": [
+            "Material.default",
+            "Material.invisible"
+          ]
+        }
+      }
+    }
+  }
+}

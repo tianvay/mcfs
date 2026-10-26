@@ -141,3 +141,14 @@ the service fills missing fields for data stored by older versions).
 - After a Bedrock update, check the startup line still appears. If the pinned API version
   disappeared, the log shows a `[Scripting]` error, the feature pauses, the game runs on -
   bump the version in the installed manifest and restart.
+
+- Mobs spawned 30+ blocks from players **despawn** at random; a `nameTag` set by script does not protect them
+  (unlike a real name tag) - and on the test server nobody notices, because without players nothing despawns.
+  For mobs that must stay: own entity with `minecraft:persistent` (see below) and/or re-spawn them.
+- Mob size/colour can't be changed by script (no `minecraft:scale` component on vanilla mobs, mob equipment only
+  via `replaceitem`). Use an own entity: copy of the vanilla behavior JSON with `"runtime_identifier":
+  "minecraft:<mob>"` (= vanilla AI), plus `minecraft:scale` / `minecraft:persistent`; client entity in a resource
+  pack reusing vanilla geometry/textures, colour via a render controller's `overlay_color` (Molang strings).
+  Generator: `mcportal/tools/make_bosses.py` (from Mojang's bedrock-samples). The BP then needs a `data` module.
+- Spawn events: `dim.spawnEntity(id, loc, { spawnEvent: "minecraft:as_adult" })` - the old `"id<event>"`
+  notation throws in 2.x.

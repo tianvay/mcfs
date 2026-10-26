@@ -219,7 +219,8 @@ test("Kopfgeld-Boss: health, hints, loot, hunters", () => {
   assert.equal(healthBoostLevel(20, 20), 0);
   for (const b of BOSSES) {
     assert.ok(b.base + (healthBoostLevel(b.base, b.health) + 1) * 4 >= b.health, b.id);
-    if (b.mob !== "minecraft:spider") assert.ok(b.helmet, `${b.id} needs a helmet against the sun`);
+    if (b.id !== "susi") assert.ok(b.helmet, `${b.id} needs a helmet against the sun`);
+    assert.ok(b.mob.startsWith("mcfs:boss_"), `${b.id} uses the pack's own big boss mob`);
   }
   assert.equal(chooseBoss(() => 0).id, "bernd");
   assert.equal(chooseBoss(() => 0.99).id, "susi");

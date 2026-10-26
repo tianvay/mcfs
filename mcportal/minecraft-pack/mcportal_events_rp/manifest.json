@@ -1,0 +1,29 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Family Portal Events (Grafik)",
+    "description": "Aussehen der Kopfgeld-Bosse.",
+    "uuid": "cf7f6810-f5d3-4fdd-a75d-2234d4c89f19",
+    "version": [
+      1,
+      0,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      21,
+      0
+    ]
+  },
+  "modules": [
+    {
+      "type": "resources",
+      "uuid": "ebee3cff-052f-4978-ba7d-344dc1aeb6d7",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    }
+  ]
+}

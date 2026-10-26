@@ -207,6 +207,21 @@ Phasen und Aufräumen lassen sich mit Test-Spielerpositionen prüfen, Kämpfe nu
 - Getestet: 16 Node-Tests (neu: Boden-Prüfung); Testserver: Boss per Skript entfernt (wie Despawn) → nach 3 s
   zurück mit 33/52 LP; Boss steht auf Boden.
 
+## Boss-Aussehen: Events-Pack 1.2.0 + neues Grafik-Pack (2026-10-26)
+
+- Wunsch: Bosse 50 % größer und farblich abgesetzt. Per Skript geht beides nicht (Probe: Zombies haben keine
+  Größen-Komponente). Deshalb **eigene Boss-Mobs** `mcfs:boss_zombie`, `mcfs:boss_skeleton`, `mcfs:boss_spider`:
+  Kopien der Vanilla-Mobs mit deren eigenem Verhalten (`runtime_identifier`), dazu `minecraft:scale` 1.5 und
+  `minecraft:persistent` (kein Despawn mehr – die Rückkehr-Logik aus 1.1.2 bleibt als Sicherheitsnetz).
+- **Farbe:** neues Resource Pack `mcportal_events_rp` („Family Portal Events (Grafik)“) mit Vanilla-Modell und
+  -Textur, eingefärbt per `overlay_color`: Bernd dunkelviolett, Sven gold, Susi blutrot. Wird wie das
+  Wegpunkt-Grafikpack automatisch beim Beitreten geladen.
+- Erzeugt mit `mcportal/tools/make_bosses.py` aus Mojangs `bedrock-samples` (1.26.50.4); nach größeren
+  Minecraft-Updates neu erzeugen, damit die Bosse dem aktuellen Vanilla-Verhalten folgen.
+- Bernd erscheint immer erwachsen (`spawnEvent: minecraft:as_adult`), nie als Baby/Hühnerreiter.
+- Getestet: Testserver mit beiden Packs ohne Inhaltsfehler; alle drei Bosse mit Größe 1.5, Bernd 60/60,
+  Sven und Susi 52/52 LP. Farbe nur im Spiel sichtbar.
+
 ## Was sich auf dem Server ändert
 
 - Events-Pack 1.0.0 → 1.1.0, Erfolge-Pack 1.1.0 → 1.2.0, neue Portal-Version. Keine Blockänderungen.

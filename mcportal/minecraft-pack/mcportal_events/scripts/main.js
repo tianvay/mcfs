@@ -238,8 +238,8 @@ world.beforeEvents.playerInteractWithBlock.subscribe((ev) => {
 });
 
 /** spawn a mob for an event, marked for tidying up */
-function spawnEventMob(dim, typeId, type, at) {
-  const e = dim.spawnEntity(typeId, at);
+function spawnEventMob(dim, typeId, type, at, spawnEvent) {
+  const e = spawnEvent ? dim.spawnEntity(typeId, at, { spawnEvent }) : dim.spawnEntity(typeId, at);
   e.addTag(MOB_TAG);
   e.addTag(mobTag(type));
   return e;
@@ -476,7 +476,7 @@ function bossAreaWatched(dim, b) {
 
 /** the boss mob itself: name, effects, equipment, full (or the given) health */
 function createBoss(dim, def, at, hp) {
-  const e = spawnEventMob(dim, def.mob, "bounty", { x: at.x, y: at.y, z: at.z });
+  const e = spawnEventMob(dim, def.mob, "bounty", { x: at.x, y: at.y, z: at.z }, def.spawnEvent);
   e.nameTag = def.name;
   const long = 20 * 60 * 60;
   e.addEffect("health_boost", long, { amplifier: healthBoostLevel(def.base, def.health), showParticles: false });
@@ -495,8 +495,8 @@ function createBoss(dim, def, at, hp) {
 }
 
 /** the boss 30-60 blocks from `near`, in the wild; false if there is no spot (yet) */
-function spawnBoss(a, dim, near) {
-  const boss = chooseBoss(Math.random);
+function spawnBoss(a, dim, near, bossId) {
+  const boss = BOSSES.find((b) => b.id === bossId) ?? chooseBoss(Math.random);
   for (let attempt = 0; attempt < 16; attempt++) {
     const spot = ringOffset(near.x, near.z, 30, 60, Math.random);
     const top = wildTop(dim, spot.x, spot.z);
@@ -774,7 +774,7 @@ system.afterEvents.scriptEventReceive.subscribe((ev) => {
 
 /** console-only test hooks for the throwaway test server (no players there) */
 function runTest(message) {
-  const [, kind, a, b] = message.split(/\s+/);
+  const [, kind, a, b, c] = message.split(/\s+/);
   if (kind === "rush") {
     // simulated drops at (a, top, b) while a Mining Rush runs; only raw_iron may be doubled
     const dim = overworld();
@@ -810,14 +810,14 @@ function runTest(message) {
     const bounty = active.find((x) => x.type === "bounty");
     const dim = overworld();
     const at = { x: Number(a) + 0.5, y: 0, z: Number(b) + 0.5 };
-    const ok = bounty && !bounty.boss && spawnBoss(bounty, dim, at);
+    const ok = bounty && !bounty.boss && spawnBoss(bounty, dim, at, c);
     system.runTimeout(() => {
       const e = dim.getEntities({ tags: [mobTag("bounty")] })[0];
       const h = e?.getComponent("minecraft:health");
       log({ event: "test", boss: ok, name: e?.nameTag, type: e?.typeId, health: h ? `${h.currentValue}/${h.effectiveMax}` : null,
         effects: e ? e.getEffects().map((x) => `${x.typeId}${x.amplifier}`) : [],
         hint: bounty?.boss ? bossHint(bounty.boss.name, { ...at, y: 60 }, bounty.boss) : null, y: bounty?.boss?.y,
-        standsOn: e ? dim.getBlock({ x: Math.floor(e.location.x), y: Math.floor(e.location.y) - 1, z: Math.floor(e.location.z) })?.typeId : null });
+        scale: e?.getComponent("minecraft:scale")?.value, standsOn: e ? dim.getBlock({ x: Math.floor(e.location.x), y: Math.floor(e.location.y) - 1, z: Math.floor(e.location.z) })?.typeId : null });
       if (e) {
         try { dim.spawnParticle(BEACON_PARTICLE, e.location); log({ event: "test", particle: "ok" }); }
         catch (err) { log({ event: "test", particle: String(err) }); }

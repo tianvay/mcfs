@@ -2,12 +2,12 @@
   "format_version": 2,
   "header": {
     "name": "Family Portal Events",
-    "description": "Zufällige Ereignisse: Unwetter, Mining Rush, Glückstag.",
+    "description": "Zufällige Ereignisse für den Family Server (Unwetter, Mining Rush, Glückstag, Nachtgefahren, Kopfgeld).",
     "uuid": "dadfadc0-7089-4ef7-8458-f01bfb617100",
     "version": [
       1,
-      1,
-      2
+      2,
+      0
     ],
     "min_engine_version": [
       1,
@@ -17,13 +17,22 @@
   },
   "modules": [
     {
+      "type": "data",
+      "uuid": "c4cc6058-cf7f-49af-abfd-93cdc2122b84",
+      "version": [
+        1,
+        2,
+        0
+      ]
+    },
+    {
       "type": "script",
       "language": "javascript",
       "uuid": "ed1c62c0-63d8-4130-a821-f560ca06f1d2",
       "version": [
         1,
-        1,
-        2
+        2,
+        0
       ],
       "entry": "scripts/main.js"
     }
@@ -32,6 +41,14 @@
     {
       "module_name": "@minecraft/server",
       "version": "@SERVER_API@"
+    },
+    {
+      "uuid": "cf7f6810-f5d3-4fdd-a75d-2234d4c89f19",
+      "version": [
+        1,
+        0,
+        0
+      ]
     }
   ]
 }

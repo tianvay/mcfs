@@ -321,13 +321,17 @@ export function healthBoostLevel(base, target) {
   return Math.max(0, Math.ceil((target - base) / 4) - 1);
 }
 
-/** helmets keep zombie and skeleton from burning in the sun */
+/**
+ * helmets keep zombie and skeleton from burning in the sun; the mobs are the pack's own boss versions of the
+ * vanilla ones (entities/boss_*.json: 50 % larger, never despawn; colour shift in mcportal_events_rp).
+ * `spawnEvent`: Bernd always comes as a grown-up zombie, never as a baby or chicken jockey.
+ */
 export const BOSSES = [
-  { id: "bernd", name: "Bernd der Zombiekönig", mob: "minecraft:zombie", base: 20, health: 60,
+  { id: "bernd", name: "Bernd der Zombiekönig", mob: "mcfs:boss_zombie", spawnEvent: "minecraft:as_adult", base: 20, health: 60,
     helmet: "diamond_helmet", weapon: "iron_sword", effects: [["resistance", 1], ["strength", 0]] },
-  { id: "sven", name: "Skelett-Sven", mob: "minecraft:skeleton", base: 20, health: 50,
+  { id: "sven", name: "Skelett-Sven", mob: "mcfs:boss_skeleton", base: 20, health: 50,
     helmet: "golden_helmet", weapon: null, effects: [["speed", 0], ["resistance", 0]] },
-  { id: "susi", name: "Spinnen-Susi", mob: "minecraft:spider", base: 16, health: 50,
+  { id: "susi", name: "Spinnen-Susi", mob: "mcfs:boss_spider", base: 16, health: 50,
     helmet: null, weapon: null, effects: [["strength", 0], ["resistance", 0]] },
 ];
 
