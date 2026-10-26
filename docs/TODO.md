@@ -15,8 +15,8 @@ Stand: 2026-10-26
       Schlafsperre), Zombie-Invasion (Wellen am Dorf, Dorfbewohner bleiben heil, Extra-Beute), Kopfgeld (Lichtsäule von
       weitem sichtbar? Helm/Schwert, Hinweise mit Höhe, Kopfgeld). Wetter-/Tageszeit-Knöpfe ausprobieren.
 - [ ] Timed Events **Paket 3 – Die Welt verändert sich**: Plan `docs/11-events-paket3.md` (Schritte W1–W7).
-- [ ] **Boss-Aussehen installieren** (Events-Pack 1.2.0 + Grafik-Pack `mcportal_events_rp`), dann im Spiel ansehen:
-      Bosse 1,5-fach groß und eingefärbt (Bernd violett, Sven gold, Susi rot).
+- [ ] **Boss-Aussehen im Spiel ansehen** (installiert 26.10. 16:57): Bosse 1,5-fach groß und eingefärbt
+      (Bernd violett, Sven gold, Susi rot).
 - [ ] Nach größeren Minecraft-Updates: `tools/make_bosses.py` neu laufen lassen (Bosse folgen dem Vanilla-Verhalten).
 - [ ] **Chatlog im Portal** (eigener Punkt in der Übersicht, nur Nachrichten an alle – keine `/tell`, keine Befehle):
       warten, bis Mojang das Chat-Ereignis (`world.afterEvents.chatSend`) aus dem Beta-Stadium holt. Stand 2026-10-26:

@@ -149,6 +149,26 @@ class EventsTest(unittest.TestCase):
             asyncio.run(s.control("start", t, "admin"))
         self.assertEqual(adapter.sent[-1], "scriptevent mcfs:event start bounty")
 
+    def test_build_register_sync_sends_only_new_chunks_in_batches(self):
+        s, mc, adapter = self.service(LINES)
+        sent = []
+        adapter.event_register_live = lambda keys: sent.append(commands.event_register(keys))
+        f = self.dir / "built_chunks.json"
+        f.write_text(json.dumps({"chunks": [f"o{i},0" for i in range(250)]}))
+        self.assertEqual(s.sync_register(f), 250)
+        self.assertEqual(len(sent), 3, "100 + 100 + 50")
+        self.assertTrue(sent[0].startswith("scriptevent mcfs:event register o0,0;o1,0;"))
+        f.write_text(json.dumps({"chunks": [f"o{i},0" for i in range(252)]}))
+        self.assertEqual(s.sync_register(f), 2, "only the new ones")
+        self.assertEqual(sent[-1], "scriptevent mcfs:event register o250,0;o251,0")
+        mc.status = "offline"
+        f.write_text(json.dumps({"chunks": ["o999,9"]}))
+        self.assertEqual(s.sync_register(f), 0, "server offline: next render tries again")
+        mc.status = "online"
+        self.assertEqual(s.sync_register(f), 1)
+        with self.assertRaises(ValueError):
+            commands.event_register(["o1,2;start storm"])
+
     def test_summary_asks_for_fresh_state_at_most_every_30_seconds(self):
         s, _, adapter = self.service(LINES)
         s.summary()

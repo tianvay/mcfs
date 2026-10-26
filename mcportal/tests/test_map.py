@@ -107,7 +107,8 @@ def make_world(root: Path):
     ], compression=4)
     (db / "000006.log").write_bytes(log_file([
         batch(10, [(1, chunk_key(1, 0, 0x2B), hm),
-                   (1, chunk_key(1, 0, 0x2F, sy=4), subchunk({(0, 0, 0): 2}, pal)),
+                   (1, chunk_key(1, 0, 0x2F, sy=4), subchunk({(0, 0, 0): 2, (5, 1, 5): 3},
+                                                              ["minecraft:air", "minecraft:grass_block", "minecraft:stone", "minecraft:oak_planks"])),
                    (0, chunk_key(5, 5, 0x2B), b"")]),
     ]))
     manifest = varint(1) + varint(26) + b"leveldb.BytewiseComparator" + varint(2) + varint(6)
@@ -152,6 +153,10 @@ class RenderTest(unittest.TestCase):
             self.assertEqual(ow["chunks"], 2)
             self.assertEqual(ow["bounds"], [0, 0, 31, 15])
             self.assertEqual(ow["tiles"]["0"], [[0, 0]])
+            # chunk (1,0) has a plank block near the surface -> built; (0,0) only grass, stone, water
+            built = json.loads((out / "built_chunks.json").read_text())["chunks"]
+            self.assertEqual(built, ["o1,0"])
+            self.assertEqual(index["built_chunks"], 1)
             png = (build / "overworld" / "0" / "0_0.png").read_bytes()
             self.assertTrue(png.startswith(b"\x89PNG"))
             # second render replaces the first build
@@ -285,3 +290,14 @@ class SnapshotTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NaturalTest(unittest.TestCase):
+    def test_natural_and_built_blocks(self):
+        from app.map.natural import is_natural
+        for n in ["minecraft:grass_block", "minecraft:oak_log", "minecraft:birch_leaves", "minecraft:deepslate_iron_ore",
+                  "minecraft:water", "minecraft:red_tulip", "minecraft:raw_copper_block", "minecraft:end_stone"]:
+            self.assertTrue(is_natural(n), n)
+        for n in ["minecraft:oak_planks", "minecraft:torch", "minecraft:chest", "minecraft:stripped_oak_log",
+                  "minecraft:glass_pane", "minecraft:grass_path", "minecraft:farmland", "minecraft:something_new"]:
+            self.assertFalse(is_natural(n), n)

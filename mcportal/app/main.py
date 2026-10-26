@@ -95,6 +95,7 @@ def create_app(cfg: Config) -> FastAPI:
     waypoints = WaypointsService(adapter, mc, cfg.data_dir)
     world_map = MapService(adapter, mc, audit, cfg.data_dir)
     game_events = EventsService(adapter, mc, audit, cfg.data_dir)
+    world_map.after_render.append(game_events.sync_register)  # builds found on the map -> build register
     sessions: set[str] = set()
 
     @asynccontextmanager

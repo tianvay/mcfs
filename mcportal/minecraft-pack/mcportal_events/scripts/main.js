@@ -15,7 +15,9 @@
 //  * Other packs (achievements) get the same news via system.sendScriptEvent("mcfs:event_news", json).
 // Uses only the stable @minecraft/server API - no experiments in the world.
 // console.warn on purpose: the server runs with content-log-level=warning.
-import { EntityDamageCause, ItemStack, Player, ScriptEventSource, system, WeatherType, world } from "@minecraft/server";
+import {
+  BlockPermutation, EntityDamageCause, ItemStack, Player, ScriptEventSource, system, WeatherType, world,
+} from "@minecraft/server";
 import {
   activeMinute, beaconColumn, BOSSES, bossHint, BOUNTY_LOOT, bountyHunters, chooseBoss, healthBoostLevel,
   chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, formatMinutes, invasionLoot,
@@ -710,7 +712,7 @@ function logState() {
       boss: a.boss ? { name: a.boss.name, x: Math.round(a.boss.x), y: Math.round(a.boss.y ?? 0), z: Math.round(a.boss.z) }
         : undefined })),
     next_in: estimateNext(schedule, online), last: schedule.last, register: register?.size ?? 0,
-    types: IMPLEMENTED,
+    types: IMPLEMENTED, undo: undoIds(),
   });
   news({ event: "state", active: active.map((a) => a.type) });
 }
@@ -744,7 +746,7 @@ function minute() {
 system.afterEvents.scriptEventReceive.subscribe((ev) => {
   if (ev.id !== "mcfs:event" || !schedule) return;
   const fromConsole = ev.sourceType === ScriptEventSource.Server;
-  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers|boss|despawn)\b/.exec(ev.message);
+  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers|boss|despawn|undo)\b/.exec(ev.message);
   if (test && fromConsole) return runTest(ev.message);
   const cmd = parseControl(ev.message);
   const reply = (msg) => {
@@ -769,8 +771,84 @@ system.afterEvents.scriptEventReceive.subscribe((ev) => {
     logState();
     return reply(`Automatische Events ${cmd.on ? "an" : "aus"}.`);
   }
+  if (cmd.verb === "register") {
+    // chunks with builds found by the map reader (also builds from before the register existed)
+    const before = register.size;
+    for (const k of cmd.keys) register.add(k);
+    registerDirty = register.size !== before;
+    log({ event: "register", added: register.size - before, total: register.size });
+    return;
+  }
+  if (cmd.verb === "undo") {
+    const res = undoChanges(cmd.id);
+    return reply(res ? `${cmd.id}: ${res.restored} Blöcke zurückgesetzt, ${res.skipped} inzwischen verändert.`
+      : `${cmd.id}: nichts zum Zurücksetzen.`);
+  }
   logState();
 });
+
+// ---------- undo log: every block an event changes, with its state before ----------
+
+const UNDO_PREFIX = "mcfs_ev_undo:";
+const UNDO_PART_CHARS = 30000;
+
+function undoIds() {
+  return world.getDynamicPropertyIds().filter((id) => id.startsWith(UNDO_PREFIX) && !id.includes("#"))
+    .map((id) => id.slice(UNDO_PREFIX.length)).sort();
+}
+
+/**
+ * Change blocks for an event and remember what was there. `changes`: [{x, y, z, typeId, states?}].
+ * Returns the number of changed blocks.
+ */
+function changeBlocks(undoId, dim, changes) {
+  const entries = [];
+  for (const c of changes) {
+    try {
+      const block = dim.getBlock({ x: c.x, y: c.y, z: c.z });
+      if (!block) continue;
+      const before = block.permutation;
+      const after = BlockPermutation.resolve(c.typeId, c.states ?? {});
+      block.setPermutation(after);
+      entries.push([c.x, c.y, c.z, before.type.id, before.getAllStates(), c.typeId]);
+    } catch { /* not loaded */ }
+  }
+  // one property holds ~30.000 characters: split long lists into parts "<id>", "<id>#1", ...
+  const text = JSON.stringify({ dim: dim.id, entries });
+  const parts = Math.ceil(text.length / UNDO_PART_CHARS);
+  for (let i = 0; i < parts; i++) {
+    world.setDynamicProperty(UNDO_PREFIX + undoId + (i ? `#${i}` : ""), text.slice(i * UNDO_PART_CHARS, (i + 1) * UNDO_PART_CHARS));
+  }
+  return entries.length;
+}
+
+/** put everything back that is still as the event left it; blocks players changed since then stay */
+function undoChanges(undoId) {
+  const first = world.getDynamicProperty(UNDO_PREFIX + undoId);
+  if (typeof first !== "string") return null;
+  let text = first;
+  for (let i = 1; ; i++) {
+    const more = world.getDynamicProperty(`${UNDO_PREFIX}${undoId}#${i}`);
+    if (typeof more !== "string") break;
+    text += more;
+    world.setDynamicProperty(`${UNDO_PREFIX}${undoId}#${i}`, undefined);
+  }
+  world.setDynamicProperty(UNDO_PREFIX + undoId, undefined);
+  const { dim, entries } = JSON.parse(text);
+  const d = world.getDimension(dim);
+  let restored = 0, skipped = 0;
+  for (const [x, y, z, oldId, oldStates, newId] of entries.reverse()) {
+    try {
+      const block = d.getBlock({ x, y, z });
+      if (!block || block.typeId !== newId) { skipped++; continue; }
+      block.setPermutation(BlockPermutation.resolve(oldId, oldStates));
+      restored++;
+    } catch { skipped++; }
+  }
+  log({ event: "undone", id: undoId, restored, skipped });
+  logState();
+  return { restored, skipped };
+}
 
 /** console-only test hooks for the throwaway test server (no players there) */
 function runTest(message) {
@@ -842,6 +920,21 @@ function runTest(message) {
         }, 20 * 6);
       }, 25);
     }
+  } else if (kind === "undo") {
+    // a 3 x 3 patch of netherrack at (a, top, b), then undone again
+    const dim = overworld();
+    const top = dim.getTopmostBlock({ x: Number(a), z: Number(b) });
+    const y = top.location.y;
+    const before = top.typeId;
+    const changes = [];
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) changes.push({ x: Number(a) + dx, y, z: Number(b) + dz, typeId: "minecraft:netherrack" });
+    const n = changeBlocks("test-1", dim, changes);
+    dim.getBlock({ x: Number(a) + 1, y, z: Number(b) + 1 }).setPermutation(BlockPermutation.resolve("minecraft:diamond_block"));
+    const mid = dim.getBlock({ x: Number(a), y, z: Number(b) }).typeId;
+    const ids = undoIds();
+    const res = undoChanges("test-1");
+    log({ event: "test", changed: n, before, mid, ids, res, after: dim.getBlock({ x: Number(a), y, z: Number(b) }).typeId,
+      corner: dim.getBlock({ x: Number(a) + 1, y, z: Number(b) + 1 }).typeId, left: undoIds() });
   } else if (kind === "villagers") {
     // a small "village": 4 villagers on the ground at (a, b)
     const dim = overworld();

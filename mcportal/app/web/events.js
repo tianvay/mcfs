@@ -161,6 +161,9 @@ function renderEvents(d) {
     el("small", { textContent: h.participants.length ? `dabei: ${h.participants.join(", ")}` : "niemand lange genug dabei" })))
     : [el("li", { className: "empty", textContent: "Noch keine Events." })]));
 
+  $("#events-register").textContent = d.register != null
+    ? `🛡️ Geschützt: ${d.register.toLocaleString("de-DE")} Chunks mit Bauten – dort verändern Events keine Blöcke `
+      + "(alles, was Spieler gesetzt haben, und was die Karte als bebaut erkennt)." : "";
   const people = Object.entries(d.participations || {});
   $("#events-people").textContent = people.length
     ? people.map(([n, c]) => `${n} ${c}×`).join(" · ") : "Noch niemand.";

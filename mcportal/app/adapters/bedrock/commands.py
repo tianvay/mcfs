@@ -67,6 +67,17 @@ WEATHER = {"clear": "weather clear", "rain": "weather rain", "thunder": "weather
 DAYTIME = {"morning": 1000, "noon": 6000, "evening": 12000, "night": 13000, "midnight": 18000}
 
 
+_REGISTER_KEY = re.compile(r"^[one]-?\d{1,7},-?\d{1,7}$")
+REGISTER_BATCH = 100  # keys per console command (the pack accepts up to 200)
+
+
+def event_register(keys: list[str]) -> str:
+    """Chunks with builds (from the map reader) for the events pack's build register."""
+    if not keys or len(keys) > REGISTER_BATCH or not all(_REGISTER_KEY.match(k) for k in keys):
+        raise ValueError("invalid register keys")
+    return "scriptevent mcfs:event register " + ";".join(keys)
+
+
 def world_control(kind: str, value: str) -> str:
     if kind == "weather" and value in WEATHER:
         return WEATHER[value]

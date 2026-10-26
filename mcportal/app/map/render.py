@@ -18,6 +18,7 @@ from pathlib import Path
 
 from ..adapters.bedrock import leveldat
 from .chunk import AIR, DIMENSIONS, MIN_Y, Chunk, chunks
+from .natural import is_natural
 from .png import encode_rgba
 
 TILE = 256
@@ -223,13 +224,32 @@ def write_levels(img: DimensionImage, target: Path) -> dict[str, list]:
     return listing
 
 
+BUILT_FILE = "built_chunks.json"
+DIM_KEY = {0: "o", 1: "n", 2: "e"}  # same chunk keys as the events pack's build register
+
+
+def is_built(chunk: Chunk) -> bool:
+    """Non-natural blocks near the surface (from 8 below the lowest to the highest column top)?"""
+    if not chunk.heightmap:
+        return False
+    tops = [h + MIN_Y[chunk.dim] - 1 for h in chunk.heightmap]
+    for sy in range((min(tops) - 8) >> 4, (max(tops) >> 4) + 1):
+        sc = chunk.subchunk(sy)
+        if sc and not all(is_natural(n) for n in sc.palette):
+            return True
+    return False
+
+
 def render(world: Path, map_dir: Path, progress=lambda dim, n: None) -> dict:
     t0 = time.time()
     palette = Palette(json.loads(COLORS_FILE.read_text(encoding="utf-8")))
     images = {dim: DimensionImage() for dim in DIMENSIONS}
+    built: list[str] = []
     seen = 0
     for chunk in chunks(world / "db"):
         draw_chunk(images[chunk.dim], palette, chunk)
+        if is_built(chunk):
+            built.append(f"{DIM_KEY[chunk.dim]}{chunk.x},{chunk.z}")
         seen += 1
         if seen % 1000 == 0:
             progress(DIMENSIONS[chunk.dim], seen)
@@ -269,6 +289,10 @@ def render(world: Path, map_dir: Path, progress=lambda dim, n: None) -> dict:
     for old in map_dir.glob("build-*"):
         if old.name != build.name:
             shutil.rmtree(old, ignore_errors=True)
+    # chunks with builds - the portal hands them to the events pack (also builds from before its register)
+    (map_dir / f"{BUILT_FILE}.tmp").write_text(json.dumps({"at": time.time(), "chunks": sorted(built)}), encoding="utf-8")
+    os.replace(map_dir / f"{BUILT_FILE}.tmp", map_dir / BUILT_FILE)
+    index["built_chunks"] = len(built)
     return index
 
 
@@ -285,6 +309,7 @@ def main(argv: list[str]) -> int:
         return 1
     summary = {k: index[k] for k in ("build", "duration")}
     summary["chunks"] = {d: v["chunks"] for d, v in index["dims"].items()}
+    summary["built"] = index["built_chunks"]
     print(json.dumps({"done": summary}), flush=True)
     return 0
 

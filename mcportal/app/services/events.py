@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 
 from ..adapters.base import MinecraftAdapter
-from ..adapters.bedrock.commands import DAYTIME, EVENT_TYPES, WEATHER
+from ..adapters.bedrock.commands import DAYTIME, EVENT_TYPES, REGISTER_BATCH, WEATHER
 from ..adapters.bedrock.logparse import LogLine, parse_events
 from ..audit import AuditLog
 from .logcursor import LogCursor
@@ -105,6 +105,9 @@ class EventsService:
             d["state_at"] = ts
         elif event == "started" and isinstance(etype, str):
             d["started"][etype] = {"at": ts, "by": p.get("by")}
+        elif event == "register" and isinstance(p.get("total"), int):
+            if d["state"]:
+                d["state"]["register"] = p["total"]
         elif event == "ended" and isinstance(etype, str):
             began = d["started"].pop(etype, {})
             d["history"].append({
@@ -156,6 +159,40 @@ class EventsService:
             self.a.event_control_live("state")
         except Exception:
             log.debug("state refresh failed", exc_info=True)
+
+    def sync_register(self, built_file: Path) -> int:
+        """Hand chunks with builds found by the map reader to the events pack (only the ones not sent yet).
+
+        Runs after every map render. Returns the number of keys sent; 0 if nothing new or not possible now
+        (then the next render tries again).
+        """
+        try:
+            keys = json.loads(built_file.read_text(encoding="utf-8")).get("chunks", [])
+        except (OSError, ValueError):
+            return 0
+        sent = set(self.data.setdefault("register_sent", []))
+        new = [k for k in keys if isinstance(k, str) and k not in sent]
+        if not new or self.data["state"] is None:
+            return 0
+        if self.mc.status_word() != "online" or not self.a.console_available():
+            return 0
+        done = 0
+        for i in range(0, len(new), REGISTER_BATCH):
+            batch = new[i:i + REGISTER_BATCH]
+            try:
+                self.a.event_register_live(batch)
+            except Exception:
+                log.exception("register import failed")
+                break
+            sent.update(batch)
+            done += len(batch)
+        self.data["register_sent"] = sorted(sent)
+        try:
+            self._save()
+        except OSError:
+            log.exception("cannot write %s", self.file)
+        log.info("build register: %d chunks sent", done)
+        return done
 
     async def world(self, kind: str, value: str, user: str) -> None:
         """Weather / time of day through fixed console commands (commands.world_control)."""

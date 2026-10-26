@@ -1,6 +1,6 @@
 # Timed Events – Paket 3: Die Welt verändert sich (Plan, Änderung M13)
 
-Stand: 2026-10-26 · Status: **Plan, noch nicht umgesetzt** · baut auf Paket 1 und 2 auf · nur stabile
+Stand: 2026-10-26 · Status: **W1 gebaut** (Bestandsaufnahme, Register-Abgleich, Rückgängig-Protokoll), W2–W7 offen · baut auf Paket 1 und 2 auf · nur stabile
 Script-API, keine Experimente
 
 ## Ziel
@@ -85,6 +85,25 @@ Das Bau-Register kennt seit dem 26.10. jeden Chunk, in dem ein Spieler etwas ges
 
 Aufwand: ≈ 4–5 Tage. Jeder Schritt mit Node-Tests und Testserver; die Blockänderungen prüfe ich dort
 zusätzlich mit einem Vorher/Nachher-Vergleich und dem Rückgängig-Befehl.
+
+## W1 – gebaut
+
+- **Karten-Leser** (`app/map/natural.py`, `render.py`): Ein Chunk gilt als bebaut, wenn in den Abschnitten von
+  8 Blöcken unter der niedrigsten bis zur höchsten Oberfläche ein nicht natürlicher Block vorkommt. Natürlich
+  sind Gelände, Erze, Pflanzen, Bäume, Erzadern, Felsbrocken, Endstein usw.; unbekannte Blöcke zählen als bebaut.
+  Ergebnis nach jedem Kartenlauf: `/var/lib/mcportal/map/built_chunks.json`. Echte Welt (Kopie): **1.053 bebaute
+  Chunks in der Oberwelt** (Dörfer, eure Bauten, Ruinen) + 34 im Ende (Endstädte); +12 s Zeichenzeit.
+- **Abgleich:** Nach jedem erfolgreichen Kartenlauf schickt das Portal die neuen Chunks über feste
+  Konsolenbefehle (`scriptevent mcfs:event register …`, je 100) ans Events-Pack; schon gesendete merkt es sich.
+  Ist der Server gerade nicht erreichbar, holt der nächste Kartenlauf das nach.
+- **Events-Pack:** nimmt `register` an (nur gültige Chunk-Schlüssel, höchstens 200 je Befehl) und führt ein
+  **Rückgängig-Protokoll** (`changeBlocks` / `undo <id>`): jeder von einem Event geänderte Block mit vorherigem
+  Zustand; Rückgängig stellt nur Blöcke wieder her, die noch so sind, wie das Event sie hinterlassen hat.
+- **Portal:** Reiter Events zeigt „🛡️ Geschützt: … Chunks mit Bauten“.
+- **Getestet:** 17 Node-Tests (neu: register/undo-Befehle), Python-Tests (Erkennung im Karten-Leser, natürliche
+  Blöcke, Abgleich in 100er-Paketen, nur neue, nicht bei Server offline). Testserver: Import (doppelte
+  übersprungen, ungültige abgelehnt), importierter Chunk schützt vor Blitz, Rückgängig 8 von 9 Blöcken (einer war
+  „von einem Spieler“ verändert und bleibt). Lokal: Kartenlauf → 1.087 Chunks übergeben.
 
 ## Was sich auf dem Server ändert
 

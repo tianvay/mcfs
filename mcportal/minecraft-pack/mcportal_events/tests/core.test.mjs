@@ -151,6 +151,13 @@ test("control commands from console and portal", () => {
   assert.deepEqual(parseControl(" stop  mining_rush "), { verb: "stop", type: "mining_rush" });
   assert.deepEqual(parseControl("auto off"), { verb: "auto", on: false });
   assert.deepEqual(parseControl("state"), { verb: "state" });
+  assert.deepEqual(parseControl("register o1,2;o-3,-4;e10,0"), { verb: "register", keys: ["o1,2", "o-3,-4", "e10,0"] });
+  assert.deepEqual(parseControl("undo meteor-17"), { verb: "undo", id: "meteor-17" });
+  const many = Array.from({ length: 201 }, (_, i) => `o${i},0`).join(";");
+  for (const bad of ["register", "register o1,2;x", "register o1,2;;o3,4", `register ${many}`, "register o1,2 o3,4",
+    "undo", "undo ../x", "undo meteor-1;start"]) {
+    assert.equal(parseControl(bad), null, bad);
+  }
   for (const bad of ["start", "start meteor", "auto maybe", "start storm now", "", "state x", "rm -rf"]) {
     assert.equal(parseControl(bad), null, bad);
   }

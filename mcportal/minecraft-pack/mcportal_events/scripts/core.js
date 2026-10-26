@@ -189,10 +189,22 @@ export function formatMinutes(seconds) {
   return m >= 60 ? `${Math.floor(m / 60)} Std. ${m % 60 ? `${m % 60} Min.` : ""}`.trim() : `${m} Min.`;
 }
 
-/** console / portal control: "start <type>" | "stop <type>" | "auto on|off" | "state" */
+export const REGISTER_KEY = /^[one]-?\d{1,7},-?\d{1,7}$/;
+export const MAX_REGISTER_BATCH = 200;
+export const UNDO_ID = /^[a-z_]+-\d{1,10}$/;
+
+/**
+ * console / portal control: "start <type>" | "stop <type>" | "auto on|off" | "state"
+ *   | "register <key;key;...>" (chunks with builds, from the map reader) | "undo <id>" (block changes of an event)
+ */
 export function parseControl(message) {
   const [verb, arg, ...rest] = String(message ?? "").trim().split(/\s+/);
   if (rest.length) return null;
+  if (verb === "register" && arg) {
+    const keys = arg.split(";");
+    return keys.length <= MAX_REGISTER_BATCH && keys.every((k) => REGISTER_KEY.test(k)) ? { verb, keys } : null;
+  }
+  if (verb === "undo" && arg) return UNDO_ID.test(arg) ? { verb, id: arg } : null;
   if ((verb === "start" || verb === "stop") && arg in TYPES) return { verb, type: arg };
   if (verb === "auto" && (arg === "on" || arg === "off")) return { verb, on: arg === "on" };
   if (verb === "state" && !arg) return { verb };

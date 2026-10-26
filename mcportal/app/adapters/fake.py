@@ -267,7 +267,7 @@ class FakeAdapter:
                    "boss": {"name": "Bernd der Zombiekönig", "x": -120, "y": 71, "z": 48} if t == "bounty" else None}
                   for t, r in self._ev_active.items()]
         self._ev_log({"event": "state", "auto": self._ev_auto, "online": len(self._online), "active": active,
-                      "next_in": 95 if self._ev_auto else None, "last": "storm", "register": 12,
+                      "next_in": 95 if self._ev_auto else None, "last": "storm", "register": getattr(self, "_ev_register", 12),
                       "types": ["storm", "mining_rush", "lucky_day", "blood_moon", "zombie_invasion", "bounty"]}, ts)
 
     def event_control_live(self, action: str, event_type: str | None = None) -> None:
@@ -287,6 +287,12 @@ class FakeAdapter:
             for t in self._ev_active:
                 self._ev_active[t] = max(60, self._ev_active[t] - 300)
         self._ev_state()
+
+    def event_register_live(self, keys: list[str]) -> None:
+        from .bedrock.commands import event_register
+        event_register(keys)  # same validation as the real console command
+        self._ev_register = getattr(self, "_ev_register", 12) + len(keys)
+        self._ev_log({"event": "register", "added": len(keys), "total": self._ev_register})
 
     def world_control_live(self, kind: str, value: str) -> None:
         from .bedrock.commands import world_control

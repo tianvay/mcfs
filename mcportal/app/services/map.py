@@ -62,6 +62,7 @@ class MapService:
         self._save_ready = False  # "Data saved ..." seen, the file list follows on the next line
         self._task: asyncio.Task | None = None
         self._nightly: asyncio.Task | None = None
+        self.after_render: list = []  # called with the built-chunks file after every successful run
         mc.line_listeners.append(self._on_line)
         mc.extras["map"] = self.state
 
@@ -155,6 +156,11 @@ class MapService:
             self.mc.publish()
             result = await self._render()
             self.audit.write("MAP", "SUCCESS", user, build=result.get("build"), seconds=round(time.time() - t0))
+            for fn in self.after_render:
+                try:
+                    await asyncio.to_thread(fn, self.dir / "built_chunks.json")
+                except Exception:
+                    log.exception("after-render hook failed")
         except asyncio.CancelledError:
             raise
         except Exception as e:

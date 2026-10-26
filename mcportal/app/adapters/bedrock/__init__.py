@@ -53,6 +53,9 @@ class BedrockAdapter:
     def tell_operator_status_live(self, name: str, granted: bool) -> None:
         console.send(self.fifo, commands.tell_operator_status(name, granted))
 
+    def event_register_live(self, keys: list[str]) -> None:
+        console.send(self.fifo, commands.event_register(keys))
+
     def world_control_live(self, kind: str, value: str) -> None:
         console.send(self.fifo, commands.world_control(kind, value))
 
