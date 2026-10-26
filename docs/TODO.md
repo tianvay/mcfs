@@ -4,6 +4,14 @@ Stand: 2026-10-26
 
 ## Offen
 
+- [ ] **Timed Events Paket 1** (Grundgerüst, Bau-Register, Portal-Kachel, Mining Rush, Unwetter, Glückstag,
+      Event-Erfolge): Plan `docs/09-events.md`, Schritte E1–E5.
+- [ ] Timed Events **Paket 2 – Nachtgefahren**: 🧟 Zombie-Invasion (Wellen bei Dorfbewohnern, Extra-Drops),
+      🌕 Blutmond (Wolfsrudel, roter Bildschirm), 👑 Kopfgeld-Boss (benannter Mob, Beute, eigener Erfolg). ≈ 2–3 Tage.
+- [ ] Timed Events **Paket 3 – Die Welt verändert sich**: ☄️ Meteorit (Krater mit Netherrack/Amethyst/Diamanterz,
+      nur unberührte Chunks, nur natürliche Blöcke), 👻 Spukort (verfluchtes Dorf, Monster, Truhe nach „Fluch
+      gebrochen“; ggf. spukende Wegpunkt-Ruinen), 🗺️ Schatzsuche (vergrabene Truhe, wärmer/kälter),
+      🌠 Sternschnuppen-Nacht. Vorher: Bestandsaufnahme alter Bauten aus der Karte ins Bau-Register. ≈ 4–5 Tage.
 - [ ] **Chatlog im Portal** (eigener Punkt in der Übersicht, nur Nachrichten an alle – keine `/tell`, keine Befehle):
       warten, bis Mojang das Chat-Ereignis (`world.afterEvents.chatSend`) aus dem Beta-Stadium holt. Stand 2026-10-26:
       nur in `@minecraft/server` 2.11.0-beta; stabil ist 2.10.0 ohne Chat; der Server-Log enthält keinen Chat.
