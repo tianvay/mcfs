@@ -6,7 +6,7 @@ import {
   activeMinute, chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, intervalMinutes, isNaturalTop,
   isBed, isLeftover, isNight, isRushOre, lightningOffset, MIN_GAP, mobTag, newActive, newSchedule, nightStep, packSize,
   parseControl, participants, ranSeconds, ringOffset, scheduleMinute, secondsUntilDawn, secondsUntilNight,
-  shouldDouble, TYPES, xpBonus,
+  shouldDouble, TYPES, xpBonus, invasionLoot, invasionMob, invasionTargets, waveSize, ZOMBIES,
 } from "../scripts/core.js";
 
 test("night events: wait for the night, run until dawn", () => {
@@ -29,6 +29,35 @@ test("night events: wait for the night, run until dawn", () => {
   assert.deepEqual(participants(a), ["Steve"], "Alex was there 2 of 6 minutes");
   const b = newActive("zombie_invasion", "console");
   assert.equal(nightStep(b, 15000), "night", "started at night: begins at once");
+});
+
+test("zombie invasion: waves, mobs, loot, targets", () => {
+  assert.equal(waveSize(1, 0), 4);
+  assert.equal(waveSize(3, 0), 6);
+  assert.equal(waveSize(3, 28), 2, "cap of 30 alive");
+  assert.equal(waveSize(3, 35), 0);
+  const counts = {};
+  let seq = 0;
+  const steps = (n) => () => ((seq++ % n) + 0.5) / n;
+  const r = steps(10);
+  for (let i = 0; i < 10; i++) counts[invasionMob(r)] = (counts[invasionMob(r)] ?? 0) + 1;
+  assert.ok(counts["minecraft:zombie"] >= 6);
+  assert.deepEqual(invasionLoot(() => 0.99), [], "unlucky: nothing extra");
+  const all = invasionLoot(() => 0);
+  assert.deepEqual(all.map(([id]) => id), ["minecraft:iron_ingot", "minecraft:carrot", "minecraft:potato",
+    "minecraft:emerald", "minecraft:experience_bottle", "minecraft:golden_apple"]);
+  assert.ok(ZOMBIES.has("minecraft:husk") && !ZOMBIES.has("minecraft:skeleton"));
+  const vill = (x, z) => [{ x, z }, { x: x + 4, z }, { x, z: z + 4 }];
+  const t = invasionTargets([
+    { x: 0, z: 0, villagers: vill(10, 10) },     // in a village
+    { x: 30, z: 0, villagers: vill(10, 10) },    // same village
+    { x: 500, z: 500, villagers: [] },           // alone in the wild
+  ]);
+  assert.equal(t.length, 2);
+  assert.deepEqual([t[0].village, t[0].players], [true, 2]);
+  assert.ok(Math.abs(t[0].x - 11.33) < 0.1);
+  assert.deepEqual([t[1].village, t[1].x, t[1].players], [false, 500, 1]);
+  assert.equal(invasionTargets([{ x: 0, z: 0, villagers: vill(0, 0).slice(0, 2) }])[0].village, false, "2 villagers are no village");
 });
 
 test("event mobs: tags and tidying up", () => {

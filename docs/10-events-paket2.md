@@ -1,6 +1,6 @@
 # Timed Events – Paket 2: Nachtgefahren (Plan, Änderung M12)
 
-Stand: 2026-10-26 · Status: **N1 gebaut** (Nacht-Gerüst, Blutmond), N2–N6 offen · baut auf Paket 1 auf (`docs/09-events.md`) ·
+Stand: 2026-10-26 · Status: **N1–N2 gebaut** (Nacht-Gerüst, Blutmond, Zombie-Invasion), N3–N6 offen · baut auf Paket 1 auf (`docs/09-events.md`) ·
 nur stabile Script-API, keine Experimente
 
 ## Ziel
@@ -111,6 +111,23 @@ Phasen und Aufräumen lassen sich mit Test-Spielerpositionen prüfen, Kämpfe nu
   Neustart mitten in der Nacht → läuft weiter; Wolfsrudel nur auf Naturboden, Wölfe nach einem Tick wütend
   (verlieren „zähmbar“), bleiben während der Nacht; Sonnenaufgang / Beenden → Ende, alle Blutmond-Wölfe weg.
   Nicht prüfbar ohne Spieler: Nebel, roter Bildschirm, Angriff, Schlafsperre.
+
+## N2 – gebaut
+
+- **Zombie-Invasion:** In der Nacht jede Minute eine Welle. Ziele: für jeden Spieler in der Oberwelt das Dorf
+  in seiner Nähe (Mittelpunkt von mind. 3 Dorfbewohnern im Umkreis von 96 Blöcken), sonst der Spieler selbst;
+  Ziele näher als 48 Blöcke werden zusammengelegt. Je Ziel 3 + 1 je Spieler dort, höchstens 30 lebende
+  Invasions-Zombies; 24–40 Blöcke entfernt, nur außerhalb bebauter Chunks, auf Naturboden, nicht im Wasser
+  (sonst würden sie zu Ertrunkenen). 80 % Zombie, 10 % Wüstenzombie, 10 % Zombie-Dorfbewohner.
+- **Dorfbewohner geschützt:** Bei jeder Welle bekommen die Dorfbewohner des angegriffenen Dorfs Widerstand V
+  (unverwundbar) und Feuerschutz für etwas über eine Minute.
+- **Beute:** Jeder Zombie (auch Wüstenzombie, Ertrunkener, Zombie-Dorfbewohner), den ein Spieler in der
+  Invasionsnacht besiegt, lässt zusätzlich fallen: 40 % Eisenbarren, je 25 % 1–2 Karotten/Kartoffeln,
+  10 % Smaragd, 10 % Erfahrungsfläschchen, 2 % Goldener Apfel. Meldung `kill`/`invasion_zombie` ans Erfolge-Pack.
+- **Getestet:** 14 Node-Tests (neu: Wellengröße und Obergrenze, Mob-Auswahl, Beutetabelle, Dorf-Ziele).
+  Testserver mit 4 Dorfbewohnern: zwei „Spieler“ im Dorf → ein Ziel, 5 Zombies; nächste Welle +4; alle
+  Dorfbewohner geschützt; nicht geladener Ort → keine Zombies; während der Nacht wird nichts aufgeräumt;
+  bei Sonnenaufgang Ende und alle Invasions-Zombies weg. Kampf und Beute nur im Spiel prüfbar.
 
 ## Was sich auf dem Server ändert
 

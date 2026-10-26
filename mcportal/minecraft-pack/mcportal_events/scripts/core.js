@@ -257,6 +257,63 @@ export function isLeftover(tags, activeTypes) {
   return !tags.some((t) => t.startsWith("mcfs_ev_") && activeTypes.includes(t.slice(8)));
 }
 
+// ---------- Zombie-Invasion ----------
+
+export const ZOMBIES = new Set(["minecraft:zombie", "minecraft:husk", "minecraft:drowned",
+  "minecraft:zombie_villager", "minecraft:zombie_villager_v2"]);
+export const MAX_INVASION_ZOMBIES = 30; // alive at once around one place
+
+/** zombies per wave and place: 3 + 1 per player nearby, never more than the cap allows */
+export function waveSize(playersNear, alive) {
+  return Math.max(0, Math.min(3 + playersNear, MAX_INVASION_ZOMBIES - alive));
+}
+
+/** mostly zombies, sometimes a husk or a zombie villager */
+export function invasionMob(rand) {
+  const r = rand();
+  if (r < 0.1) return "minecraft:husk";
+  if (r < 0.2) return "minecraft:zombie_villager_v2";
+  return "minecraft:zombie";
+}
+
+/** extra loot for a zombie a player defeated during an invasion: [item id, amount][] */
+export function invasionLoot(rand) {
+  const out = [];
+  const roll = (chance, id, min = 1, max = 1) => {
+    if (rand() < chance) out.push([id, min + Math.floor(rand() * (max - min + 1))]);
+  };
+  roll(0.4, "minecraft:iron_ingot");
+  roll(0.25, "minecraft:carrot", 1, 2);
+  roll(0.25, "minecraft:potato", 1, 2);
+  roll(0.1, "minecraft:emerald");
+  roll(0.1, "minecraft:experience_bottle");
+  roll(0.02, "minecraft:golden_apple");
+  return out;
+}
+
+/**
+ * Where the zombies go: the villages near the players (centre of the villagers within 96 blocks), else the
+ * players themselves. Places closer than 48 blocks are merged.
+ * @param {{x:number,z:number,villagers:{x:number,z:number}[]}[]} players  with the villagers near each one
+ * @returns {{x:number,z:number,village:boolean,players:number}[]}
+ */
+export function invasionTargets(players) {
+  const out = [];
+  for (const p of players) {
+    const v = p.villagers.length >= 3;
+    const x = v ? p.villagers.reduce((s, a) => s + a.x, 0) / p.villagers.length : p.x;
+    const z = v ? p.villagers.reduce((s, a) => s + a.z, 0) / p.villagers.length : p.z;
+    const near = out.find((t) => Math.hypot(t.x - x, t.z - z) < 48);
+    if (near) {
+      near.players += 1;
+      if (v && !near.village) Object.assign(near, { x, z, village: true });
+    } else {
+      out.push({ x, z, village: v, players: 1 });
+    }
+  }
+  return out;
+}
+
 /** beds can't be used while a night event waits or runs */
 export function isBed(typeId) {
   return typeId === "minecraft:bed" || String(typeId).endsWith("_bed");

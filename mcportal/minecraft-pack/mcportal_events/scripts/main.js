@@ -3,7 +3,8 @@
 //  * Random events while players are online - the more players, the more often, at most one per hour
 //    (core.js). Running events only lose time while somebody is online; everything survives restarts.
 //  * Events: Unwetter (storm), Mining Rush (ore drops doubled), Glückstag (XP doubled);
-//    night events (wait for the next night, end at dawn, no sleeping meanwhile): Blutmond (wolf packs).
+//    night events (wait for the next night, end at dawn, no sleeping meanwhile): Blutmond (wolf packs),
+//    Zombie-Invasion (waves at the villages near players, better loot, villagers protected).
 //  * Mobs spawned by events carry the tag "mcfs_ev" + "mcfs_ev_<type>" and are removed when their event is over.
 //  * Build register: every chunk a player placed a block in is remembered; world-changing effects
 //    (lightning now, meteors later) stay away from it.
@@ -14,9 +15,10 @@
 // console.warn on purpose: the server runs with content-log-level=warning.
 import { EntityDamageCause, ItemStack, Player, ScriptEventSource, system, WeatherType, world } from "@minecraft/server";
 import {
-  activeMinute, chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, formatMinutes, isBed, isLeftover,
-  isNaturalTop, isRushOre, lightningOffset, MOB_TAG, mobTag, newActive, newSchedule, nightStep, packSize, parseControl,
-  participants, ranSeconds, ringOffset, scheduleMinute, shouldDouble, TYPES, xpBonus,
+  activeMinute, chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, formatMinutes, invasionLoot,
+  invasionMob, invasionTargets, isBed, isLeftover, isNaturalTop, isRushOre, lightningOffset, MOB_TAG, mobTag, newActive,
+  newSchedule, nightStep, packSize, parseControl, participants, ranSeconds, ringOffset, scheduleMinute, shouldDouble,
+  TYPES, waveSize, xpBonus, ZOMBIES,
 } from "./core.js";
 
 const TAG = "[mcportal-events]";
@@ -120,6 +122,13 @@ const HANDLERS = {
     night(a, resumed) { bloodMoonNight(resumed); },
     tick() { bloodMoonTick(); },
     stop() { bloodMoonEnd(); },
+  },
+  zombie_invasion: {
+    start() {},
+    minute() {},
+    night() { nextWave = 0; }, // first wave right away
+    tick() { invasionTick(); },
+    stop() {},
   },
 };
 const IMPLEMENTED = Object.keys(HANDLERS);
@@ -323,13 +332,91 @@ function bloodMoonEnd() {
   lastPack.clear();
 }
 
+// ---------- Zombie-Invasion ----------
+
+const WAVE_EVERY = 60 * 20;
+const VILLAGE_RADIUS = 96;
+let nextWave = 0;
+
+function invasionTick() {
+  if (system.currentTick < nextWave) return;
+  nextWave = system.currentTick + WAVE_EVERY;
+  const dim = overworld();
+  const players = world.getAllPlayers().filter((p) => p.dimension.id === "minecraft:overworld");
+  invasionWave(dim, players.map((p) => p.location));
+}
+
+/** one wave for every place the players are at: their village, or themselves if no village is near */
+function invasionWave(dim, positions) {
+  const near = positions.map((l) => {
+    let villagers = [];
+    try {
+      villagers = dim.getEntities({ type: "minecraft:villager_v2", location: l, maxDistance: VILLAGE_RADIUS })
+        .map((v) => v.location);
+    } catch { /* unloaded */ }
+    return { x: l.x, z: l.z, villagers };
+  });
+  const result = [];
+  for (const t of invasionTargets(near)) {
+    const center = { x: t.x, y: 64, z: t.z };
+    if (t.village) protectVillagers(dim, center);
+    let alive = 0;
+    try {
+      alive = dim.getEntities({ tags: [mobTag("zombie_invasion")], location: center, maxDistance: VILLAGE_RADIUS }).length;
+    } catch { /* ignore */ }
+    let spawned = 0;
+    const want = waveSize(t.players, alive);
+    for (let attempt = 0; spawned < want && attempt < want * 4; attempt++) {
+      const spot = ringOffset(t.x, t.z, 24, 40, Math.random);
+      const at = zombieSpot(dim, spot.x, spot.z);
+      if (!at) continue;
+      try {
+        spawnEventMob(dim, invasionMob(Math.random), "zombie_invasion", at);
+        spawned++;
+      } catch { /* ignore */ }
+    }
+    result.push({ village: t.village, spawned, alive });
+  }
+  return result;
+}
+
+/** ground for a zombie: outside built chunks, on natural ground, not in water (they would turn into drowned) */
+function zombieSpot(dim, x, z) {
+  if (isBuilt(dim.id, x, z)) return null;
+  try {
+    const top = dim.getTopmostBlock({ x, z });
+    if (!top || !isNaturalTop(top.typeId) || top.typeId.includes("water")) return null;
+    return { x: x + 0.5, y: top.location.y + 1, z: z + 0.5 };
+  } catch {
+    return null;
+  }
+}
+
+/** villagers of the attacked village can't be hurt during the invasion (on easy, zombies kill them) */
+function protectVillagers(dim, center) {
+  try {
+    for (const v of dim.getEntities({ type: "minecraft:villager_v2", location: center, maxDistance: VILLAGE_RADIUS })) {
+      v.addEffect("resistance", WAVE_EVERY + 200, { amplifier: 4, showParticles: false });
+      v.addEffect("fire_resistance", WAVE_EVERY + 200, { showParticles: false });
+    }
+  } catch { /* ignore */ }
+}
+
 // event mobs: loot and news for the achievements
 world.afterEvents.entityDie.subscribe((ev) => {
   const dead = ev.deadEntity;
+  const killer = ev.damageSource.damagingEntity;
+  // every zombie a player defeats during the invasion night drops more - also the ones that came by themselves
+  if (killer instanceof Player && ZOMBIES.has(dead.typeId)
+      && active.some((a) => a.type === "zombie_invasion" && a.phase === "running")) {
+    for (const [id, n] of invasionLoot(Math.random)) {
+      try { dead.dimension.spawnItem(new ItemStack(id, n), dead.location); } catch { /* ignore */ }
+    }
+    news({ event: "kill", kind: "invasion_zombie", player: killer.name });
+  }
   let tags;
   try { tags = dead.getTags(); } catch { return; }
   if (!tags.includes(MOB_TAG)) return;
-  const killer = ev.damageSource.damagingEntity;
   if (tags.includes(mobTag("blood_moon"))) {
     try {
       dead.dimension.spawnItem(new ItemStack("minecraft:bone", 1 + Math.floor(Math.random() * 2)), dead.location);
@@ -517,7 +604,7 @@ function minute() {
 system.afterEvents.scriptEventReceive.subscribe((ev) => {
   if (ev.id !== "mcfs:event" || !schedule) return;
   const fromConsole = ev.sourceType === ScriptEventSource.Server;
-  const test = /^test (strike|minute|rush|pack|tidy)\b/.exec(ev.message);
+  const test = /^test (strike|minute|rush|pack|tidy|wave|villagers)\b/.exec(ev.message);
   if (test && fromConsole) return runTest(ev.message);
   const cmd = parseControl(ev.message);
   const reply = (msg) => {
@@ -578,6 +665,27 @@ function runTest(message) {
       const tame = wolves.filter((w) => w.getComponent("minecraft:tameable")).length;
       log({ event: "test", pack: ok, wolves: wolves.length, still_tameable: tame });
     }, 5);
+  } else if (kind === "villagers") {
+    // a small "village": 4 villagers on the ground at (a, b)
+    const dim = overworld();
+    for (let i = 0; i < 4; i++) {
+      const x = Number(a) + i * 2, z = Number(b);
+      dim.spawnEntity("minecraft:villager_v2", { x: x + 0.5, y: dim.getTopmostBlock({ x, z }).location.y + 1, z: z + 0.5 });
+    }
+    log({ event: "test", villagers: dim.getEntities({ type: "minecraft:villager_v2" }).length });
+  } else if (kind === "wave") {
+    // one invasion wave as if players stood at "x,z;x,z" (a = list)
+    const dim = overworld();
+    const positions = a.split(";").map((p) => {
+      const [x, z] = p.split(",").map(Number);
+      return { x: x + 0.5, y: dim.getTopmostBlock({ x, z }).location.y + 1, z: z + 0.5 };
+    });
+    const res = invasionWave(dim, positions);
+    system.runTimeout(() => {
+      const villagers = dim.getEntities({ type: "minecraft:villager_v2" });
+      log({ event: "test", wave: res, zombies: dim.getEntities({ tags: [mobTag("zombie_invasion")] }).length,
+        villagers: villagers.length, protected: villagers.filter((v) => v.getEffect("resistance")).length });
+    }, 2);
   } else if (kind === "tidy") {
     log({ event: "test", removed: tidyUp(), left: overworld().getEntities({ tags: [MOB_TAG] }).length });
   } else if (kind === "strike") {
