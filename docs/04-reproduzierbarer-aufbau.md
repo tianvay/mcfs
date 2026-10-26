@@ -125,6 +125,38 @@ Laravel antwortet wie vorher, Rechte (kein 777, nichts root unter `/opt/minecraf
   4 Behavior Packs melden sich, keine Fehler. Das Log enthält ein NUL-Byte → `grep -a`. Der Lauf mit `sudo`
   (Benutzer, `/opt/minecraft`) ist R5.
 
+## R3 – gebaut
+
+- `provision/lib.sh` – Gemeinsames für die drei Scripts: Einstellungen laden, `packs.list` lesen, erwartete
+  Log-Zeilen je Pack, Fehlerfilter. `setup.sh` nutzt es jetzt auch.
+- `provision/verify.sh [--conf DATEI] [--laravel CODE]` – Abnahmetest, **ändert nichts**. Er prüft die Installation,
+  auf die die Unit zeigt:
+  - **Dienste:** beide Dienste und die Konsole aktiv, Spieler-Port offen. Bedrock 1.26 lauscht per **TCP** auf
+    19132, deshalb prüft er TCP und UDP.
+  - **Packs:** Jedes Pack aus `packs.list` hat in der Welt die Repo-Version, steht in `world_*_packs.json` und hat
+    sich beim **letzten Start** gemeldet. Gelesen wird das Log genau dieses Laufs (`_SYSTEMD_INVOCATION_ID`).
+  - **Fehler:** Script- und Pack-Fehler zählen als FEHLER. Meldungen von Minecraft selbst über eine alte Welt
+    erscheinen nur als HINWEIS.
+  - **Portal:** antwortet, die Update-Prüfung geht, Laravel antwortet wie vorher.
+  - **Rechte:** nichts unter dem Ordner ist für alle schreibbar, nichts gehört root. Mit sudo zusätzlich: Das
+    Portal darf `allowlist.json` und `permissions.json` schreiben und die Welt lesen (Karte, Seed).
+  - Mit `--conf` muss die Unit außerdem auf `MC_DIR` und `MC_USER` zeigen (nach dem Umstieg).
+- `provision/import-players.sh --from <alter Ordner>` mit sudo – übernimmt Whitelist und Operatoren in `MC_DIR`.
+  - Läuft nur, wenn dort kein Minecraft läuft. Vorher sichert er die Zieldateien nach
+    `/opt/minecraft/backups/<Zeit>_pre_import-players/`.
+  - Einträge im Ziel bleiben, beim selben Spieler (XUID, sonst Name) gewinnt die Quelle.
+  - Prüft streng: Namen, XUIDs nur Ziffern, Rechte nur operator/member/visitor. Er schreibt im Format des Servers
+    und gibt **nur Anzahlen** aus.
+  - Die Logik steckt in `provision/players.py` mit 6 Tests.
+- **Geprüft:**
+  - **Tests:** 10 Tests in `provision/tests` grün.
+  - **`verify.sh` als `fred` gegen den Testserver:** alles OK bis auf einen echten Befund, den 777-Ordner der
+    Testinstallation (verschwindet mit `/opt/minecraft`). Die 5 Minecraft-Meldungen über die alte 1.21-Welt
+    erscheinen als HINWEIS; die neue Welt im Probestart hatte keine.
+  - **`players.py import`** mit Kopien der echten Dateien in einen Wegwerf-Ordner: inhaltlich identisch (3 Einträge,
+    2 Operatoren), ein zweiter Lauf ändert nichts.
+  - **Noch offen (R5):** die sudo-Teile.
+
 ## Umstieg am Stichtag (auf diesem Laptop)
 
 ```text
@@ -135,9 +167,9 @@ Vorher (Tage davor, ohne Ausfall):
 Stichtag (ca. 5 Minuten Ausfall):
   1. Testserver stoppen, Testinstallation komplett archivieren (bleibt liegen, wird nicht gelöscht)
   2. setup.sh            Unit auf /opt/minecraft umstellen, Portal neu ausrichten
-  3. import-players.sh   Whitelist + Operatoren aus der Testinstallation
+  3. import-players.sh --from <Testinstallation>   Whitelist + Operatoren
   4. Portal-Daten der Testphase archivieren (Statistik, Erfolge, Events, Karte, Versionshistorie)
-  5. Start, verify.sh, Kartenlauf
+  5. Start, verify.sh --conf /etc/mcportal/server.conf --laravel <Wert von vorher>, Kartenlauf
 Rückweg: alte Unit-Datei zurück, daemon-reload, Start – die Testinstallation ist unverändert da.
 ```
 

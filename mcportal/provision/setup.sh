@@ -17,20 +17,13 @@
 # Settings: --conf FILE, else /etc/mcportal/server.conf, else provision/server.conf.example (placeholder names).
 set -euo pipefail
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO="$(cd "$HERE/.." && pwd)"
-PACKS_SRC="$REPO/minecraft-pack"
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 # stable @minecraft/server version, same as deploy/world-pack.sh
 SERVER_API=2.10.0
 PROBE_V4=19160
 PROBE_V6=19161
 PROBE_TIMEOUT=240
 MIN_FREE_MB=2048
-
-step() { printf '\n\033[1;32m==> %s\033[0m\n' "$*"; }
-info() { printf '    %s\n' "$*"; }
-warn() { printf '    \033[1;33mWARNUNG: %s\033[0m\n' "$*"; }
-fail() { printf '\n\033[1;31mFEHLER: %s\033[0m\n' "$*" >&2; exit 1; }
 
 MODE="" CONF=""
 while [[ $# -gt 0 ]]; do
@@ -44,38 +37,25 @@ done
 [[ "$MODE" == prepare ]] || fail "Nur --prepare ist gebaut (Umstellung am Stichtag folgt in R6)"
 [[ "$(id -u)" == 0 ]] || fail "Bitte mit sudo ausführen"
 
-if [[ -z "$CONF" ]]; then
-  CONF=/etc/mcportal/server.conf
-  [[ -f "$CONF" ]] || CONF="$HERE/server.conf.example"
-fi
-[[ -f "$CONF" ]] || fail "Einstellungen nicht gefunden: $CONF"
-
-# checked KEY=value lines -> variables (properties.py refuses anything unexpected)
-CONF_LINES="$(python3 "$HERE/properties.py" conf "$CONF")" || fail "Einstellungen ungültig: $CONF"
-while IFS='=' read -r key value; do
-  case "$key" in
-    WORLD_NAME|MC_USER|MC_DIR|PORT_V4|PORT_V6) printf -v "$key" '%s' "$value" ;;
-  esac
-done <<<"$CONF_LINES"
-MC_HOME="$(dirname "$MC_DIR")"
+load_conf "$CONF"
+PACKS="$(pack_lines)"
 PROBE_DIR="$MC_HOME/probe"
 WORLD="$MC_DIR/worlds/$WORLD_NAME"
 
 # ---------------------------------------------------------------------------
 step "1/6 Prüfungen"
 info "Einstellungen: $CONF"
-[[ "$CONF" == "$HERE/server.conf.example" ]] && warn "Beispiel-Einstellungen (Servername/Weltname noch offen) – reicht für den Probelauf"
+conf_is_example && warn "Beispiel-Einstellungen (Servername/Weltname noch offen) – reicht für den Probelauf"
 for tool in python3 curl tar runuser ss; do command -v "$tool" >/dev/null || fail "$tool fehlt"; done
-grep -qv '^\s*\(#\|$\)' "$HERE/packs.list" || fail "packs.list ist leer"
 mkdir -p "$MC_HOME"   # needed for the free-space check; owner fixed below
 FREE_MB="$(df -Pm "$MC_HOME" | awk 'NR==2 {print $4}')"
 (( FREE_MB >= MIN_FREE_MB )) || fail "Nur $FREE_MB MB frei unter $MC_HOME (mindestens $MIN_FREE_MB MB)"
 info "Speicher: $FREE_MB MB frei unter $MC_HOME"
 for port in "$PROBE_V4" "$PROBE_V6"; do
-  ! ss -Hlun "sport = :$port" | grep -q . || fail "Probe-Port $port/udp ist belegt"
+  ! ss -Htuln "sport = :$port" | grep -q . || fail "Probe-Port $port ist belegt"
 done
 for port in "$PORT_V4" "$PORT_V6"; do
-  ss -Hlun "sport = :$port" | grep -q . && info "Port $port/udp belegt (laufender Testserver – für --prepare in Ordnung)"
+  ss -Htuln "sport = :$port" | grep -q . && info "Port $port belegt (laufender Testserver – für --prepare in Ordnung)"
 done
 LARAVEL_BEFORE="$(curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1/ || true)"
 info "Laravel: HTTP $LARAVEL_BEFORE auf Port 80 (Vergleichswert)"
@@ -121,7 +101,6 @@ done < <(python3 "$HERE/properties.py" render "$HERE/server.properties.overrides
 
 # ---------------------------------------------------------------------------
 step "5/6 Packs in die Welt"
-manifest() { python3 -I -c 'import json,sys; h=json.load(open(sys.argv[1]))["header"]; print(h[sys.argv[2]] if sys.argv[2] != "version" else ".".join(map(str, h["version"])))' "$1" "$2"; }
 EXPECT=()   # log lines the probe start must show
 if [[ -d "$WORLD/db" ]]; then
   info "Welt $WORLD_NAME gibt es schon – Packs bleiben unverändert (Änderungen: deploy/world-pack.sh)"
@@ -129,9 +108,6 @@ else
   as_mc mkdir -p "$WORLD/behavior_packs" "$WORLD/resource_packs"
   BP_LIST="[]" RP_LIST="[]"
   while read -r kind pack; do
-    [[ -z "$kind" || "$kind" == \#* ]] && continue
-    [[ "$kind" =~ ^(behavior|resource)$ && "$pack" =~ ^[a-z0-9_]+$ && -f "$PACKS_SRC/$pack/manifest.json" ]] \
-      || fail "packs.list: ungültige Zeile '$kind $pack'"
     DST="$WORLD/${kind}_packs/$pack"
     rm -rf "$DST"
     as_mc mkdir "$DST"
@@ -142,14 +118,8 @@ else
       "$([[ $kind == behavior ]] && echo "$BP_LIST" || echo "$RP_LIST")" "$uuid" "$version")"
     if [[ $kind == behavior ]]; then BP_LIST="$entry"; else RP_LIST="$entry"; fi
     info "$kind  $pack $version"
-    if [[ $kind == behavior ]]; then
-      EXPECT+=("$(manifest "$DST/manifest.json" name).*version: $version")
-      if [[ -f "$DST/scripts/main.js" ]]; then
-        tag="$(grep -om1 '\[mcportal-[a-z]*\]' "$DST/scripts/main.js" || true)"
-        [[ -n "$tag" ]] && EXPECT+=("\\$tag {\"v\":[0-9]*,\"started\":true}")
-      fi
-    fi
-  done < "$HERE/packs.list"
+    [[ $kind == behavior ]] && mapfile -t -O "${#EXPECT[@]}" EXPECT < <(pack_log_patterns "$DST")
+  done <<<"$PACKS"
   python3 -I -c 'import json,sys; print(json.dumps(json.loads(sys.argv[1]), indent=2))' "$BP_LIST" | as_mc tee "$WORLD/world_behavior_packs.json" >/dev/null
   python3 -I -c 'import json,sys; print(json.dumps(json.loads(sys.argv[1]), indent=2))' "$RP_LIST" | as_mc tee "$WORLD/world_resource_packs.json" >/dev/null
   info "world_behavior_packs.json, world_resource_packs.json geschrieben"
@@ -196,7 +166,7 @@ PY
   exec 3>&-
 
   grep -aE 'Version:|Pack Stack|mcportal-[a-z]*\] \{"v":[0-9]*,"started"|Server started' "$LOG" | sed 's/^/    /' | head -20
-  ERRORS="$(grep -aE '\[Scripting\]|ERROR|\[Json|\[Item|\[Texture|\[Recipes\]' "$LOG" | grep -v 'mcportal-[a-z]*\]' || true)"
+  ERRORS="$(log_errors < "$LOG")"
   if [[ -n "$ERRORS" ]]; then
     printf '%s\n' "$ERRORS" | sed 's/^/    /' | head -30
     ok=0
@@ -214,7 +184,7 @@ fi
 LARAVEL_AFTER="$(curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1/ || true)"
 info "Laravel: HTTP $LARAVEL_AFTER (vorher $LARAVEL_BEFORE)"
 [[ "$LARAVEL_AFTER" == "$LARAVEL_BEFORE" ]] || warn "Laravel-Antwort hat sich geändert!"
-BAD="$(find "$MC_HOME" \( -perm -o+w -o ! -user "$MC_USER" \) -print -quit)"
+BAD="$(find "$MC_HOME" ! -type l \( -perm -o+w -o ! -user "$MC_USER" \) -print -quit)"
 [[ -z "$BAD" ]] || fail "Rechte nicht sauber: $BAD"
 info "Rechte: alles unter $MC_HOME gehört $MC_USER, nichts für alle schreibbar"
 printf '\n\033[1;32mVorbereitet.\033[0m %s ist bereit, die Welt entsteht erst am Stichtag. Der Testserver läuft unverändert.\n' "$MC_DIR"
