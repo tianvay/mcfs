@@ -4,6 +4,7 @@ Stand: 2026-10-25
 
 ## Offen
 
+- [ ] **Wegpunkte 1.1.0 (öffentlich/privat) installieren**; danach „Dorf“ ggf. mit `/warp public Dorf` freigeben.
 - [ ] **install.sh**: Korrektur Portal-Anzeige „starting“ nach Neustarts (seit M8 kam systemds „Started“ nach „Server started.“).
 - [ ] Wegpunkte noch ausprobieren: Teleport in den Nether/ins Ende, Diamant abbauen, Xbox (Grafik-Download).
 - [ ] Operator-Nachrichten im Spiel ausprobieren (Vergeben/Entziehen, online und offline).

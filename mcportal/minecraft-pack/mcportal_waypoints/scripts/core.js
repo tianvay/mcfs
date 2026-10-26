@@ -1,13 +1,15 @@
 // Waypoints - pure logic without Minecraft imports (tested with node --test tests/core.test.mjs).
 //
 // A waypoint is stored as one world dynamic property "mcfs_wp:<key>" (key = lower-case name):
-//   {v:1, name, x, y, z, dim, owner, created, physical}
+//   {v:1, name, x, y, z, dim, owner, created, physical, public}
+// Private (public missing/false): only the owner (and operators) can use it. Public: everybody.
 // For a physical waypoint x/y/z is the diamond block in the middle of the floor.
 
 export const ITEM_ID = "mcfs:waypoint";
 export const PROP_PREFIX = "mcfs_wp:";
 export const NAME_MAX = 24;
-export const RESERVED = new Set(["set", "list", "delete", "rename", "help", "hilfe", "liste"]);
+export const RESERVED = new Set(["set", "list", "delete", "rename", "help", "hilfe", "liste",
+  "public", "private", "öffentlich", "privat"]);
 
 const NAME_RE = /^[A-Za-z0-9ÄÖÜäöüß][A-Za-z0-9ÄÖÜäöüß _\-']*$/;
 
@@ -35,6 +37,8 @@ export function validateName(name, existingKeys, ownKey = null) {
  *   set <name>           -> set (operators: virtual waypoint at the current position)
  *   delete <name>        -> delete
  *   rename <alt> <neu>   -> rename
+ *   public <name>        -> make public (owner, operators)
+ *   private <name>       -> make private (owner, operators)
  *   <name>               -> teleport
  */
 export function parseCommand(a, b, c) {
@@ -44,6 +48,11 @@ export function parseCommand(a, b, c) {
   if (verb === "list" || verb === "liste") return { action: "list" };
   if (verb === "set") return b ? { action: "set", name: b.trim() } : { action: "error", message: "Aufruf: /warp set <Name>" };
   if (verb === "delete") return b ? { action: "delete", name: b.trim() } : { action: "error", message: "Aufruf: /warp delete <Name>" };
+  if (verb === "public" || verb === "öffentlich" || verb === "private" || verb === "privat") {
+    const pub = verb === "public" || verb === "öffentlich";
+    return b ? { action: "visibility", name: b.trim(), public: pub }
+      : { action: "error", message: `Aufruf: /warp ${pub ? "public" : "private"} <Name>` };
+  }
   if (verb === "rename") {
     return b && c ? { action: "rename", name: b.trim(), newName: c.trim() }
       : { action: "error", message: "Aufruf: /warp rename <alter Name> <neuer Name>" };
@@ -55,9 +64,10 @@ export function parseCommand(a, b, c) {
 export const HELP = [
   "§6Wegpunkte§r",
   "§e/warp <Name>§r – zum Wegpunkt reisen",
-  "§e/warp list§r – alle Wegpunkte anzeigen",
+  "§e/warp list§r – Wegpunkte anzeigen, die du benutzen darfst",
   "§e/warp delete <Name>§r – eigenen Wegpunkt löschen",
   "§e/warp rename <alt> <neu>§r – eigenen Wegpunkt umbenennen",
+  "§e/warp public <Name>§r / §e/warp private <Name>§r – für alle freigeben / nur für dich",
   "Neue Wegpunkte: Wegpunkt-Item craften (Laternen, Steinziegelmauern, Diamantblock) und auf den Boden setzen.",
 ];
 
@@ -114,11 +124,20 @@ export const DIMENSIONS = {
   "minecraft:the_end": "Ende",
 };
 
-export function formatList(wps) {
-  if (!wps.length) return ["§6Wegpunkte:§r noch keine. Crafte ein Wegpunkt-Item und setze es auf den Boden."];
-  const sorted = [...wps].sort((a, b) => a.name.localeCompare(b.name, "de"));
-  return [`§6Wegpunkte (${wps.length}):§r`, ...sorted.map((w) =>
-    `§e${w.name}§r – ${DIMENSIONS[w.dim] ?? w.dim} ${Math.floor(w.x)} / ${Math.floor(w.y)} / ${Math.floor(w.z)} §7(${w.owner}${w.physical ? "" : ", ohne Bauwerk"})`)];
+/** may this player travel to / see the waypoint? */
+export function canUse(wp, playerName, isOperator) {
+  return wp.owner === playerName || wp.public === true || isOperator;
+}
+
+/** the list a player gets: only usable waypoints, marked public/private */
+export function formatList(wps, playerName, isOperator) {
+  const visible = wps.filter((w) => canUse(w, playerName, isOperator));
+  if (!visible.length) return ["§6Wegpunkte:§r noch keine. Crafte ein Wegpunkt-Item und setze es auf den Boden."];
+  const sorted = [...visible].sort((a, b) => a.name.localeCompare(b.name, "de"));
+  return [`§6Wegpunkte (${visible.length}):§r`, ...sorted.map((w) => {
+    const tags = [w.owner, w.public ? "öffentlich" : "privat", w.physical ? null : "ohne Bauwerk"].filter(Boolean);
+    return `§e${w.name}§r – ${DIMENSIONS[w.dim] ?? w.dim} ${Math.floor(w.x)} / ${Math.floor(w.y)} / ${Math.floor(w.z)} §7(${tags.join(", ")})`;
+  })];
 }
 
 /** next free automatic name "Wegpunkt 1", "Wegpunkt 2", ... */

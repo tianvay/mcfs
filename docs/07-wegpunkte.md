@@ -24,17 +24,29 @@ S D S
 S S S               S = Steinziegel, D = der Diamantblock aus dem Rezept
 ```
 
-Danach fragt ein Fenster: **„Wie soll dieser Wegpunkt heißen?“** Wird es geschlossen, heißt der Wegpunkt
-„Wegpunkt 1“ (2, 3 …) und lässt sich umbenennen.
+Danach fragt ein Fenster: **„Wie soll dieser Wegpunkt heißen?“**, darunter der Schalter **„Öffentlich“**
+(standardmäßig aus). Wird das Fenster geschlossen, heißt der Wegpunkt „Wegpunkt 1“ (2, 3 …), ist privat und
+lässt sich umbenennen.
+
+**Privat oder öffentlich** (seit Version 1.1.0):
+
+| | Wer darf hinreisen und sieht ihn in `/warp list` |
+|---|---|
+| privat (Standard) | nur der Besitzer |
+| öffentlich | alle Spieler |
+| Operatoren | dürfen immer alle Wegpunkte sehen und benutzen |
+
+Wegpunkte von vor 1.1.0 (z. B. „Dorf“) gelten als privat; freigeben mit `/warp public Dorf`.
 
 **Befehle** (für alle; die Kurzform `/warp` funktioniert, im Spiel bestätigt):
 
 | Befehl | Was |
 |---|---|
 | `/warp Zuhause` | zum Wegpunkt reisen – von überall, auch zwischen Oberwelt, Nether und Ende |
-| `/warp list` | alle Wegpunkte mit Ort und Besitzer |
+| `/warp list` | alle Wegpunkte, die man benutzen darf – mit Ort, Besitzer, öffentlich/privat |
 | `/warp delete Zuhause` | eigenen Wegpunkt löschen (Operatoren: jeden); das Bauwerk bleibt stehen |
 | `/warp rename Zuhause Burg` | eigenen Wegpunkt umbenennen |
+| `/warp public Zuhause` / `/warp private Zuhause` | eigenen Wegpunkt für alle freigeben / wieder privat machen |
 | `/warp set Zuhause` | **nur Operatoren:** Wegpunkt ohne Bauwerk an der aktuellen Position |
 | `/warp` | Hilfe |
 
@@ -47,7 +59,7 @@ zurück. **Explosionen** (Creeper, TNT) beschädigen Wegpunkt-Bauwerke nicht.
 ## Technik
 
 - Gespeichert in der Welt: je Wegpunkt eine „dynamic property“ `mcfs_wp:<name>` mit Name, Koordinaten
-  (Diamantblock), Dimension, Besitzer, Datum, Bauwerk ja/nein. Übersteht Neustarts und Updates.
+  (Diamantblock), Dimension, Besitzer, Datum, Bauwerk ja/nein, öffentlich ja/nein. Übersteht Neustarts und Updates.
 - Befehl: eigener Befehl `mcfs:warp` (Berechtigung „alle“), Operator-Prüfung über `playerPermissionLevel`.
 - Namensdialog: `@minecraft/server-ui` 2.2.0 (stabil). Ist der Spieler gerade in einem anderen Menü,
   wird es bis zu 15-mal erneut versucht.
@@ -84,3 +96,11 @@ bash ~/mcportal-src/deploy/world-pack.sh mcportal_waypoints apply
 - 5 Node-Tests: Namen (gültig, doppelt, reserviert), Befehle, Bauplan, Ankunftsort, Liste.
 - **Im Spiel bestätigt** (2026-10-26): Craften, Setzen per Item, Namensdialog, `/warp` als Kurzform, Teleport.
 - Noch nicht im Spiel geprüft: Teleport zwischen Dimensionen, Abbauen, Explosionsschutz.
+
+## Version 1.1.0: öffentliche Wegpunkte (2026-10-26)
+
+- Schalter „Öffentlich“ im Namensdialog, `/warp public|private <Name>`, Zugriffsprüfung beim Reisen, gefilterte Liste.
+- Getestet: 6 Node-Tests (u. a. Zugriffsregeln, Liste je Spieler); **mit einer Kopie der echten Welt** auf dem
+  Testserver: beide vorhandenen Wegpunkte gelesen, „Dorf“ für Besitzer ja / Fremde nein / Operatoren ja,
+  nach dem Freigeben auch für Fremde ja; Liste je Spieler korrekt.
+- Installation: `bash ~/mcportal-src/deploy/world-pack.sh mcportal_waypoints apply` (Upgrade 1.0.0 → 1.1.0, ein Neustart).

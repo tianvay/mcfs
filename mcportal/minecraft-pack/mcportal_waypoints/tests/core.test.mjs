@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  arrival, clearanceCells, formatList, keyOf, layout, parseCommand, provisionalName, structureKeys, validateName,
+  arrival, canUse, clearanceCells, formatList, keyOf, layout, parseCommand, provisionalName, structureKeys, validateName,
 } from "../scripts/core.js";
 
 test("names: valid, invalid, duplicate (case-insensitive), reserved", () => {
@@ -30,6 +30,9 @@ test("command parsing", () => {
   assert.equal(parseCommand("set").action, "error");
   assert.equal(parseCommand("Mein", "Haus").action, "error", "unquoted name with space");
   assert.deepEqual(parseCommand("SET", "X"), { action: "set", name: "X" }, "verbs are case-insensitive");
+  assert.deepEqual(parseCommand("public", "Dorf"), { action: "visibility", name: "Dorf", public: true });
+  assert.deepEqual(parseCommand("private", "Dorf"), { action: "visibility", name: "Dorf", public: false });
+  assert.equal(parseCommand("public").action, "error");
 });
 
 test("structure as wished: 3x3 stone bricks, diamond in the middle, 2-high walls + lantern on the corners", () => {
@@ -54,10 +57,29 @@ test("arrival on top of the diamond; virtual waypoints exactly where set", () =>
   assert.equal(new Set(structureKeys({ dim: "minecraft:overworld", x: 0, y: 64, z: 0 })).size, 21);
 });
 
+test("private by default: owner, public, operators", () => {
+  const priv = { name: "Dorf", owner: "Steve" }; // stored before the public flag existed
+  assert.equal(canUse(priv, "Steve", false), true);
+  assert.equal(canUse(priv, "Alex", false), false);
+  assert.equal(canUse(priv, "Alex", true), true, "operators can use everything");
+  assert.equal(canUse({ ...priv, public: true }, "Alex", false), true);
+  assert.equal(canUse({ ...priv, public: "yes" }, "Alex", false), false, "only a real true makes it public");
+});
+
 test("list and provisional names", () => {
-  assert.match(formatList([])[0], /noch keine/);
-  const lines = formatList([{ name: "Zuhause", dim: "minecraft:nether", x: 1.7, y: 64, z: -3.2, owner: "Steve", physical: true }]);
-  assert.match(lines[1], /Zuhause.*Nether 1 \/ 64 \/ -4.*Steve/);
+  assert.match(formatList([], "Steve", false)[0], /noch keine/);
+  const wps = [
+    { name: "Zuhause", dim: "minecraft:nether", x: 1.7, y: 64, z: -3.2, owner: "Steve", physical: true },
+    { name: "Markt", dim: "minecraft:overworld", x: 0, y: 70, z: 0, owner: "Alex", physical: true, public: true },
+    { name: "Geheim", dim: "minecraft:overworld", x: 0, y: 70, z: 0, owner: "Alex", physical: true },
+  ];
+  const lines = formatList(wps, "Steve", false);
+  assert.equal(lines.length, 3, "Steve sees his own and the public one, not Alex' private one");
+  const text = lines.join("|");
+  assert.match(text, /Zuhause.*Nether 1 \/ 64 \/ -4.*Steve, privat/);
+  assert.match(text, /Markt.*Alex, öffentlich/);
+  assert.doesNotMatch(text, /Geheim/);
+  assert.equal(formatList(wps, "Mama", true).length, 4, "operators see all");
   assert.equal(provisionalName(new Set(["wegpunkt 1"])), "Wegpunkt 2");
   assert.equal(keyOf("  ZuHause "), "zuhause");
 });

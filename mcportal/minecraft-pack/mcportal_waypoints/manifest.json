@@ -4,22 +4,55 @@
     "name": "Family Portal Wegpunkte",
     "description": "Wegpunkte zum Craften und Bauen, Reisen mit /warp.",
     "uuid": "8c696d43-98da-4c6f-b1d2-1f5d6767d5de",
-    "version": [1, 0, 0],
-    "min_engine_version": [1, 21, 0]
+    "version": [
+      1,
+      1,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      21,
+      0
+    ]
   },
   "modules": [
-    { "type": "data", "uuid": "a94a2043-db16-4533-b352-990f4576aa98", "version": [1, 0, 0] },
+    {
+      "type": "data",
+      "uuid": "a94a2043-db16-4533-b352-990f4576aa98",
+      "version": [
+        1,
+        1,
+        0
+      ]
+    },
     {
       "type": "script",
       "language": "javascript",
       "uuid": "6b64eaa7-9b8e-4785-a39e-09de76a08429",
-      "version": [1, 0, 0],
+      "version": [
+        1,
+        1,
+        0
+      ],
       "entry": "scripts/main.js"
     }
   ],
   "dependencies": [
-    { "module_name": "@minecraft/server", "version": "@SERVER_API@" },
-    { "module_name": "@minecraft/server-ui", "version": "2.2.0" },
-    { "uuid": "70370a54-f03d-4164-a819-02a5954766e3", "version": [1, 0, 0] }
+    {
+      "module_name": "@minecraft/server",
+      "version": "@SERVER_API@"
+    },
+    {
+      "module_name": "@minecraft/server-ui",
+      "version": "2.2.0"
+    },
+    {
+      "uuid": "70370a54-f03d-4164-a819-02a5954766e3",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    }
   ]
 }

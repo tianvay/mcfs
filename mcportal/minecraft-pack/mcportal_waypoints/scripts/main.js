@@ -3,8 +3,9 @@
 //  * Crafting: 4 lanterns + 4 stone brick walls + 1 diamond block -> item "mcfs:waypoint" (Wegpunkt)
 //  * Using the item on the ground builds the structure (3x3 stone bricks, diamond block in the middle,
 //    2-high walls with a lantern on each corner) and asks for a name.
-//  * /warp <Name> | list | delete <Name> | rename <alt> <neu> - for everybody
+//  * /warp <Name> | list | delete <Name> | rename <alt> <neu> | public|private <Name> - for everybody
 //    /warp set <Name> - operators only: waypoint without structure at the current position
+//  * Waypoints are private (owner only) unless made public; operators can use all of them.
 //  * Mining the diamond block removes the waypoint; explosions don't damage waypoint structures.
 //  * Stored in world dynamic properties (survives restarts and updates).
 //  * Log lines for the portal: [mcportal-warp] {"v":1,"event":...}
@@ -15,7 +16,7 @@ import {
 } from "@minecraft/server";
 import { ModalFormData } from "@minecraft/server-ui";
 import {
-  arrival, formatList, HELP, ITEM_ID, keyOf, parseCommand, PROP_PREFIX, provisionalName, structureKeys, validateName,
+  arrival, canUse, formatList, HELP, ITEM_ID, keyOf, parseCommand, PROP_PREFIX, provisionalName, structureKeys, validateName,
 } from "./core.js";
 import { build, placementProblem } from "./structure.js";
 
@@ -85,7 +86,7 @@ const mayChange = (p, wp) => wp.owner === p.name || isOperator(p);
 system.beforeEvents.startup.subscribe((ev) => {
   ev.customCommandRegistry.registerCommand({
     name: "mcfs:warp",
-    description: "Wegpunkte: /warp <Name> | list | delete <Name> | rename <alt> <neu> | set <Name>",
+    description: "Wegpunkte: /warp <Name> | list | delete | rename | public | private | set",
     permissionLevel: CommandPermissionLevel.Any,
     optionalParameters: [
       { name: "name_oder_befehl", type: CustomCommandParamType.String },
@@ -107,17 +108,22 @@ function handle(player, cmd) {
   switch (cmd.action) {
     case "help": return HELP.forEach((l) => player.sendMessage(l));
     case "error": return player.sendMessage(`§c${cmd.message}`);
-    case "list": return formatList([...all().values()]).forEach((l) => player.sendMessage(l));
+    case "list":
+      return formatList([...all().values()], player.name, isOperator(player)).forEach((l) => player.sendMessage(l));
     case "teleport": return teleport(player, cmd.name);
     case "set": return setVirtual(player, cmd.name);
     case "delete": return del(player, cmd.name);
     case "rename": return rename(player, cmd.name, cmd.newName);
+    case "visibility": return setVisibility(player, cmd.name, cmd.public);
   }
 }
 
 function teleport(player, name) {
   const wp = all().get(keyOf(name));
   if (!wp) return player.sendMessage(`§cKeinen Wegpunkt „${name}“ gefunden. §7/warp list zeigt alle.`);
+  if (!canUse(wp, player.name, isOperator(player))) {
+    return player.sendMessage(`§cDer Wegpunkt „${wp.name}“ ist privat (gehört ${wp.owner}).`);
+  }
   const dim = world.getDimension(wp.dim);
   const to = arrival(wp);
   if (wp.physical) {
@@ -143,9 +149,9 @@ function setVirtual(player, name) {
   if (error) return player.sendMessage(`§c${error}`);
   const l = player.location;
   const wp = { v: 1, name: name.trim(), x: l.x, y: l.y, z: l.z, dim: player.dimension.id,
-    owner: player.name, created: new Date().toISOString(), physical: false };
+    owner: player.name, created: new Date().toISOString(), physical: false, public: false };
   store(wp);
-  player.sendMessage(`§6Wegpunkt §e${wp.name}§6 gesetzt (ohne Bauwerk).`);
+  player.sendMessage(`§6Wegpunkt §e${wp.name}§6 gesetzt (ohne Bauwerk, privat). Freigeben: §e/warp public ${wp.name}`);
   report("created", { player: player.name, name: wp.name, physical: false });
 }
 
@@ -156,6 +162,17 @@ function del(player, name) {
   remove(keyOf(wp.name));
   player.sendMessage(`§6Wegpunkt §e${wp.name}§6 gelöscht.${wp.physical ? " Das Bauwerk bleibt stehen." : ""}`);
   report("deleted", { player: player.name, name: wp.name });
+}
+
+function setVisibility(player, name, makePublic) {
+  const wp = all().get(keyOf(name));
+  if (!wp) return player.sendMessage(`§cKeinen Wegpunkt „${name}“ gefunden.`);
+  if (!mayChange(player, wp)) return player.sendMessage(`§cDer Wegpunkt „${wp.name}“ gehört ${wp.owner}.`);
+  store({ ...wp, public: makePublic });
+  player.sendMessage(makePublic
+    ? `§6Wegpunkt §e${wp.name}§6 ist jetzt §aöffentlich§6 – alle Spieler können hinreisen.`
+    : `§6Wegpunkt §e${wp.name}§6 ist jetzt §cprivat§6 – nur du kannst hinreisen.`);
+  report("visibility", { player: player.name, name: wp.name, public: makePublic });
 }
 
 function rename(player, name, newName) {
@@ -195,7 +212,7 @@ function place(player, block, face) {
   // registered at once with an automatic name, so nothing is lost if the name dialog is cancelled
   const name = provisionalName(keys());
   const wp = { v: 1, name, x: center.x, y: center.y, z: center.z, dim: dim.id,
-    owner: player.name, created: new Date().toISOString(), physical: true };
+    owner: player.name, created: new Date().toISOString(), physical: true, public: false };
   store(wp);
   report("created", { player: player.name, name, physical: true });
   askName(player, keyOf(name), 0, "");
@@ -222,7 +239,8 @@ function consumeOne(player) {
 function askName(player, key, attempt, error) {
   const form = new ModalFormData()
     .title("Neuer Wegpunkt")
-    .textField(`${error ? `§c${error}§r\n` : ""}Wie soll dieser Wegpunkt heißen?`, "z. B. Zuhause");
+    .textField(`${error ? `§c${error}§r\n` : ""}Wie soll dieser Wegpunkt heißen?`, "z. B. Zuhause")
+    .toggle("Öffentlich – alle Spieler dürfen hierher reisen", { defaultValue: false });
   form.show(player).then((res) => {
     const wp = all().get(key);
     if (!wp) return; // removed in the meantime
@@ -230,14 +248,17 @@ function askName(player, key, attempt, error) {
       if (res.cancelationReason === "UserBusy" && attempt < NAME_FORM_RETRIES) {
         return system.runTimeout(() => askName(player, key, attempt + 1, error), 20);
       }
-      return player.sendMessage(`§6Wegpunkt §e${wp.name}§6 gespeichert. Umbenennen: §e/warp rename "${wp.name}" <Name>`);
+      return player.sendMessage(`§6Wegpunkt §e${wp.name}§6 gespeichert (privat). Umbenennen: §e/warp rename "${wp.name}" <Name>`);
     }
     const name = String(res.formValues?.[0] ?? "").trim();
+    const isPublic = res.formValues?.[1] === true;
     const problem = validateName(name, keys(), key);
     if (problem) return askName(player, key, 0, problem);
-    store({ ...wp, name }, key);
-    player.sendMessage(`§6Wegpunkt §e${name}§6 gespeichert. Reisen mit §e/warp ${name.includes(" ") ? `"${name}"` : name}`);
-    report("renamed", { player: player.name, from: wp.name, name });
+    store({ ...wp, name, public: isPublic }, key);
+    const call = name.includes(" ") ? `"${name}"` : name;
+    const visibility = isPublic ? "§aöffentlich§6" : "§cprivat§6";
+    player.sendMessage(`§6Wegpunkt §e${name}§6 gespeichert (${visibility}). Reisen mit §e/warp ${call}`);
+    report("renamed", { player: player.name, from: wp.name, name, public: isPublic });
   }).catch(() => { /* player left */ });
 }
 
