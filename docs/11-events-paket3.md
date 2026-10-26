@@ -1,6 +1,6 @@
 # Timed Events – Paket 3: Die Welt verändert sich (Plan, Änderung M13)
 
-Stand: 2026-10-26 · Status: **W1–W5 gebaut** (alle vier Events), W6–W7 offen · baut auf Paket 1 und 2 auf · nur stabile
+Stand: 2026-10-26 · Status: **W1–W6 gebaut** (alle vier Events, Erfolge), W7 (Portal, Installation) offen · baut auf Paket 1 und 2 auf · nur stabile
 Script-API, keine Experimente
 
 ## Ziel
@@ -172,6 +172,19 @@ zusätzlich mit einem Vorher/Nachher-Vergleich und dem Rückgängig-Befehl.
 - **Getestet:** 21 Node-Tests (neu: Mob-Auswahl, Wellen, Belohnung). Testserver: Welle mit 4 Spukgestalten,
   15 Siege → Fluch gebrochen, Belohnung auf dem Platz, alle Spukgestalten weg; ohne Siege Ende bei Sonnenaufgang.
   Nebel, Glocke und Kämpfe nur im Spiel prüfbar.
+
+## W6 – gebaut (Erfolge-Pack 1.3.0, Events-Pack 1.3.0)
+
+- **Welle 3** „Hab ich alles schon gesehen III“ (Meteorit, Sternschnuppen-Nacht, Schatzsuche, Spukort).
+- **Spezial:** Volltreffer (beim Einschlag im Umkreis von 32 Blöcken), Sterntaler (10 Sternenstücke),
+  Schatzsucher (als Erste/r gefunden), Geisterjäger (beim Brechen eines Fluchs dabei).
+- **Meta-Erfolge** je Kategorie (`EVENT_CATEGORIES`, gleiche Einteilung wie `TYPES[…].category` im Events-Pack):
+  Wetterfest und Weltenbummler (Welt: Unwetter, Meteorit, Sternschnuppen), Schatzkammer (Ressourcen: Mining Rush,
+  Glückstag, Schatzsuche), Nachtwache (Mobs: Blutmond, Zombie-Invasion, Kopfgeld, Spukort); Community:
+  „Gemeinsam stark“ bekommt Stufe 2 **Unzertrennlich** (10 Events mit mindestens 3 Teilnehmern).
+- Test sichert: jede Event-Art steht in genau einer Kategorie und einer Welle.
+- **Getestet:** 9 Node-Tests im Erfolge-Pack; Testserver mit allen drei Packs und nachgestellten Meldungen: alle
+  Zähler kommen an (Welle 3 = 4, Kategorie Welt = 3, Sterne, Schatz, Fluch, Volltreffer).
 
 ## Was sich auf dem Server ändert
 

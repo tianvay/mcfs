@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  armorCounters, CATALOG, deathCounters, evaluate, EVENT_WAVES, eventCounters, flatCatalog, invasionKill, isDiamondOre, isOre,
+  armorCounters, CATALOG, deathCounters, evaluate, EVENT_CATEGORIES, EVENT_WAVES, eventCounters, flatCatalog, invasionKill, isDiamondOre, isOre,
   isSapling,
   killCounters,
 } from "../scripts/catalog.js";
@@ -81,7 +81,7 @@ test("events: 5/20/50 taken part, every wave-1 event once, the special ones", ()
   assert.ok(evaluate(c, {}).map((a) => a.name).includes("Hab ich alles schon gesehen"));
   for (let i = 0; i < 44; i++) take("storm");
   assert.ok(evaluate(c, {}).map((a) => a.name).includes("Partylöwe"));
-  assert.deepEqual(eventCounters({}, "meteor"), { events: 1, ev_meteor: 1 }, "types of later waves don't touch wave 1");
+  assert.equal(eventCounters({}, "meteor").seen_wave1, undefined, "types of later waves don't touch wave 1");
   const first = (counters) => evaluate(counters, {}).map((a) => a.name);
   assert.deepEqual(first({ rush_ores: 100 }), ["Goldrausch"]);
   assert.deepEqual(first({ lucky_xp: 1000 }), ["Glückspilz"]);
@@ -116,4 +116,35 @@ test("wave 2, night dangers and together", () => {
   const first = (counters) => evaluate(counters, {}).map((a) => a.name);
   assert.deepEqual(first({ blood_wolves: 10 }), ["Wer hat Angst vorm bösen Wolf?"]);
   assert.deepEqual(first({ bounties: 1 }), ["Kopfgeldjäger"]);
+});
+
+test("wave 3, the world-changing specials and the meta achievements", () => {
+  let c = {};
+  const take = (type, n = 1) => { c = { ...c, ...eventCounters(c, type, n) }; };
+  for (const t of ["meteor", "shooting_stars", "treasure"]) take(t);
+  assert.equal(c.seen_wave3, 3);
+  take("haunted");
+  let names = evaluate(c, {}).map((a) => a.name);
+  assert.ok(names.includes("Hab ich alles schon gesehen III"));
+  assert.ok(!names.includes("Wetterfest und Weltenbummler"), "storm still missing");
+  take("storm");
+  names = evaluate(c, {}).map((a) => a.name);
+  assert.ok(names.includes("Wetterfest und Weltenbummler"));
+  for (const t of ["mining_rush", "lucky_day"]) take(t);
+  for (const t of ["blood_moon", "zombie_invasion", "bounty"]) take(t);
+  names = evaluate(c, {}).map((a) => a.name);
+  assert.ok(names.includes("Schatzkammer") && names.includes("Nachtwache"));
+  // categories cover every event exactly once, and match the waves
+  const all = Object.values(EVENT_CATEGORIES).flat().sort();
+  assert.deepEqual(all, Object.values(EVENT_WAVES).flat().sort());
+  for (const [cat, types] of Object.entries(EVENT_CATEGORIES)) {
+    assert.equal(CATALOG.find((a) => a.id === `cat_${cat}`).tiers[0].at, types.length, cat);
+  }
+  assert.equal(CATALOG.find((a) => a.id === "seen_wave3").tiers[0].at, EVENT_WAVES[3].length);
+  const first = (counters) => evaluate(counters, {}).map((a) => a.name);
+  assert.deepEqual(first({ meteor_hit: 1 }), ["Volltreffer"]);
+  assert.deepEqual(first({ stars: 10 }), ["Sterntaler"]);
+  assert.deepEqual(first({ treasures: 1 }), ["Schatzsucher"]);
+  assert.deepEqual(first({ curses: 1 }), ["Geisterjäger"]);
+  assert.deepEqual(first({ together: 10 }), ["Gemeinsam stark", "Unzertrennlich"]);
 });

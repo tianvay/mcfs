@@ -170,6 +170,33 @@ export const CATALOG = [
   // community: the first meta achievement (the others come with the third event package)
   { id: "together", group: "Events", counter: "together", tiers: [
     { at: 1, name: "Gemeinsam stark", desc: "Ein Event mit mindestens 3 Mitspielern gemeinsam erlebt" },
+    { at: 10, name: "Unzertrennlich", desc: "10 Events mit mindestens 3 Mitspielern gemeinsam erlebt" },
+  ] },
+  // wave 3: the world changes (events pack 1.3.0)
+  { id: "seen_wave3", group: "Events", counter: "seen_wave3", tiers: [
+    { at: 4, name: "Hab ich alles schon gesehen III", desc: "Meteorit, Sternschnuppen-Nacht, Schatzsuche und Spukort mitgemacht" },
+  ] },
+  { id: "meteor_hit", group: "Events", counter: "meteor_hit", tiers: [
+    { at: 1, name: "Volltreffer", desc: "Beim Einschlag eines Meteoriten ganz in der Nähe gewesen" },
+  ] },
+  { id: "stars", group: "Events", counter: "stars", tiers: [
+    { at: 10, name: "Sterntaler", desc: "10 Sternenstücke aufgesammelt" },
+  ] },
+  { id: "treasure", group: "Events", counter: "treasures", tiers: [
+    { at: 1, name: "Schatzsucher", desc: "Als Erste/r einen vergrabenen Schatz gefunden" },
+  ] },
+  { id: "curse", group: "Events", counter: "curses", tiers: [
+    { at: 1, name: "Geisterjäger", desc: "Dabei gewesen, als ein Fluch gebrochen wurde" },
+  ] },
+  // meta: every event of a category taken part in at least once
+  { id: "cat_welt", group: "Events", counter: "cat_welt", tiers: [
+    { at: 3, name: "Wetterfest und Weltenbummler", desc: "Unwetter, Meteorit und Sternschnuppen-Nacht mitgemacht" },
+  ] },
+  { id: "cat_ressourcen", group: "Events", counter: "cat_ressourcen", tiers: [
+    { at: 3, name: "Schatzkammer", desc: "Mining Rush, Glückstag und Schatzsuche mitgemacht" },
+  ] },
+  { id: "cat_mobs", group: "Events", counter: "cat_mobs", tiers: [
+    { at: 4, name: "Nachtwache", desc: "Blutmond, Zombie-Invasion, Kopfgeld und Spukort mitgemacht" },
   ] },
 ];
 
@@ -180,6 +207,14 @@ export const CATALOG = [
 export const EVENT_WAVES = {
   1: ["storm", "mining_rush", "lucky_day"],
   2: ["blood_moon", "zombie_invasion", "bounty"],
+  3: ["meteor", "shooting_stars", "treasure", "haunted"],
+};
+
+/** event categories for the meta achievements (same as the events pack's TYPES[...].category) */
+export const EVENT_CATEGORIES = {
+  welt: ["storm", "meteor", "shooting_stars"],
+  ressourcen: ["mining_rush", "lucky_day", "treasure"],
+  mobs: ["blood_moon", "zombie_invasion", "bounty", "haunted"],
 };
 
 export const TOGETHER = 3; // players taking part in one event for "Gemeinsam stark"
@@ -194,6 +229,9 @@ export function eventCounters(counters, type, participants = 1) {
   const after = { ...counters, ...out };
   for (const [wave, types] of Object.entries(EVENT_WAVES)) {
     if (types.includes(type)) out[`seen_wave${wave}`] = types.filter((t) => after[`ev_${t}`] > 0).length;
+  }
+  for (const [cat, types] of Object.entries(EVENT_CATEGORIES)) {
+    if (types.includes(type)) out[`cat_${cat}`] = types.filter((t) => after[`ev_${t}`] > 0).length;
   }
   return out;
 }

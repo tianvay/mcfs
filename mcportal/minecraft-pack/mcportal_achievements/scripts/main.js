@@ -6,7 +6,8 @@
 //   [mcportal-ach] {"v":1,"unlocked":[{"player":"Steve","id":"diamonds","tier":1,"name":"Diamant!"}]}
 // for the portal. At startup the catalog is written once: [mcportal-ach] {"v":1,"catalog":[...]}.
 // Event achievements (1.1.0, 1.2.0) come from the events pack via system.sendScriptEvent("mcfs:event_news", json):
-// started / ended (with participants) / state (running types) / lightning_survived / kill / bounty.
+// started / ended (with participants) / state (running types) / lightning_survived / kill / bounty /
+// meteor_hit / star / treasure_found / curse_broken (1.3.0).
 // Uses only the stable @minecraft/server API - no experiments in the world.
 // console.warn on purpose: the server runs with content-log-level=warning.
 import { EntityInitializationCause, EquipmentSlot, Player, ScriptEventSource, system, world } from "@minecraft/server";
@@ -286,6 +287,14 @@ system.afterEvents.scriptEventReceive.subscribe((ev) => {
     for (const name of n.hunters) {
       if (typeof name === "string") setByName(name, { bounties: (load(name).c.bounties ?? 0) + 1 });
     }
+  } else if (n.event === "meteor_hit" || n.event === "curse_broken") {
+    const counter = n.event === "meteor_hit" ? "meteor_hit" : "curses";
+    for (const name of n.players ?? []) {
+      if (typeof name === "string") setByName(name, { [counter]: (load(name).c[counter] ?? 0) + 1 });
+    }
+  } else if ((n.event === "star" || n.event === "treasure_found") && typeof n.player === "string") {
+    const counter = n.event === "star" ? "stars" : "treasures";
+    setByName(n.player, { [counter]: (load(n.player).c[counter] ?? 0) + 1 });
   }
 });
 
