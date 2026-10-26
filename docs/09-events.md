@@ -159,6 +159,11 @@ Nach jedem Schritt zeige ich das Ergebnis; installiert wird erst in E5 (mit dein
   nur bei laufendem Server, Abfrage höchstens alle 30 s); lokal mit simuliertem Events-Pack auf PC und Handy:
   Start, Beenden mit Rückfrage, Verlauf, Protokoll.
 
+**Nachtrag (Portal):** Laufende Events zeigen einen **Countdown** (h:mm:ss) mit Fortschrittsbalken – egal ob
+automatisch oder über die Kachel gestartet. Er läuft im Browser sekündlich weiter, solange jemand online ist,
+und wird jede Minute mit der Restzeit aus dem Pack abgeglichen (Abweichung höchstens etwa eine Minute, weil das
+Pack in ganzen Minuten zählt). Ist niemand online: „⏸ pausiert“.
+
 ## E5 – installiert (2026-10-26 15:34)
 
 - `install.sh` (Portal), dann `NO_RESTART=1 world-pack.sh mcportal_events apply` und

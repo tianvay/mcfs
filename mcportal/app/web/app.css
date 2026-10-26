@@ -95,6 +95,12 @@ h2 { font-size: 1.05rem; margin: 0 0 12px; }
   padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
 .events-list li small { color: var(--muted); }
 .events-list.history li { display: grid; gap: 2px; }
+.events-list li.ev-running { display: grid; gap: 6px; justify-content: stretch; }
+.ev-top { display: flex; align-items: center; gap: 10px; }
+.ev-top strong { flex: 1; min-width: 0; }
+.ev-timer { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ev-bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.ev-bar > span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 1s linear; }
 .events-list .empty { color: var(--muted); }
 .events-start { flex-wrap: wrap; margin-bottom: 12px; }
 .events-sub { font-size: .95rem; margin: 4px 0 6px; color: var(--muted); }
