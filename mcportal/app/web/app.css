@@ -183,3 +183,11 @@ dialog input { width: 100%; margin-bottom: 12px; }
 .bars li > span { position: relative; z-index: 1; overflow-wrap: anywhere; }
 .bars li .bar { position: absolute; inset: 0 auto 0 0; background: var(--ok-bg); z-index: 0; }
 .bars.broken li .bar { background: var(--warn-bg); }
+
+.ach-list { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 6px; }
+.ach-list li { display: grid; gap: 1px; padding: 6px 8px; border-radius: 8px; background: var(--warn-bg); }
+.ach-list .ach-name { font-weight: 700; color: var(--warn); overflow-wrap: anywhere; }
+.ach-list .ach-desc { font-size: .8rem; color: var(--muted); }
+.ach-list.locked li { background: var(--bg); }
+.ach-list.locked .ach-name { color: var(--muted); font-weight: 600; }
+.stat-player.recent h3 { margin-bottom: 8px; }

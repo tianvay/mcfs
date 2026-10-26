@@ -177,6 +177,30 @@ class FakeAdapter:
             players[n] = e
         if players:
             self._log("[Scripting] [mcportal-stats] " + json.dumps({"v": 2, "players": players}))
+        self._emit_achievement()
+
+    FAKE_CATALOG = [
+        {"id": "diamonds", "tier": 1, "tiers": 3, "group": "Bergbau", "name": "Diamant!", "desc": "Den ersten Diamanten gefunden"},
+        {"id": "diamonds", "tier": 2, "tiers": 3, "group": "Bergbau", "name": "Diamantenfieber", "desc": "50 Diamanten gefunden"},
+        {"id": "deaths", "tier": 1, "tiers": 3, "group": "Missgeschicke", "name": "Anfängerfehler", "desc": "Zum ersten Mal gestorben"},
+        {"id": "death_creeper", "tier": 1, "tiers": 1, "group": "Missgeschicke", "name": "Sssssurprise!", "desc": "Von einem Creeper erwischt worden"},
+        {"id": "kill_wither", "tier": 1, "tiers": 1, "group": "Kampf", "name": "Wither-sprochen!", "desc": "Den Wither besiegt"},
+        {"id": "saplings", "tier": 2, "tiers": 3, "group": "Natur", "name": "Förster", "desc": "100 Bäume gepflanzt"},
+    ]
+
+    def _emit_achievement(self) -> None:
+        """Like the achievements pack: catalog once, then now and then an unlock."""
+        import random
+        if not getattr(self, "_ach_catalog_sent", False):
+            self._ach_catalog_sent = True
+            self._ach_done = set()
+            self._log("[Scripting] [mcportal-ach] " + json.dumps({"v": 1, "catalog": self.FAKE_CATALOG}))
+        todo = [e for e in self.FAKE_CATALOG if (e["id"], e["tier"]) not in self._ach_done]
+        if self._online and todo and random.randint(0, 1) == 0:
+            e = todo[0]
+            self._ach_done.add((e["id"], e["tier"]))
+            self._log("[Scripting] [mcportal-ach] " + json.dumps({"v": 1, "unlocked": [
+                {"player": self._online[0], "id": e["id"], "tier": e["tier"], "name": e["name"]}]}))
 
     def console_available(self) -> bool:
         return self._state == "active"

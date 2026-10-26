@@ -144,8 +144,9 @@ function render(s) {
   $("#srv-console-note").hidden = s.console_available || !running;
 
   renderUpdate(s);
-  if (s.stats && s.stats.updated !== lastStatsUpdate && !$("#tab-stats").hidden) loadStats();
-  lastStatsUpdate = s.stats ? s.stats.updated : null;
+  const statsKey = `${s.stats && s.stats.updated}|${s.achievements && s.achievements.updated}`;
+  if (statsKey !== lastStatsUpdate && lastStatsUpdate !== null && !$("#tab-stats").hidden) loadStats();
+  lastStatsUpdate = statsKey;
 
   if (prevBusy && !s.busy) loadAudit();
   if (lastAllowCount !== null && lastAllowCount !== s.allowlist_count && !$("#tab-allow").hidden) loadAllowlist();
@@ -354,13 +355,34 @@ function details(title, items, cls, kind, fmt) {
   return el("details", { className: "stat-details" }, el("summary", { textContent: title }), bars(items, cls, kind, fmt));
 }
 
-function playerCard(p) {
+function achievementDetails(unlocked, ach) {
+  if (!ach.total) return "";
+  const have = new Set(unlocked.map((u) => u.key));
+  const open = ach.catalog.filter((e) => !have.has(`${e.id}:${e.tier}`));
+  const tierText = (e) => (e.tiers > 1 ? ` (Stufe ${e.tier}/${e.tiers})` : "");
+  const list = el("ul", { className: "ach-list" }, ...unlocked.map((u) => el("li", {},
+    el("span", { className: "ach-name", textContent: `🏆 ${u.name}${tierText(u)}` }),
+    el("span", { className: "ach-desc", textContent: `${u.desc} · ${fmtDate(u.at)}` }))));
+  const locked = el("details", { className: "stat-details ach-open" },
+    el("summary", { textContent: `Noch nicht erreicht (${open.length})` }),
+    el("ul", { className: "ach-list locked" }, ...open.map((e) => el("li", {},
+      el("span", { className: "ach-name", textContent: `🔒 ${e.name}${tierText(e)}` }),
+      el("span", { className: "ach-desc", textContent: e.desc })))));
+  return el("details", { className: "stat-details" },
+    el("summary", { textContent: `🏆 Erfolge (${unlocked.length} von ${ach.total})` }),
+    unlocked.length ? list : el("p", { className: "empty", textContent: "Noch keine Erfolge – das kommt noch!" }),
+    open.length ? locked : "");
+}
+
+function playerCard(p, ach) {
+  const unlocked = (ach.players && ach.players[p.name]) || [];
   const fav = p.food_by.length ? `Lieblingsessen: ${label(p.food_by[0][0])}` : "";
   return el("div", { className: "stat-player" },
     el("h3", {}, el("span", { textContent: p.name }),
       el("small", { textContent: p.last_active ? `zuletzt ${fmtDate(p.last_active)}` : "" })),
     el("div", { className: "tiles" },
       tile("⏱", "Spielzeit", fmtTime(p.time_total), `heute ${fmtTime(p.time_today)}`),
+      ach.total ? tile("🏆", "Erfolge", `${unlocked.length} / ${ach.total}`, unlocked[0] ? `zuletzt: ${unlocked[0].name}` : "") : "",
       tile("💀", "Tode", fmtNum(p.deaths)),
       tile("⚔️", "Mobs besiegt", fmtNum(p.kills)),
       tile("💎", "Diamanten", fmtNum(p.diamonds), "Diamanterz abgebaut"),
@@ -371,6 +393,7 @@ function playerCard(p) {
       tile("🧭", "Strecke", fmtDist(p.dist)),
       tile("▲", "Blöcke gesetzt", fmtNum(p.placed)),
       tile("▼", "Blöcke abgebaut", fmtNum(p.broken))),
+    achievementDetails(unlocked, ach),
     details("⚔️ Besiegte Mobs", p.kills_by, "placed", "mob"),
     details("💀 Todesursachen", p.deaths_by, "broken", "mob"),
     details("🍖 Essen", p.food_by, "placed"),
@@ -381,9 +404,21 @@ function playerCard(p) {
     details("▼ Am meisten abgebaut", p.top_broken, "broken"));
 }
 
+function recentAchievements(ach) {
+  if (!ach.recent || !ach.recent.length) return "";
+  return el("div", { className: "stat-player recent" },
+    el("h3", { textContent: "🏆 Neueste Erfolge" }),
+    el("ul", { className: "ach-list" }, ...ach.recent.map((r) => el("li", {},
+      el("span", { className: "ach-name", textContent: `${r.player}: ${r.name}` }),
+      el("span", { className: "ach-desc", textContent: `${r.desc} · ${fmtDate(r.at)}` })))));
+}
+
 async function loadStats() {
   let data;
-  try { data = await api("GET", "/api/stats"); } catch (e) { toast(e.message, true); return; }
+  let ach;
+  try {
+    [data, ach] = await Promise.all([api("GET", "/api/stats"), api("GET", "/api/achievements")]);
+  } catch (e) { toast(e.message, true); return; }
   const open = new Set([...document.querySelectorAll("#stats-list details[open]")].map((d) => d.dataset.key));
   const note = $("#stats-note");
   if (!data.pack_seen && !data.since) {
@@ -397,12 +432,15 @@ async function loadStats() {
     list.replaceChildren(el("p", { className: "empty", textContent: "Noch nichts gezählt." }));
     return;
   }
-  list.replaceChildren(...data.players.map(playerCard));
-  // keep opened sections open across live refreshes
-  list.querySelectorAll(".stat-player").forEach((card, i) => card.querySelectorAll("details").forEach((d) => {
-    d.dataset.key = `${data.players[i].name}|${d.querySelector("summary").textContent}`;
-    if (open.has(d.dataset.key)) d.open = true;
-  }));
+  list.replaceChildren(recentAchievements(ach), ...data.players.map((p) => playerCard(p, ach)));
+  // keep opened sections open across live refreshes (summary text without the changing counts)
+  list.querySelectorAll(".stat-player").forEach((card) => {
+    const who = card.querySelector("h3 span")?.textContent || "";
+    card.querySelectorAll("details").forEach((d) => {
+      d.dataset.key = `${who}|${d.querySelector("summary").textContent.replace(/[\d\s()]+/g, "")}`;
+      if (open.has(d.dataset.key)) d.open = true;
+    });
+  });
 }
 
 // ---------- allowlist ----------

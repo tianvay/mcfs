@@ -66,10 +66,11 @@ line appears in the expected format. What you cannot: real player events - nobod
 (the test server must use raknet; clients only join via nethernet). That part is verified
 after installation by the user playing. Delete `~/bds-test` afterwards (≈ 600 MB).
 
-### 5. Install into the world (M5 pattern)
+### 5. Install into the world
 
-Copy and adapt `mcportal/deploy/m5-stats-pack.sh`. It runs as `fred` (owner of the world),
-needs no sudo, and:
+Use `bash ~/mcportal-src/deploy/world-pack.sh <pack_dir> apply` (generic; `rollback`, `status`).
+(`m5-stats-pack.sh` is the older, stats-only variant that also switched on the log output.) It runs as `fred`
+(owner of the world), needs no sudo, and:
 1. refuses while players are online (`/api/status`),
 2. backs up `world_behavior_packs.json` (and anything else it touches) to `~/mcportal-backups/<time>_pre_<change>/`,
 3. copies the pack to `worlds/<level>/behavior_packs/<pack_dir>`, fills in the API version,
@@ -104,6 +105,13 @@ Keep the payload backwards compatible in the portal (`parse_*` accepts old and n
 the service fills missing fields for data stored by older versions).
 
 ## Pitfalls we already hit
+
+- Dynamic properties (`world.setDynamicProperty`) fail during "early execution" (script load) -
+  only use them in events, `system.run` or intervals.
+- Keep game rules (thresholds, classification) in a separate pure module without
+  `@minecraft/server` imports and test it with `node --test` - player events can't be produced
+  on the test server (see `mcportal_achievements/scripts/catalog.js`). `world-pack.sh` leaves `tests/` out.
+- In-game text: Minecraft colour codes (`§6`, `§e`, `§f`, `§7`) work in chat and titles; emojis don't render.
 
 - The version in `world_behavior_packs.json` must equal the manifest version exactly -
   otherwise the server silently loads nothing ("Pack Stack - None"), no error.

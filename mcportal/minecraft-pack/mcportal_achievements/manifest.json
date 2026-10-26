@@ -1,0 +1,22 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Family Portal Erfolge",
+    "description": "Eigene Erfolge mit Einblendung und Chat-Nachricht für den Minecraft Family Server.",
+    "uuid": "25d1a4a2-e9ca-4956-a8e7-d879c81981c5",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 21, 0]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "4829b147-9ebe-4b01-9cce-ca3d6e14d392",
+      "version": [1, 0, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    { "module_name": "@minecraft/server", "version": "@SERVER_API@" }
+  ]
+}

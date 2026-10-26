@@ -4,6 +4,9 @@ Stand: 2026-10-25
 
 ## Offen
 
+- [ ] **Erfolge (M7) installieren**: nach install.sh, wenn niemand spielt:
+      `bash ~/mcportal-src/deploy/world-pack.sh mcportal_achievements apply`; danach im Spiel testen
+      (z. B. sterben → „Anfängerfehler“ mit Einblendung und Chat-Nachricht).
 - [ ] **Beobachten: Beitritt nach Neustart gescheitert** (2026-10-26). Nach dem Neustart fürs Pack-Upgrade
       (06:33) kam niemand mehr auf den Server (PC und Xbox: `InitialConnection-145`, `NetherNet:2193`); im
       Server-Log kam kein Versuch an. Ein weiterer Neustart (06:42) hat es behoben, mit Pack 2.0. Ursache

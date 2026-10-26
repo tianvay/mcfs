@@ -14,8 +14,6 @@ _CONNECT_RE = re.compile(r"^Player connected: (?P<name>.+?), xuid: (?P<xuid>\d*)
 _DISCONNECT_RE = re.compile(r"^Player disconnected: (?P<name>.+?), xuid: (?P<xuid>\d*)")
 _VERSION_RE = re.compile(r"^Version: (?P<version>\d+(?:\.\d+)+)\s*$")
 _LIST_RE = re.compile(r"^There are (?P<count>\d+)/(?P<max>\d+) players online:")
-# written by the stats behavior pack (minecraft-pack/mcportal_stats)
-_STATS_PREFIX = "[Scripting] [mcportal-stats] "
 
 
 @dataclass
@@ -147,15 +145,26 @@ def version_history(lines: list[LogLine]) -> list[tuple[float, str]]:
     return history
 
 
-def parse_stats(line: LogLine) -> dict | None:
-    """Payload of a "[Scripting] [mcportal-stats] {...}" line, or None."""
+def parse_pack_line(line: LogLine, tag: str, versions: tuple[int, ...] = (1,)) -> dict | None:
+    """Payload of a "[Scripting] [<tag>] {...}" line written by one of our behavior packs, or None."""
     if line.source != "server":
         return None
+    prefix = f"[Scripting] [{tag}] "
     msg = line.message
-    if not msg.startswith(_STATS_PREFIX):
+    if not msg.startswith(prefix):
         return None
     try:
-        data = json.loads(msg[len(_STATS_PREFIX):])
+        data = json.loads(msg[len(prefix):])
     except ValueError:
         return None
-    return data if isinstance(data, dict) and data.get("v") in (1, 2) else None  # v2: pack 2.0
+    return data if isinstance(data, dict) and data.get("v") in versions else None
+
+
+def parse_stats(line: LogLine) -> dict | None:
+    """Line of the stats pack (minecraft-pack/mcportal_stats); v2 since pack 2.0."""
+    return parse_pack_line(line, "mcportal-stats", (1, 2))
+
+
+def parse_achievements(line: LogLine) -> dict | None:
+    """Line of the achievements pack (minecraft-pack/mcportal_achievements)."""
+    return parse_pack_line(line, "mcportal-ach")

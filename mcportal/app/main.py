@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from .adapters import create_adapter
 from .audit import AuditLog
 from .config import Config
+from .services.achievements import AchievementsService
 from .services.allowlist import AllowlistService
 from .services.minecraft import MinecraftService, PortalError
 from .services.stats import StatsService
@@ -78,12 +79,14 @@ def create_app(cfg: Config) -> FastAPI:
     allow = AllowlistService(adapter, mc, audit, cfg.backup_dir, cfg.allowlist_backups_keep)
     update = UpdateService(adapter, mc, audit, cfg.data_dir, cfg.backup_dir, cfg.update_backups_keep)
     stats = StatsService(adapter, mc, cfg.data_dir)
+    achievements = AchievementsService(adapter, mc, cfg.data_dir)
     sessions: set[str] = set()
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         await mc.startup()
         await stats.startup()
+        await achievements.startup()
         await update.startup()
         yield
         await update.shutdown()
@@ -201,6 +204,10 @@ def create_app(cfg: Config) -> FastAPI:
     @app.get("/api/stats")
     async def stats_summary():
         return stats.summary()
+
+    @app.get("/api/achievements")
+    async def achievements_summary():
+        return achievements.summary()
 
     # ---------- audit ----------
 

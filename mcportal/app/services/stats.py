@@ -8,7 +8,6 @@ timestamp) makes sure no line is counted twice, also across portal restarts.
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import logging
 import os
@@ -17,6 +16,7 @@ from pathlib import Path
 
 from ..adapters.base import MinecraftAdapter
 from ..adapters.bedrock.logparse import LogLine, parse_stats
+from .logcursor import LogCursor
 from .minecraft import MinecraftService
 
 log = logging.getLogger("mcportal.stats")
@@ -47,6 +47,7 @@ class StatsService:
         self.mc = mc
         self.file = data_dir / "stats.json"
         self.data = self._load()
+        self.cursor = LogCursor(self.data["cursor"])
         self._ready = False
         self._buffer: list[LogLine] = []
         mc.line_listeners.append(self._on_live_line)
@@ -72,7 +73,7 @@ class StatsService:
     # ---------- feeding ----------
 
     async def startup(self) -> None:
-        cursor = self.data["cursor"]["ts"]
+        cursor = self.cursor.ts
         if cursor:
             try:
                 lines = await asyncio.to_thread(self.a.read_log, cursor - 1)
@@ -93,15 +94,8 @@ class StatsService:
         changed = False
         for line in lines:
             payload = parse_stats(line)
-            if payload is None:
+            if payload is None or not self.cursor.first_time(line):
                 continue
-            h = hashlib.sha1(f"{line.ts}|{line.text}".encode()).hexdigest()[:16]
-            cur = self.data["cursor"]
-            if line.ts < cur["ts"] or (line.ts == cur["ts"] and h in cur["hashes"]):
-                continue
-            if line.ts > cur["ts"]:
-                cur["ts"], cur["hashes"] = line.ts, []
-            cur["hashes"].append(h)
             self._add(payload, line.ts)
             changed = True
         if changed:
