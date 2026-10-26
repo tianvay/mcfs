@@ -4,6 +4,8 @@ Stand: 2026-10-26
 
 ## Offen
 
+- [ ] **Wegpunkte 1.4.0 im Spiel prüfen**: Diamantblock abbauen geht nicht (auch Kreativ), Antippen öffnet
+      „Wegpunkt bearbeiten“ (Besitzer/Operator), `/warp rename Wegpunkt 1` ohne Anführungszeichen zeigt den Vorschlag.
 - [ ] Prüfen, ob der Karten-Nachtlauf am 27.10. um 04:00 kam (Protokoll im Server-Tab).
 - [ ] Später, nicht dringend: Karte K3 Spielerpositionen (Statistik-Pack 2.1.0) · K4 nur Geändertes neu
       zeichnen, Biom-Färbung (Plan: `docs/08-karte.md`).
@@ -32,6 +34,7 @@ Stand: 2026-10-26
 
 ## Erledigt
 
+- [x] Wegpunkte 1.4.0 installiert (Diamant geschützt, Bearbeiten per Antippen), startet ohne Script-Fehler (2026-10-26 13:10)
 - [x] Karte K2 installiert: Wegpunkte + Weltspawn auf der Karte, Marker auf der Blockmitte (2026-10-26)
 - [x] Karte K1 installiert, erster echter Lauf: Welt 0,65 s angehalten, 91 s gesamt, Oberwelt + Ende (2026-10-26 12:14)
 
