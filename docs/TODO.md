@@ -11,6 +11,8 @@ Stand: 2026-10-25
 - [ ] Optional **Platz schaffen** im Serverordner: `bedrock-server.zip` (95 MB) und
       `xampp-linux-x64-8.2.12-0-installer.run` (160 MB) braucht der Server nicht.
 - [ ] **Sunny** kann erst Operator werden, nachdem Sunny einmal verbunden war.
+- [ ] **Reproduzierbarer Aufbau** für den echten Server (Plan: `docs/04-reproduzierbarer-aufbau.md`):
+      `provision/setup.sh`, `import-players.sh`, `verify.sh`; Umstieg auf `/opt/minecraft` am Stichtag.
 - [ ] Später: **Web-Konsole** und **Log-Ansicht**.
 - [ ] Prüfen, ob ein Spieler, der gerade online ist, Operator-Rechte durch `permission reload` sofort bekommt.
 
