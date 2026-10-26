@@ -4,6 +4,12 @@ Stand: 2026-10-25
 
 ## Offen
 
+- [ ] **Beobachten: Beitritt nach Neustart gescheitert** (2026-10-26). Nach dem Neustart fürs Pack-Upgrade
+      (06:33) kam niemand mehr auf den Server (PC und Xbox: `InitialConnection-145`, `NetherNet:2193`); im
+      Server-Log kam kein Versuch an. Ein weiterer Neustart (06:42) hat es behoben, mit Pack 2.0. Ursache
+      unklar: Die Verbindungen zu Microsofts Verbindungsdienst stehen auch im Normalbetrieb nach ~2 min auf
+      CLOSE-WAIT, das war es also nicht. Diagnose: `~/mcportal-backups/diagnose-06-41/`. Falls es wieder
+      passiert: Zeitpunkt notieren, Server über das Portal neu starten, Bescheid geben.
 - [ ] **Statistik 2.0 im Spiel prüfen**: Tode, Mobs, Essen, XP, Setzlinge, Züchten, Strecke (Boot/Elytra …), Spielzeit –
       nach dem nächsten Spielen im Tab „Statistik“ ansehen; Auffälligkeiten melden.
 - [ ] **Echten Neustart testen**, wenn niemand spielt (`sudo reboot`). Danach prüfen: Minecraft online,
