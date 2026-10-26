@@ -59,5 +59,21 @@ def world_save(step: str) -> str:
     return f"save {step}"
 
 
+# timed events (pack mcportal_events): fixed words only
+EVENT_TYPES = ("storm", "mining_rush", "lucky_day")
+
+
+def event_control(action: str, event_type: str | None = None) -> str:
+    if action in ("start", "stop"):
+        if event_type not in EVENT_TYPES:
+            raise ValueError("unknown event type")
+        return f"scriptevent mcfs:event {action} {event_type}"
+    if action in ("auto_on", "auto_off"):
+        return f"scriptevent mcfs:event auto {action[5:]}"
+    if action == "state":
+        return "scriptevent mcfs:event state"
+    raise ValueError("unknown event action")
+
+
 def allowlist_remove(name: str) -> str:
     return f"allowlist remove {_name_arg(name)}"

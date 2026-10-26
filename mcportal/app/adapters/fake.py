@@ -109,6 +109,11 @@ class FakeAdapter:
         self._log("Server started.", ts=ts + 4)
         self._log("Player connected: Steve, xuid: 2535400000000001", ts=ts + 60)
         self._online = ["Steve"]
+        # events pack: one finished storm in the past, nothing running
+        self._ev_auto, self._ev_active = True, {}
+        # sent a few seconds after the portal started (follow_log): a fresh dev data dir has no
+        # catch-up position, and lines from before the portal start would only arrive through it
+        self._ev_boot_due = time.time() + 3
 
     def unit_state(self) -> UnitState:
         return UnitState(self._state, "running" if self._state == "active" else "dead", 4711, self._started_at)
@@ -151,6 +156,11 @@ class FakeAdapter:
                 yield self._q.get_nowait()
             except queue.Empty:
                 await asyncio.sleep(0.2)
+            if getattr(self, "_ev_boot_due", None) and time.time() > self._ev_boot_due:
+                self._ev_boot_due = None
+                self._ev_log({"event": "started", "type": "storm", "by": "auto", "duration": 2400})
+                self._ev_log({"event": "ended", "type": "storm", "by": "time", "ran": 2400, "participants": ["Steve"]})
+                self._ev_state()
             if self._state == "active" and time.time() - last_stats > 8:
                 last_stats = time.time()
                 self._emit_stats()
@@ -246,6 +256,33 @@ class FakeAdapter:
 
     def tell_operator_status_live(self, name: str, granted: bool) -> None:
         self._log(f"[tellraw {name}] {'Du bist jetzt Operator.' if granted else 'Du bist nicht mehr Operator.'}")
+
+    def _ev_log(self, payload: dict, ts: float | None = None) -> None:
+        self._log("[Scripting] [mcportal-events] " + json.dumps({"v": 1, **payload}), ts=ts)
+
+    def _ev_state(self, ts: float | None = None) -> None:
+        active = [{"type": t, "remaining": r, "total": {"storm": 2400}.get(t, 7200), "by": "console"}
+                  for t, r in self._ev_active.items()]
+        self._ev_log({"event": "state", "auto": self._ev_auto, "online": len(self._online), "active": active,
+                      "next_in": 95 if self._ev_auto else None, "last": "storm", "register": 12,
+                      "types": ["storm", "mining_rush", "lucky_day"]}, ts)
+
+    def event_control_live(self, action: str, event_type: str | None = None) -> None:
+        """Like the events pack: start/stop/auto/state; running events lose 5 minutes per state request."""
+        from .bedrock.commands import event_control
+        event_control(action, event_type)  # same validation as the real console command
+        if action == "start" and event_type not in self._ev_active:
+            self._ev_active[event_type] = {"storm": 2400}.get(event_type, 7200)
+            self._ev_log({"event": "started", "type": event_type, "by": "console", "duration": self._ev_active[event_type]})
+        elif action == "stop" and event_type in self._ev_active:
+            ran = {"storm": 2400}.get(event_type, 7200) - self._ev_active.pop(event_type)
+            self._ev_log({"event": "ended", "type": event_type, "by": "console", "ran": ran, "participants": list(self._online)})
+        elif action in ("auto_on", "auto_off"):
+            self._ev_auto = action == "auto_on"
+        elif action == "state":
+            for t in self._ev_active:
+                self._ev_active[t] = max(60, self._ev_active[t] - 300)
+        self._ev_state()
 
     def world_save_live(self, step: str) -> None:
         """Like the real server; the "world" is whatever lies in <server_dir>/worlds/<level-name>."""

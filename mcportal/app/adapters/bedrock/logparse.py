@@ -194,6 +194,11 @@ def parse_stats(line: LogLine) -> dict | None:
     return parse_pack_line(line, "mcportal-stats", (1, 2))
 
 
+def parse_events(line: LogLine) -> dict | None:
+    """Line of the timed events pack (minecraft-pack/mcportal_events)."""
+    return parse_pack_line(line, "mcportal-events")
+
+
 def parse_achievements(line: LogLine) -> dict | None:
     """Line of the achievements pack (minecraft-pack/mcportal_achievements)."""
     return parse_pack_line(line, "mcportal-ach")

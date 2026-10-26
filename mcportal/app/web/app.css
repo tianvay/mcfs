@@ -88,6 +88,17 @@ h2 { font-size: 1.05rem; margin: 0 0 12px; }
 .facts div { min-width: 0; }
 .facts dt { color: var(--muted); font-size: .85rem; }
 .facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.events-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.events-head h2 { margin: 0; }
+.events-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+.events-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.events-list li small { color: var(--muted); }
+.events-list.history li { display: grid; gap: 2px; }
+.events-list .empty { color: var(--muted); }
+.events-start { flex-wrap: wrap; margin-bottom: 12px; }
+.events-sub { font-size: .95rem; margin: 4px 0 6px; color: var(--muted); }
+
 /* map: wider than the other cards on large screens */
 #tab-map .card { width: min(1100px, calc(100vw - 32px)); position: relative; left: 50%; transform: translateX(-50%); }
 .map-dims { margin-bottom: 8px; }

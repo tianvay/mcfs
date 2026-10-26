@@ -41,6 +41,19 @@
         <div><dt>Letztes Update</dt><dd id="f-update">–</dd></div>
         <div><dt>Whitelist</dt><dd id="f-allow">–</dd></div>
       </dl>
+      <div id="events-card" class="card events-card" hidden>
+        <div class="events-head">
+          <h2>🎉 Events</h2>
+          <button id="events-auto" class="btn small" type="button">Automatik</button>
+        </div>
+        <p id="events-missing" class="note small">Das Events-Pack ist noch nicht installiert.</p>
+        <div id="events-body">
+          <ul id="events-running" class="events-list"></ul>
+          <div id="events-start" class="row wrap events-start"></div>
+          <h3 class="events-sub">Zuletzt</h3>
+          <ul id="events-history" class="events-list history"></ul>
+        </div>
+      </div>
       <div class="row">
         <button class="btn" data-goto="allow">📋 Whitelist</button>
         <button class="btn" data-goto="server">⚙️ Server</button>
@@ -161,6 +174,7 @@
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script src="/static/map.js"></script>
+  <script src="/static/events.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

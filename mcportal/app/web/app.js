@@ -14,7 +14,7 @@ const AUDIT_TEXT = {
   SERVER_START: "Server gestartet", SERVER_STOP: "Server gestoppt", SERVER_RESTART: "Server neu gestartet",
   WHITELIST_ADD: "Whitelist: hinzugefügt", WHITELIST_REMOVE: "Whitelist: entfernt", LOGIN: "PIN-Anmeldung",
   OPERATOR_GRANT: "Operator-Rechte vergeben", OPERATOR_REVOKE: "Operator-Rechte entzogen",
-  UPDATE: "Server-Update", GAMEMODE_SURVIVAL: "Spielmodus auf Überleben gesetzt", MAP: "Karte gezeichnet",
+  UPDATE: "Server-Update", GAMEMODE_SURVIVAL: "Spielmodus auf Überleben gesetzt", MAP: "Karte gezeichnet", EVENT: "Event",
 };
 
 let state = null;
@@ -96,6 +96,7 @@ function showTab(name) {
   document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach((s) => (s.hidden = s.id !== `tab-${name}`));
   try { sessionStorage.setItem("tab", name); } catch {}
+  if (name === "home") loadEvents();
   if (name === "allow") loadAllowlist();
   if (name === "stats") loadStats();
   if (name === "map") loadMap();
@@ -146,6 +147,7 @@ function render(s) {
 
   renderUpdate(s);
   mapOnState(s);
+  eventsOnState(s);
   const statsKey = `${s.stats && s.stats.updated}|${s.achievements && s.achievements.updated}`
     + `|${s.waypoints && s.waypoints.updated}`;
   if (statsKey !== lastStatsUpdate && lastStatsUpdate !== null && !$("#tab-stats").hidden) loadStats();
@@ -558,7 +560,7 @@ async function loadAudit() {
     const ul = $("#audit-list");
     if (!items.length) { ul.replaceChildren(el("li", { className: "empty", textContent: "Noch keine Aktionen." })); return; }
     ul.replaceChildren(...items.map((a) => el("li", {},
-      el("div", {}, `${AUDIT_TEXT[a.action] || a.action}${a.player ? `: ${a.player}` : ""}${a.from ? `: ${a.from} → ${a.to}` : ""} `,
+      el("div", {}, `${AUDIT_TEXT[a.action] || a.action}${a.player ? `: ${a.player}` : ""}${a.from ? `: ${a.from} → ${a.to}` : ""}${a.command ? `: ${a.command}${a.type ? ` ${a.type}` : ""}` : ""} `,
         el("span", { className: a.result, textContent: a.result === "SUCCESS" ? "✓" : a.result === "PENDING" ? "⏳ vorgemerkt" : "✗ fehlgeschlagen" })),
       el("div", { className: "meta", textContent: `${a.time} · ${a.user}${a.error ? ` · ${a.error}` : ""}` }))));
   } catch (e) { /* not critical */ }

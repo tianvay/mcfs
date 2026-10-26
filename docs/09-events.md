@@ -1,6 +1,6 @@
 # Timed Events – Paket 1 (Plan, Änderung M11)
 
-Stand: 2026-10-26 · Status: **E1–E3 gebaut** (Grundgerüst, Bau-Register, drei Events, Erfolge), E4–E5 offen · nur stabile Script-API (`@minecraft/server` 2.10.0), keine Experimente
+Stand: 2026-10-26 · Status: **E1–E4 gebaut** (Packs, Erfolge, Portal), E5 (Installation) offen · nur stabile Script-API (`@minecraft/server` 2.10.0), keine Experimente
 
 ## Ziel
 
@@ -142,6 +142,22 @@ Nach jedem Schritt zeige ich das Ergebnis; installiert wird erst in E5 (mit dein
 - Neu für die Fehlersuche (nur Konsole): `scriptevent mcfs:ach dump <Spieler>` zeigt Zähler und Erfolge.
 - **Getestet:** 7 Node-Tests (neu: Teilnahmen, Wellen, Spezial-Erfolge). Testserver mit beiden Packs:
   8 simulierte Events → Zähler beim Erfolge-Pack angekommen (events 8, je Art gezählt, Welle 1 = 3).
+
+## E4 – gebaut (Portal)
+
+- `app/services/events.py`: liest `[mcportal-events]`-Zeilen (Zustand, Starts, Enden mit Teilnehmern), Verlauf
+  der letzten 100 Events, Teilnahmen je Spieler; Daten in `/var/lib/mcportal/events.json`, Leseposition wie bei
+  den anderen Pack-Diensten (nichts doppelt nach Portal-Neustart).
+- API: `GET /api/gameevents`, `POST /api/gameevents/{start|stop|auto_on|auto_off}` mit `{"type": …}`
+  (`/api/events` ist schon der Live-Strom). Das Portal schickt nur feste Konsolenbefehle
+  (`scriptevent mcfs:event start storm` …, `commands.event_control`); unbekannte Aktionen/Events → Fehler.
+- Beim Öffnen fragt das Portal höchstens alle 30 s per `scriptevent mcfs:event state` frische Restzeiten ab.
+- **Kachel „🎉 Events“ in der Übersicht:** laufende Events mit Restzeit und „Beenden“, Knopf Automatik an/aus,
+  „Nächstes Event in ca. …“, Start-Knöpfe für alle nicht laufenden Events (mit Rückfrage: alle Spieler sehen
+  die Ankündigung), die letzten 5 Events mit Teilnehmern. Einträge im Protokoll („Event: start mining_rush“).
+- **Getestet:** 5 Python-Tests (Zustand/Verlauf/Teilnahmen, kein Doppelzählen nach Neustart, nur feste Befehle,
+  nur bei laufendem Server, Abfrage höchstens alle 30 s); lokal mit simuliertem Events-Pack auf PC und Handy:
+  Start, Beenden mit Rückfrage, Verlauf, Protokoll.
 
 ## Was sich auf dem Server ändert
 

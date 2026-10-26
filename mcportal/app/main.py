@@ -20,6 +20,7 @@ from .config import Config
 from .services.achievements import AchievementsService
 from .services.map import MapService
 from .services.allowlist import AllowlistService
+from .services.events import EventsService
 from .services.minecraft import MinecraftService, PortalError
 from .services.stats import StatsService
 from .services.update import UpdateService
@@ -42,6 +43,10 @@ class PinIn(BaseModel):
 
 class OperatorIn(BaseModel):
     operator: bool
+
+
+class EventControlIn(BaseModel):
+    type: str | None = None
 
 
 class SecurityHeaders:
@@ -85,6 +90,7 @@ def create_app(cfg: Config) -> FastAPI:
     achievements = AchievementsService(adapter, mc, cfg.data_dir)
     waypoints = WaypointsService(adapter, mc, cfg.data_dir)
     world_map = MapService(adapter, mc, audit, cfg.data_dir)
+    game_events = EventsService(adapter, mc, audit, cfg.data_dir)
     sessions: set[str] = set()
 
     @asynccontextmanager
@@ -93,6 +99,7 @@ def create_app(cfg: Config) -> FastAPI:
         await stats.startup()
         await achievements.startup()
         await waypoints.startup()
+        await game_events.startup()
         await update.startup()
         await world_map.startup()
         yield
@@ -220,6 +227,17 @@ def create_app(cfg: Config) -> FastAPI:
     @app.get("/api/waypoints")
     async def waypoints_summary():
         return waypoints.summary()
+
+    # ---------- timed events (not /api/events - that is the live stream) ----------
+
+    @app.get("/api/gameevents")
+    async def game_events_summary():
+        return game_events.summary()
+
+    @app.post("/api/gameevents/{action}", status_code=202)
+    async def game_events_control(action: str, body: EventControlIn, user: str = Depends(require_write)):
+        await game_events.control(action, body.type, user)
+        return {"accepted": action}
 
     # ---------- map ----------
 
