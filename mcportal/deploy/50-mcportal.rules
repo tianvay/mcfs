@@ -1,0 +1,19 @@
+// Minecraft Family Portal: what the user "mcportal" may do via systemd - nothing else.
+//   minecraft-bedrock.service          start, stop, restart
+//   mcportal-update-apply.service      start  (update helper, M4)
+//   mcportal-update-rollback.service   start  (update helper, M4)
+polkit.addRule(function (action, subject) {
+    if (action.id != "org.freedesktop.systemd1.manage-units" || subject.user != "mcportal") {
+        return;
+    }
+    var unit = action.lookup("unit");
+    var verb = action.lookup("verb");
+    if (unit == "minecraft-bedrock.service" &&
+        (verb == "start" || verb == "stop" || verb == "restart")) {
+        return polkit.Result.YES;
+    }
+    if ((unit == "mcportal-update-apply.service" || unit == "mcportal-update-rollback.service") &&
+        verb == "start") {
+        return polkit.Result.YES;
+    }
+});

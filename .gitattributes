@@ -1,0 +1,4 @@
+# Everything here runs on Linux: keep LF line endings in the working tree on Windows too
+* text=auto eol=lf
+*.png binary
+*.zip binary

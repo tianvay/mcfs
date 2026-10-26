@@ -1,0 +1,12 @@
+# Minecraft Family Portal (M2): console FIFO connected to the server's stdin.
+# Rollback: sudo bash deploy/m2-console.sh rollback
+[Unit]
+Description=Minecraft Bedrock Server console
+
+[Socket]
+ListenFIFO=/run/minecraft-bedrock/console
+SocketUser=@MC_USER@
+SocketGroup=mcportal
+SocketMode=0620
+DirectoryMode=0755
+RemoveOnStop=yes

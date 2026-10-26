@@ -1,0 +1,22 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Family Portal Statistik",
+    "description": "Zählt gesetzte und abgebaute Blöcke pro Spieler für das Minecraft Family Portal.",
+    "uuid": "8844815a-792a-4950-bd0d-d467cfa8c962",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 21, 0]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "26ed77ed-29f8-4a23-aa6e-1025e9a7718f",
+      "version": [1, 0, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    { "module_name": "@minecraft/server", "version": "@SERVER_API@" }
+  ]
+}

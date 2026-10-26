@@ -1,0 +1,28 @@
+# Minecraft Family Portal (M4): update helper, action "@ACTION@".
+# Started by the portal via polkit; runs as the Minecraft user, not as root.
+[Unit]
+Description=Minecraft Family Portal - Update-Helfer (@ACTION@)
+
+[Service]
+Type=oneshot
+User=@MC_USER@
+# read the staged release and the backups in /var/lib/mcportal
+SupplementaryGroups=mcportal
+Environment=MC_DIR=@MC_DIR@ MC_UNIT=minecraft-bedrock.service DATA_DIR=/var/lib/mcportal
+ExecStart=/opt/mcportal/bin/mcportal-update-helper @ACTION@
+TimeoutStartSec=900
+
+# Sandbox: only the folder containing the Minecraft directory is writable
+# (rollback renames the directory, so its parent is needed).
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=@MC_PARENT@
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=

@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# Minecraft Family Portal - update helper (change M4)
+#
+# Runs ONLY via the systemd units mcportal-update-apply.service / -rollback.service,
+# as the Minecraft user (not root). Takes no arguments from the portal except the
+# fixed action name; all paths come from the unit's Environment= lines.
+#
+#   apply     copy the staged, validated release into the server directory.
+#             Never overwritten: worlds/, allowlist.json, permissions.json,
+#             server.properties, whitelist.json, packetlimitconfig.json, config/
+#             (they are only created if missing). Nothing is deleted.
+#   rollback  restore the newest *_pre_update backup. The current contents are
+#             moved to <dir>.failed-<time> (kept, not deleted) first.
+set -euo pipefail
+umask 022
+
+: "${MC_DIR:?}" "${MC_UNIT:?}" "${DATA_DIR:?}"
+STAGED="$DATA_DIR/staging/server"
+
+log() { echo "$*"; }
+die() { echo "FEHLER: $*" >&2; exit 1; }
+
+[[ "$MC_DIR" == /* && -d "$MC_DIR" && -x "$MC_DIR/bedrock_server" ]] || die "Serververzeichnis ungültig: $MC_DIR"
+if systemctl is-active -q "$MC_UNIT"; then die "Minecraft läuft noch – zuerst stoppen"; fi
+
+case "${1:-}" in
+apply)
+  [[ -d "$STAGED" && -x "$STAGED/bedrock_server" ]] || die "keine vorbereitete Version in $STAGED"
+  [[ -z "$(find "$STAGED" ! -type f ! -type d -print -quit)" ]] || die "vorbereitete Version enthält Links/Sonderdateien"
+  [[ ! -e "$STAGED/worlds" ]] || die "vorbereitete Version enthält worlds/ – abgelehnt"
+
+  DIR_MODE="$(stat -c %a "$MC_DIR")"
+  # rsync takes the mode of the staged root; restore the original even if we abort
+  trap 'chmod "$DIR_MODE" "$MC_DIR"' EXIT
+  log "Kopiere neue Programmdateien nach $MC_DIR (geschützte Dateien ausgenommen)"
+  # --ignore-times: copy every program file, never trust size+mtime to decide "unchanged"
+  rsync -rtp --ignore-times --itemize-changes \
+    --exclude=/worlds/ --exclude=/allowlist.json --exclude=/permissions.json \
+    --exclude=/server.properties --exclude=/whitelist.json \
+    --exclude=/packetlimitconfig.json --exclude=/config/ \
+    "$STAGED/" "$MC_DIR/" | awk 'END { print NR " Einträge aktualisiert" }'
+
+  log "Ergänze fehlende Dateien (bestehende bleiben unverändert)"
+  rsync -rtp --ignore-existing --exclude=/worlds/ "$STAGED/" "$MC_DIR/"
+
+  [[ -x "$MC_DIR/bedrock_server" ]] || die "bedrock_server nach dem Kopieren nicht ausführbar"
+  log "apply: fertig"
+  ;;
+
+rollback)
+  BK="$(find "$DATA_DIR/backups" -maxdepth 1 -type d -name '*_pre_update' | sort | tail -n 1)"
+  [[ -n "$BK" && -f "$BK/server.tar.gz" ]] || die "kein Update-Backup gefunden"
+  log "Prüfe Backup $BK"
+  # read the full listing first: "tar | grep -q" fails under pipefail (SIGPIPE) although the backup is fine
+  MEMBERS="$(tar -tzf "$BK/server.tar.gz")" || die "Backup nicht lesbar"
+  grep -qx './allowlist.json' <<<"$MEMBERS" || die "Backup unvollständig (allowlist.json fehlt)"
+  grep -q '^\./worlds/' <<<"$MEMBERS" || die "Backup unvollständig (worlds/ fehlt)"
+
+  # Move the *contents* aside, not the directory itself: other services (the
+  # portal's sandbox, the Minecraft unit) keep referring to the same directory.
+  FAILED="$MC_DIR.failed-$(date +%Y-%m-%d_%H-%M-%S)"
+  log "Verschiebe aktuellen Stand nach $FAILED (bleibt erhalten)"
+  mkdir "$FAILED"
+  find "$MC_DIR" -mindepth 1 -maxdepth 1 -exec mv -t "$FAILED" {} +
+  if ! tar --acls -xzf "$BK/server.tar.gz" -C "$MC_DIR"; then
+    log "Entpacken fehlgeschlagen – stelle den vorherigen Stand wieder her"
+    PARTIAL="$MC_DIR.partial-$(date +%s)"
+    mkdir "$PARTIAL"
+    find "$MC_DIR" -mindepth 1 -maxdepth 1 -exec mv -t "$PARTIAL" {} +
+    find "$FAILED" -mindepth 1 -maxdepth 1 -exec mv -t "$MC_DIR" {} +
+    die "Rollback fehlgeschlagen, Zustand vor dem Rollback wiederhergestellt"
+  fi
+  # leftovers excluded from the backup (old zips, installers) stay in $FAILED
+  log "rollback: fertig ($BK)"
+  ;;
+
+*) die "Aufruf: $0 apply|rollback" ;;
+esac

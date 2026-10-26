@@ -1,0 +1,20 @@
+# Minecraft Family Portal – Konfiguration
+# Installiert nach /etc/mcportal/config.toml (root:mcportal, 640)
+
+[portal]
+host = "0.0.0.0"
+port = 8080
+data_dir = "/var/lib/mcportal"
+# PIN für schreibende Aktionen (Start/Stop/Whitelist). Leer = kein PIN.
+pin = ""
+# "bedrock" für den echten Server, "fake" nur für lokale Entwicklung
+adapter = "bedrock"
+# Anzahl Whitelist-Sicherungen, die behalten werden
+allowlist_backups_keep = 30
+# Vollsicherungen vor Updates (~200 MB je Stück), die behalten werden
+update_backups_keep = 1
+
+[bedrock]
+unit = "minecraft-bedrock.service"
+server_dir = "@SERVER_DIR@"
+console_fifo = "/run/minecraft-bedrock/console"

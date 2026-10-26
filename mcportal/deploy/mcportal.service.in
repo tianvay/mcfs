@@ -1,0 +1,35 @@
+[Unit]
+Description=Minecraft Family Portal
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mcportal
+Group=mcportal
+# read the server log via journalctl
+SupplementaryGroups=systemd-journal
+Environment=MCPORTAL_CONFIG=/etc/mcportal/config.toml
+WorkingDirectory=/opt/mcportal
+ExecStart=/opt/mcportal/venv/bin/python -m app
+Restart=on-failure
+RestartSec=5
+
+# Sandbox: everything read-only except the portal's data and the Minecraft directory
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/mcportal @MC_DIR@ -/run/minecraft-bedrock
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

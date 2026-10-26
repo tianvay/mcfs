@@ -1,0 +1,10 @@
+# Full system inventory of the server (users, services, player IDs) - stays local
+analyse/report.txt
+
+# local dev / machine specific
+.claude/launch.json
+.claude/settings.local.json
+__pycache__/
+*.pyc
+.venv/
+venv/

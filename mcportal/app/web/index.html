@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#3f8f3a">
+  <title>Minecraft Family Server</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="top">
+    <h1>🎮 <span id="server-name">Minecraft Family Server</span></h1>
+    <span id="conn" class="conn" title="Live-Verbindung">●</span>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="home" aria-selected="true">Übersicht</button>
+    <button role="tab" data-tab="allow" aria-selected="false">Whitelist</button>
+    <button role="tab" data-tab="stats" aria-selected="false">Statistik</button>
+    <button role="tab" data-tab="server" aria-selected="false">Server</button>
+  </nav>
+
+  <main>
+    <!-- Übersicht -->
+    <section id="tab-home" class="tab">
+      <div class="card status-card">
+        <div id="status-badge" class="badge">…</div>
+        <div class="players-count"><span id="player-count">–</span></div>
+        <ul id="player-list" class="player-list"></ul>
+      </div>
+      <div id="home-update" class="card update-hint" hidden>
+        <span id="home-update-text"></span>
+        <button class="btn primary small" data-goto="server">Ansehen</button>
+      </div>
+      <dl class="facts card">
+        <div><dt>Version</dt><dd id="f-version">–</dd></div>
+        <div><dt>Laufzeit</dt><dd id="f-uptime">–</dd></div>
+        <div><dt>Letzter Start</dt><dd id="f-start">–</dd></div>
+        <div><dt>Letztes Update</dt><dd id="f-update">–</dd></div>
+        <div><dt>Whitelist</dt><dd id="f-allow">–</dd></div>
+      </dl>
+      <div class="row">
+        <button class="btn" data-goto="allow">📋 Whitelist</button>
+        <button class="btn" data-goto="server">⚙️ Server</button>
+      </div>
+    </section>
+
+    <!-- Whitelist -->
+    <section id="tab-allow" class="tab" hidden>
+      <div class="card">
+        <h2>Whitelist</h2>
+        <p id="allow-note" class="note" hidden></p>
+        <ul id="allow-list" class="allow-list"></ul>
+        <form id="allow-form" class="add-form" autocomplete="off">
+          <label for="allow-name">Spieler hinzufügen (Xbox-Gamertag)</label>
+          <div class="row">
+            <input id="allow-name" name="name" maxlength="36" required placeholder="z. B. Steve123">
+            <button class="btn primary" type="submit">+ Hinzufügen</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Statistik -->
+    <section id="tab-stats" class="tab" hidden>
+      <div class="card">
+        <h2>Block-Statistik</h2>
+        <p id="stats-note" class="note small"></p>
+        <div id="stats-list" class="stats-list"></div>
+      </div>
+    </section>
+
+    <!-- Server -->
+    <section id="tab-server" class="tab" hidden>
+      <div class="card">
+        <h2>Server steuern</h2>
+        <p class="note small">Status: <strong id="srv-state">–</strong></p>
+        <p id="srv-busy" class="note" hidden></p>
+        <p id="srv-error" class="note error" hidden></p>
+        <div class="stack">
+          <button class="btn primary" data-action="start">▶ Server starten</button>
+          <button class="btn" data-action="restart">🔄 Server neu starten</button>
+          <button class="btn danger" data-action="stop">■ Server stoppen</button>
+        </div>
+        <p id="srv-console-note" class="note small" hidden>
+          Hinweis: Die Server-Konsole ist noch nicht eingerichtet. Stoppen erfolgt per Signal (ohne Speicherbefehl).
+        </p>
+      </div>
+      <div class="card">
+        <h2>Server-Update</h2>
+        <dl class="facts plain">
+          <div><dt>Installiert</dt><dd id="up-current">–</dd></div>
+          <div><dt>Verfügbar</dt><dd id="up-latest">–</dd></div>
+        </dl>
+        <p id="up-note" class="note small"></p>
+        <div class="stack">
+          <button id="up-start" class="btn primary" hidden>⬆ Update installieren</button>
+          <button id="up-check" class="btn">🔍 Nach Updates suchen</button>
+        </div>
+        <div id="up-job" hidden>
+          <p id="up-job-msg" class="note"></p>
+          <ol id="up-steps" class="steps"></ol>
+        </div>
+        <p id="up-backup" class="note small"></p>
+      </div>
+      <div class="card">
+        <h2>Protokoll</h2>
+        <ul id="audit-list" class="audit-list"></ul>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="dlg">
+    <form method="dialog">
+      <p id="dlg-text"></p>
+      <input id="dlg-input" type="password" inputmode="numeric" autocomplete="off" hidden>
+      <div class="row end">
+        <button class="btn" value="cancel">Abbrechen</button>
+        <button class="btn primary" value="ok" id="dlg-ok">OK</button>
+      </div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
