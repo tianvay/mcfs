@@ -6,6 +6,10 @@ Stand: 2026-10-26
 
 - [ ] **Timed Events Paket 1** (Grundgerüst, Bau-Register, Portal-Kachel, Mining Rush, Unwetter, Glückstag,
       Event-Erfolge): Plan `docs/09-events.md`, Schritte E1–E5.
+- [ ] Idee **Meta-Erfolge**: Erfolge, die Kategorien zusammenfassen, z. B. „Mob-Events“ (alle Nachtgefahren),
+      „Natur/Welt“ (Unwetter, Meteorit, Sternschnuppen …), „Ressourcen“ (Mining Rush, Glückstag, Schatzsuche),
+      „Community“ (Events mit 3+ Spielern gleichzeitig). Beim Bau von Paket 2/3 mit einplanen; Kategorie je
+      Event-Art im Event-Katalog führen, damit Meta-Erfolge daraus abgeleitet werden können.
 - [ ] Timed Events **Paket 2 – Nachtgefahren**: 🧟 Zombie-Invasion (Wellen bei Dorfbewohnern, Extra-Drops),
       🌕 Blutmond (Wolfsrudel, roter Bildschirm), 👑 Kopfgeld-Boss (benannter Mob, Beute, eigener Erfolg). ≈ 2–3 Tage.
 - [ ] Timed Events **Paket 3 – Die Welt verändert sich**: ☄️ Meteorit (Krater mit Netherrack/Amethyst/Diamanterz,

@@ -2,7 +2,7 @@
 //
 //  * Random events while players are online - the more players, the more often, at most one per hour
 //    (core.js). Running events only lose time while somebody is online; everything survives restarts.
-//  * Events: Unwetter (storm) - E2 adds Mining Rush and Glückstag.
+//  * Events: Unwetter (storm), Mining Rush (ore drops doubled), Glückstag (XP doubled).
 //  * Build register: every chunk a player placed a block in is remembered; world-changing effects
 //    (lightning now, meteors later) stay away from it.
 //  * Control (console / portal / operators): /scriptevent mcfs:event start|stop <type> | auto on|off | state
@@ -10,10 +10,11 @@
 //  * Other packs (achievements) get the same news via system.sendScriptEvent("mcfs:event_news", json).
 // Uses only the stable @minecraft/server API - no experiments in the world.
 // console.warn on purpose: the server runs with content-log-level=warning.
-import { EntityDamageCause, Player, ScriptEventSource, system, WeatherType, world } from "@minecraft/server";
+import { EntityDamageCause, ItemStack, Player, ScriptEventSource, system, WeatherType, world } from "@minecraft/server";
 import {
   activeMinute, chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, formatMinutes, isNaturalTop,
-  lightningOffset, newActive, newSchedule, parseControl, participants, scheduleMinute, TYPES,
+  isRushOre, lightningOffset, newActive, newSchedule, parseControl, participants, scheduleMinute, shouldDouble, TYPES,
+  xpBonus,
 } from "./core.js";
 
 const TAG = "[mcportal-events]";
@@ -92,7 +93,9 @@ const isBuilt = (dim, x, z) => register?.has(chunkKey(dim, x, z));
 
 const overworld = () => world.getDimension("overworld");
 
-/** per type: start / minute (online minute) / stop; E2 adds mining_rush and lucky_day */
+const isActive = (type) => active.some((a) => a.type === type);
+
+/** per type: start / minute (online minute) / stop */
 const HANDLERS = {
   storm: {
     start(a) { keepThunder(a); },
@@ -100,6 +103,13 @@ const HANDLERS = {
     stop() {
       try { overworld().setWeather(WeatherType.Clear, 20 * 60 * 10); } catch { /* ignore */ }
     },
+  },
+  // the work happens in the event subscriptions below; they check isActive()
+  mining_rush: { start() {}, minute() {}, stop() {} },
+  lucky_day: {
+    start() { xpLast.clear(); }, // first poll sets the baseline - what players have is not doubled
+    minute() {},
+    stop() { xpLast.clear(); },
   },
 };
 const IMPLEMENTED = Object.keys(HANDLERS);
@@ -115,7 +125,7 @@ function keepThunder(a) {
 // extra lightning during a storm: every 20-60 s near a random player in the overworld
 let nextStrike = 0;
 system.runInterval(() => {
-  if (!active.some((a) => a.type === "storm") || system.currentTick < nextStrike) return;
+  if (!isActive("storm") || system.currentTick < nextStrike) return;
   nextStrike = system.currentTick + 20 * (20 + Math.floor(Math.random() * 41));
   const players = world.getAllPlayers().filter((p) => p.dimension.id === "minecraft:overworld");
   if (!players.length) return;
@@ -149,12 +159,80 @@ function strike(x, z) {
   }
 }
 
+// Mining Rush: one tick after an ore was mined, the items that dropped at its place come once more.
+// Fortune is included (the real drop is copied); silk touch drops (the ore block itself) are not doubled.
+const doubled = new Set(); // item entity ids already handled (also our own copies)
+const itemSpawnTick = new Map(); // item entity id -> tick it appeared (only during a Mining Rush)
+
+world.afterEvents.entitySpawn.subscribe((ev) => {
+  if (!isActive("mining_rush")) return;
+  try {
+    if (ev.entity.typeId === "minecraft:item") itemSpawnTick.set(ev.entity.id, system.currentTick);
+  } catch { /* gone again */ }
+});
+
+world.afterEvents.playerBreakBlock.subscribe((ev) => {
+  if (!isActive("mining_rush")) return;
+  const oreId = ev.brokenBlockPermutation.type.id;
+  if (!isRushOre(oreId)) return;
+  const dim = ev.block.dimension;
+  const l = ev.block.location;
+  const tick = system.currentTick;
+  system.runTimeout(() => doubleDrops(dim, { x: l.x + 0.5, y: l.y + 0.5, z: l.z + 0.5 }, oreId, tick), 1);
+});
+
+/** copy the drops of the ore mined in `tick`: only items that appeared right then and match the ore */
+function doubleDrops(dim, center, oreId, tick) {
+  let items;
+  try {
+    items = dim.getEntities({ type: "minecraft:item", location: center, maxDistance: 1.5 });
+  } catch {
+    return; // chunk unloaded
+  }
+  let n = 0;
+  for (const item of items) {
+    if (doubled.has(item.id)) continue;
+    const born = itemSpawnTick.get(item.id);
+    if (born === undefined || born < tick || born > tick + 1) continue; // lay there before
+    doubled.add(item.id);
+    const stack = item.getComponent("minecraft:item")?.itemStack;
+    if (!stack || !shouldDouble(stack.typeId, oreId)) continue;
+    try {
+      const copy = dim.spawnItem(stack, item.location);
+      doubled.add(copy.id);
+      n++;
+    } catch { /* ignore */ }
+  }
+  if (n) {
+    try { dim.spawnParticle("minecraft:villager_happy", center); } catch { /* cosmetic */ }
+  }
+  if (doubled.size > 2000) doubled.clear();
+  for (const [id, t] of itemSpawnTick) if (t < system.currentTick - 40) itemSpawnTick.delete(id);
+  return n;
+}
+
+// Glückstag: every 5 ticks each player's XP gain since the last look is given once more
+const xpLast = new Map(); // name -> total xp including our bonus
+system.runInterval(() => {
+  if (!isActive("lucky_day")) return;
+  const online = new Set();
+  for (const p of world.getAllPlayers()) {
+    online.add(p.name);
+    try {
+      const { bonus, last } = xpBonus(xpLast.get(p.name), p.getTotalXp());
+      if (bonus > 0) p.addExperience(bonus);
+      xpLast.set(p.name, last);
+    } catch { /* left */ }
+  }
+  for (const n of xpLast.keys()) if (!online.has(n)) xpLast.delete(n); // rejoining starts a new baseline
+}, 5);
+
 // "Geistesblitz": hit by lightning during a storm and survived
 const recentlyStruck = new Map();
 world.afterEvents.entityHurt.subscribe((ev) => {
   const p = ev.hurtEntity;
   if (!(p instanceof Player) || ev.damageSource.cause !== EntityDamageCause.lightning) return;
-  if (!active.some((a) => a.type === "storm")) return;
+  if (!isActive("storm")) return;
   const now = system.currentTick;
   if ((recentlyStruck.get(p.name) ?? -1e9) > now - 100) return;
   recentlyStruck.set(p.name, now);
@@ -179,7 +257,7 @@ function start(type, by) {
   for (const p of world.getAllPlayers()) {
     try {
       p.onScreenDisplay.setTitle(`${t.color}${t.name}!`, { subtitle: t.subtitle, fadeInDuration: 10, stayDuration: 80, fadeOutDuration: 20 });
-      p.playSound(type === "storm" ? "ambient.weather.thunder" : "random.levelup");
+      p.playSound({ storm: "ambient.weather.thunder", mining_rush: "random.anvil_land", lucky_day: "random.levelup" }[type]);
     } catch { /* left */ }
   }
   world.sendMessage(`§6[Event] ${t.color}${t.name}§f – ${t.subtitle}`);
@@ -246,7 +324,7 @@ function minute() {
 system.afterEvents.scriptEventReceive.subscribe((ev) => {
   if (ev.id !== "mcfs:event" || !schedule) return;
   const fromConsole = ev.sourceType === ScriptEventSource.Server;
-  const test = /^test (strike|minute) /.exec(ev.message);
+  const test = /^test (strike|minute|rush) /.exec(ev.message);
   if (test && fromConsole) return runTest(ev.message);
   const cmd = parseControl(ev.message);
   const reply = (msg) => {
@@ -277,7 +355,26 @@ system.afterEvents.scriptEventReceive.subscribe((ev) => {
 /** console-only test hooks for the throwaway test server (no players there) */
 function runTest(message) {
   const [, kind, a, b] = message.split(/\s+/);
-  if (kind === "strike") {
+  if (kind === "rush") {
+    // simulated drops at (a, top, b) while a Mining Rush runs; only raw_iron may be doubled
+    const dim = overworld();
+    const top = dim.getTopmostBlock({ x: Number(a), z: Number(b) });
+    const at = { x: Number(a) + 0.5, y: top.location.y + 1.5, z: Number(b) + 0.5 };
+    // ore drop, silk touch drop, a diamond thrown there - and an older item lying there already
+    dim.spawnItem(new ItemStack("minecraft:emerald", 1), at);
+    system.runTimeout(() => {
+      const tick = system.currentTick;
+      for (const id of ["raw_iron", "iron_ore", "diamond"]) dim.spawnItem(new ItemStack(`minecraft:${id}`, 2), at);
+      system.runTimeout(() => {
+        const n = doubleDrops(dim, at, "minecraft:iron_ore", tick);
+        const again = doubleDrops(dim, at, "minecraft:iron_ore", tick);
+        const lying = dim.getEntities({ type: "minecraft:item", location: at, maxDistance: 1.5 })
+          .map((e) => `${e.getComponent("minecraft:item").itemStack.typeId.slice(10)}x${e.getComponent("minecraft:item").itemStack.amount}`).sort();
+        log({ event: "test", rush: n, again, lying });
+      }, 1);
+    }, 5);
+    return;
+  } else if (kind === "strike") {
     log({ event: "test", strike: strike(Number(a), Number(b)), built: isBuilt("minecraft:overworld", Number(a), Number(b)) });
   } else if (kind === "minute") {
     // simulate n online minutes with fake player names

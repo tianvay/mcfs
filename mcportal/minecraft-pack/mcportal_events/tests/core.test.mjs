@@ -4,7 +4,8 @@ import { test } from "node:test";
 
 import {
   activeMinute, chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, intervalMinutes, isNaturalTop,
-  lightningOffset, MIN_GAP, newActive, newSchedule, parseControl, participants, scheduleMinute, TYPES,
+  isRushOre, lightningOffset, MIN_GAP, newActive, newSchedule, parseControl, participants, scheduleMinute,
+  shouldDouble, TYPES, xpBonus,
 } from "../scripts/core.js";
 
 const always = (v) => () => v;
@@ -113,4 +114,32 @@ test("lightning only on natural ground", () => {
     const d = Math.hypot(p.x - 100, p.z + 50);
     assert.ok(d >= 15 && d <= 65, `distance ${d}`);
   }
+});
+
+test("Mining Rush: which ores, no doubling of silk touch drops", () => {
+  for (const ore of ["minecraft:iron_ore", "minecraft:deepslate_diamond_ore", "minecraft:nether_gold_ore",
+    "minecraft:quartz_ore", "minecraft:lit_redstone_ore", "minecraft:copper_ore"]) assert.ok(isRushOre(ore), ore);
+  for (const no of ["minecraft:ancient_debris", "minecraft:stone", "minecraft:raw_iron_block", "minecraft:diamond_block"]) {
+    assert.ok(!isRushOre(no), no);
+  }
+  assert.ok(shouldDouble("minecraft:raw_iron", "minecraft:iron_ore"));
+  assert.ok(shouldDouble("minecraft:diamond", "minecraft:deepslate_diamond_ore"));
+  assert.ok(!shouldDouble("minecraft:iron_ore", "minecraft:iron_ore"), "silk touch");
+  assert.ok(!shouldDouble("minecraft:redstone_ore", "minecraft:lit_redstone_ore"), "silk touch on glowing redstone");
+  assert.ok(shouldDouble("minecraft:redstone", "minecraft:lit_redstone_ore"));
+  assert.ok(shouldDouble("minecraft:redstone", "minecraft:deepslate_redstone_ore"));
+  assert.ok(shouldDouble("minecraft:gold_nugget", "minecraft:nether_gold_ore"));
+  assert.ok(shouldDouble("minecraft:lapis_lazuli", "minecraft:deepslate_lapis_ore"));
+  assert.ok(!shouldDouble("minecraft:diamond", "minecraft:iron_ore"), "diamonds thrown next to an iron ore");
+});
+
+test("Glückstag: every gain once more, nothing for losses or the first look", () => {
+  assert.deepEqual(xpBonus(undefined, 500), { bonus: 0, last: 500 }, "joining doesn't double what you have");
+  assert.deepEqual(xpBonus(500, 507), { bonus: 7, last: 514 });
+  assert.deepEqual(xpBonus(514, 514), { bonus: 0, last: 514 }, "our own bonus is not doubled again");
+  assert.deepEqual(xpBonus(514, 300), { bonus: 0, last: 300 }, "enchanting / death");
+});
+
+test("every event type has a category for later meta achievements", () => {
+  for (const [id, t] of Object.entries(TYPES)) assert.ok(["welt", "ressourcen", "mobs", "community"].includes(t.category), id);
 });

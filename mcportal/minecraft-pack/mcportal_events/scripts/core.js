@@ -8,18 +8,21 @@ export const MIN_GAP = 60;           // minutes between automatic starts (= at m
 export const MAX_DELAY = 10;         // random delay after the credit is full
 export const PARTICIPATION = 5 * 60; // seconds online during an event to count as "took part"
 
-/** event types; `minutes` = duration in online minutes */
+/**
+ * event types; `minutes` = duration in online minutes, `category` for later meta achievements
+ * (welt, ressourcen, mobs, community)
+ */
 export const TYPES = {
   storm: {
-    name: "Unwetter", minutes: 40, color: "§9",
+    name: "Unwetter", minutes: 40, color: "§9", category: "welt",
     subtitle: "§7Zwei Tage Gewitter – Blitze schlagen ein!", end: "Das Unwetter ist vorbei.",
   },
   mining_rush: {
-    name: "Mining Rush", minutes: 120, color: "§b",
+    name: "Mining Rush", minutes: 120, color: "§b", category: "ressourcen",
     subtitle: "§72 Stunden doppelte Erze!", end: "Der Mining Rush ist vorbei.",
   },
   lucky_day: {
-    name: "Glückstag", minutes: 120, color: "§a",
+    name: "Glückstag", minutes: 120, color: "§a", category: "ressourcen",
     subtitle: "§72 Stunden doppelte Erfahrung!", end: "Der Glückstag ist vorbei.",
   },
 };
@@ -121,6 +124,41 @@ export function parseControl(message) {
   if (verb === "auto" && (arg === "on" || arg === "off")) return { verb, on: arg === "on" };
   if (verb === "state" && !arg) return { verb };
   return null;
+}
+
+// ---------- Mining Rush ----------
+
+/** ores whose drops are doubled; ancient debris stays rare on purpose */
+export function isRushOre(blockId) {
+  return blockId.endsWith("_ore") && blockId !== "minecraft:ancient_debris";
+}
+
+const ORE_DROPS = {
+  coal_ore: "coal", iron_ore: "raw_iron", copper_ore: "raw_copper", gold_ore: "raw_gold", diamond_ore: "diamond",
+  emerald_ore: "emerald", lapis_ore: "lapis_lazuli", redstone_ore: "redstone", nether_gold_ore: "gold_nugget",
+  quartz_ore: "quartz",
+};
+
+/**
+ * Only the ore's real drop is doubled: not the ore block itself (silk touch - that would multiply ore blocks)
+ * and not items that just happen to lie next to it (thrown there on purpose).
+ */
+export function shouldDouble(dropId, oreId) {
+  const ore = oreId.replace(/^minecraft:/, "").replace(/^(deepslate_|lit_)/, "").replace("deepslate_", "");
+  const want = ORE_DROPS[ore];
+  return !!want && dropId === `minecraft:${want}`;
+}
+
+// ---------- Glückstag ----------
+
+/**
+ * XP bonus for one poll: the gain since the last poll is given once more.
+ * @returns {{bonus: number, last: number}} bonus to add and the new baseline (including the bonus)
+ */
+export function xpBonus(last, now) {
+  if (last === undefined || now <= last) return { bonus: 0, last: now };
+  const bonus = now - last;
+  return { bonus, last: now + bonus };
 }
 
 // ---------- build register: chunks where players placed blocks ----------

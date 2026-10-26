@@ -1,6 +1,6 @@
 # Timed Events – Paket 1 (Plan, Änderung M11)
 
-Stand: 2026-10-26 · Status: **E1 gebaut** (Grundgerüst, Bau-Register, Unwetter), E2–E5 offen · nur stabile Script-API (`@minecraft/server` 2.10.0), keine Experimente
+Stand: 2026-10-26 · Status: **E1 + E2 gebaut** (Grundgerüst, Bau-Register, Unwetter, Mining Rush, Glückstag), E3–E5 offen · nur stabile Script-API (`@minecraft/server` 2.10.0), keine Experimente
 
 ## Ziel
 
@@ -111,6 +111,23 @@ Nach jedem Schritt zeige ich das Ergebnis; installiert wird erst in E5 (mit dein
   Start/Doppelstart/unbekanntes Event, Blitz auf Naturboden, Automatik aus/an, **Neustart mitten im Unwetter**
   (Restzeit und „aus“ blieben erhalten), Ende nach Zeit mit Teilnehmern, automatischer Start, Stopp.
   Im Spiel noch zu sehen: Titel/Chat/Sound, Gewitter, Blitze, Restzeit in der Aktionsleiste.
+
+## E2 – gebaut
+
+- **Mining Rush:** Einen Tick nach dem Abbau eines Erzes werden die dort gerade erschienenen Drops kopiert.
+  Verdoppelt wird nur der **echte Drop des Erzes** (Eisenerz → Roheisen, Diamanterz → Diamant, Lapis, Redstone,
+  Kupfer, Gold, Kohle, Smaragd, Quarz, Goldnugget) – mit Glück also entsprechend mehr. **Nicht** verdoppelt:
+  das Erz selbst (Behutsamkeit), antiker Schrott, und Gegenstände, die schon vorher dort lagen oder
+  absichtlich danebengeworfen wurden (Schlupfloch geschlossen: nur Items, die im selben Tick entstanden, und nur
+  die zum Erz passende Sorte). Kleiner grüner Funken-Effekt bei jeder Verdopplung.
+- **Glückstag:** Alle 5 Ticks wird der Erfahrungszuwachs jedes Spielers seit dem letzten Blick noch einmal
+  gegeben. Verluste (Verzaubern, Amboss, Tod) und der Stand beim Einloggen werden nicht verdoppelt.
+- Jede Event-Art hat eine **Kategorie** (welt, ressourcen, mobs, community) – Grundlage für spätere Meta-Erfolge.
+- **Getestet:** 11 Node-Tests (neu: welche Erze, welcher Drop, XP-Zuwachs, Kategorien). Testserver: ohne
+  Mining Rush wird nichts verdoppelt; mit Mining Rush genau der Roheisen-Drop – Eisenerz-Block, danebengeworfener
+  Diamant und älterer Smaragd bleiben einfach, zweiter Durchlauf verdoppelt nichts mehr; alle drei Events
+  gleichzeitig, Unwetter endet nach 40 Min., Glückstag per Befehl beendet.
+  **Im Spiel zu prüfen:** echter Erzabbau (auch mit Glück), Glückstag-Erfahrung.
 
 ## Was sich auf dem Server ändert
 
