@@ -70,7 +70,8 @@ test("event mobs: tags and tidying up", () => {
   for (let i = 0; i < 50; i++) {
     const p = ringOffset(0, 0, 20, 32, Math.random);
     const d = Math.hypot(p.x, p.z);
-    assert.ok(d >= 19 && d <= 33, `ring ${d}`);
+    // both coordinates are floored to whole blocks: up to sqrt(2) outside the exact ring
+    assert.ok(d >= 20 - Math.SQRT2 && d <= 32 + Math.SQRT2, `ring ${d}`);
     const n = packSize(Math.random);
     assert.ok(n >= 3 && n <= 5);
   }
