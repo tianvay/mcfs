@@ -259,3 +259,6 @@ Phasen und Aufräumen lassen sich mit Test-Spielerpositionen prüfen, Kämpfe nu
 3. Dorfbewohner während der Zombie-Invasion geschützt? (ja)
 4. Bosse und Namen (Bernd der Zombiekönig, Skelett-Sven, Spinnen-Susi – gern eigene Ideen)
 5. Meta-Erfolge: jetzt nur „Gemeinsam stark“, der Rest mit Paket 3? (ja)
+- **Installiert** 2026-10-27 06:16 (niemand online, ein Neustart): Grafik-Pack 1.1.1 mit `NO_RESTART=1`, dann
+  Events-Pack 1.4.1. Startprüfung OK nach 4 s, `verify.sh`: alle Packs aktiv, keine Script-/Pack-Fehler.
+  Sicherungen: `~/mcportal-backups/2026-10-27_06-16-22_pre_mcportal_events_rp` und `…_pre_mcportal_events`.
