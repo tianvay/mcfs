@@ -754,32 +754,7 @@
         },
         "minecraft:timer": {
           "looping": false,
-          "time": 30,
-          "time_down_event": {
-            "event": "minecraft:convert_to_drowned"
-          }
-        }
-      },
-      "minecraft:convert_to_drowned": {
-        "minecraft:is_shaking": {},
-        "minecraft:transformation": {
-          "delay": {
-            "value": 15
-          },
-          "preserve_equipment": true,
-          "into": "minecraft:drowned<minecraft:as_adult>",
-          "transformation_sound": "convert_to_drowned"
-        }
-      },
-      "minecraft:convert_to_baby_drowned": {
-        "minecraft:is_shaking": {},
-        "minecraft:transformation": {
-          "delay": {
-            "value": 15
-          },
-          "preserve_equipment": true,
-          "into": "minecraft:drowned<minecraft:as_baby>",
-          "transformation_sound": "convert_to_drowned"
+          "time": 30
         }
       }
     },
@@ -919,43 +894,6 @@
             "minecraft:start_drowned_transformation"
           ]
         }
-      },
-      "minecraft:convert_to_drowned": {
-        "sequence": [
-          {
-            "filters": {
-              "test": "has_component",
-              "operator": "!=",
-              "value": "minecraft:is_baby"
-            },
-            "add": {
-              "component_groups": [
-                "minecraft:convert_to_drowned"
-              ]
-            },
-            "remove": {
-              "component_groups": [
-                "minecraft:start_drowned_transformation"
-              ]
-            }
-          },
-          {
-            "filters": {
-              "test": "has_component",
-              "value": "minecraft:is_baby"
-            },
-            "add": {
-              "component_groups": [
-                "minecraft:convert_to_baby_drowned"
-              ]
-            },
-            "remove": {
-              "component_groups": [
-                "minecraft:start_drowned_transformation"
-              ]
-            }
-          }
-        ]
       }
     }
   }

@@ -222,6 +222,29 @@ Phasen und Aufräumen lassen sich mit Test-Spielerpositionen prüfen, Kämpfe nu
 - Getestet: Testserver mit beiden Packs ohne Inhaltsfehler; alle drei Bosse mit Größe 1.5, Bernd 60/60,
   Sven und Susi 52/52 LP. Farbe nur im Spiel sichtbar.
 
+## Nachbesserung Events-Pack 1.4.1 + Grafik-Pack 1.1.1: Bernd unsichtbar, Bernd wird zum Ertrunkenen (2026-10-27)
+
+- **Befund im Spiel:** Spinnen-Susi und Skelett-Sven sehen richtig aus. Zombie-Bernd war jedes Mal unsichtbar: Man
+  sah nur die Partikel, töten ging trotzdem. Einmal lief er ins Wasser und war danach ein normaler Ertrunkener
+  (Drowned).
+- **Unsichtbar – wahrscheinliche Ursache:** Mojangs Zombie-Grafikdatei ist seit 1.26 im neuen Format „1.26.0“
+  (Baby-Modell, Speer-Animationen, `animate`-Liste). Sie war als einzige der vier eigenen Mobs in diesem Format;
+  Sven, Susi und die Hexen im alten Format „1.8.0“ werden richtig gezeigt.
+  - **Fix:** `make_bosses.py` baut Bernd jetzt im 1.8.0-Format, mit demselben Modell (`geometry.zombie.v1.8`),
+    derselben Textur und denselben Animationen, nur Erwachsene, ohne Speer.
+  - Sichtbarkeit lässt sich nur im Spiel prüfen, denn der Server zeichnet nichts.
+- **Ertrunkener:** Vanilla-Zombies verwandeln sich nach 30 s unter Wasser in einen Ertrunkenen, Skelette nach
+  20 s in Pulverschnee in einen Eiswanderer (Stray). Die Kopien hatten das geerbt; danach war der Boss weg.
+  - **Fix:** `make_bosses.py` entfernt bei allen eigenen Mobs jede `minecraft:transformation` samt den Ereignissen,
+    die dorthin führen. Bernd ist trotzdem immer auf festem Boden erschienen; er ist ins Wasser gelaufen.
+- **Getestet** auf dem Wegwerf-Server, mit dem Vanilla-Mob jeweils als Gegenprobe:
+  - Bernd 55 s unter Wasser: bleibt `mcfs:boss_zombie`. Ein normaler Zombie daneben wurde zum Ertrunkenen.
+  - Sven 55 s in Pulverschnee: bleibt `mcfs:boss_skeleton`. Ein normales Skelett wurde zum Eiswanderer.
+  - Beide Packs laden ohne Fehler.
+- **Im Spiel ansehen** (als Operator, Cheats an):
+  - Einen Bernd neben sich rufen: `/summon mcfs:boss_zombie ~ ~ ~3 0 0 minecraft:as_adult`
+  - Er verschwindet nicht von allein (`persistent`), also danach besiegen oder `/kill @e[type=mcfs:boss_zombie]`.
+
 ## Was sich auf dem Server ändert
 
 - Events-Pack 1.0.0 → 1.1.0, Erfolge-Pack 1.1.0 → 1.2.0, neue Portal-Version. Keine Blockänderungen.

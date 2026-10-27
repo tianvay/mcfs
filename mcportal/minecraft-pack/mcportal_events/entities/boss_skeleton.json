@@ -462,15 +462,6 @@
       }
     },
     "component_groups": {
-      "become_stray": {
-        "minecraft:transformation": {
-          "drop_inventory": true,
-          "into": "minecraft:stray",
-          "keep_level": true,
-          "preserve_equipment": true,
-          "transformation_sound": "convert_to_stray"
-        }
-      },
       "got_out_of_powder_snow_environment_sensor": {
         "minecraft:environment_sensor": {
           "triggers": [
@@ -521,10 +512,7 @@
         "minecraft:is_shaking": {},
         "minecraft:timer": {
           "looping": false,
-          "time": 20,
-          "time_down_event": {
-            "event": "become_stray_event"
-          }
+          "time": 20
         }
       },
       "minecraft:lightning_immune": {
@@ -675,13 +663,6 @@
       }
     },
     "events": {
-      "become_stray_event": {
-        "add": {
-          "component_groups": [
-            "become_stray"
-          ]
-        }
-      },
       "minecraft:switch_to_hard_ranged": {
         "add": {
           "component_groups": [
