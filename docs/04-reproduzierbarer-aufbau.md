@@ -297,7 +297,11 @@ Rückweg: sudo bash ~/mcportal-src/provision/setup.sh --switch-back – die Test
 ## Zu entscheiden
 
 1. **Weltname und Servername** (Anzeige in der Serverliste).
-2. **Seed:** zufällig oder ein bestimmter (z. B. vorher auf Chunkbase ausgesucht)?
+2. ~~**Seed**~~ – **entschieden 27.10.: `-278472841329850337`**. Kommt am Stichtag als
+   `LEVEL_SEED=-278472841329850337` in `/etc/mcportal/server.conf`.
+   - **Geprüft:** `server.conf` nimmt ihn an. Auf einem Wegwerf-Server landet er unverändert als `RandomSeed` in
+     `level.dat`, ausgelesen mit dem Leser des Portals; nichts abgeschnitten oder gerundet.
+   - Der Seed wirkt nur beim Anlegen der Welt, also nur beim `--switch`; danach ändert ihn nichts mehr.
 3. **Spieleinstellungen:** wie heute (Überleben, Schwierigkeit „Einfach“, max. 10 Spieler, Cheats an)?
 4. **Whitelist/Operatoren:** alle heutigen Einträge übernehmen?
 5. **Portal-Daten der Testphase:** archivieren und bei 0 starten (Vorschlag – neue Welt, faire Erfolge), oder
