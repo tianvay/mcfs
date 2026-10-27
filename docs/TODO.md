@@ -23,7 +23,7 @@ Stand: 2026-10-26
       Meta-Erfolge.
 - [ ] **Boss-Aussehen im Spiel ansehen** (installiert 26.10. 16:57): Bosse 1,5-fach groß und eingefärbt
       (Bernd violett, Sven gold, Susi rot).
-- [ ] **Zombie-Bernd sichtbar?** Events-Pack 1.4.1 + Grafik-Pack 1.1.1 (installiert 27.10. 06:16; Bernd im 1.8.0-Grafikformat, keine
+- [x] **Zombie-Bernd sichtbar?** (27.10. im Spiel bestätigt) Events-Pack 1.4.1 + Grafik-Pack 1.1.1 (installiert 27.10. 06:16; Bernd im 1.8.0-Grafikformat, keine
       Verwandlung in Ertrunkenen/Eiswanderer): nach der Installation einmal `/summon mcfs:boss_zombie ~ ~ ~3 0 0
       minecraft:as_adult` und ansehen.
 - [ ] Nach größeren Minecraft-Updates: `tools/make_bosses.py` neu laufen lassen (Bosse folgen dem Vanilla-Verhalten).
