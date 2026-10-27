@@ -278,7 +278,7 @@ Vorher (ohne Ausfall):
   /etc/mcportal/server.conf anlegen (aus provision/server.conf.example) mit den Entscheidungen
 
 Stichtag (ca. 5 Minuten Ausfall, niemand online):
-  sudo bash ~/mcportal-src/provision/setup.sh --switch [--import-players]
+  sudo bash ~/mcportal-src/provision/setup.sh --switch --import-allowlist   (Whitelist ja, Operatoren nein)
   danach: Kartenlauf im Portal
 Rückweg: sudo bash ~/mcportal-src/provision/setup.sh --switch-back – die Testinstallation ist unverändert da.
 ```
@@ -296,15 +296,46 @@ Rückweg: sudo bash ~/mcportal-src/provision/setup.sh --switch-back – die Test
 
 ## Zu entscheiden
 
-1. **Weltname und Servername** (Anzeige in der Serverliste).
+1. ~~**Weltname und Servername**~~ – **entschieden 27.10.:** Servername **„Family and Friends“** (Anzeige in der
+   Serverliste), Weltname **„FAF“** (Ordner `worlds/FAF`). Beide von `server.conf` geprüft und angenommen.
 2. ~~**Seed**~~ – **entschieden 27.10.: `-278472841329850337`**. Kommt am Stichtag als
    `LEVEL_SEED=-278472841329850337` in `/etc/mcportal/server.conf`.
    - **Geprüft:** `server.conf` nimmt ihn an. Auf einem Wegwerf-Server landet er unverändert als `RandomSeed` in
      `level.dat`, ausgelesen mit dem Leser des Portals; nichts abgeschnitten oder gerundet.
    - Der Seed wirkt nur beim Anlegen der Welt, also nur beim `--switch`; danach ändert ihn nichts mehr.
-3. **Spieleinstellungen:** wie heute (Überleben, Schwierigkeit „Einfach“, max. 10 Spieler, Cheats an)?
-4. **Whitelist/Operatoren:** alle heutigen Einträge übernehmen?
-5. **Portal-Daten der Testphase:** archivieren und bei 0 starten (Vorschlag – neue Welt, faire Erfolge), oder
-   übernehmen? (Wegpunkte und Bau-Register liegen in der Welt und beginnen mit ihr ohnehin neu.)
-6. **Automatische Events** ab dem ersten Tag an? (Vorschlag: ja)
-7. **Termin** für den Umstieg.
+3. ~~**Spieleinstellungen**~~ – **entschieden 27.10.:** wie heute (Überleben, max. 10 Spieler, Cheats an,
+   Sichtweite 32), aber Schwierigkeit **„Normal“** (`DIFFICULTY=normal`). Dazu kein PvP (`gamerules.list`).
+4. ~~**Whitelist/Operatoren**~~ – **entschieden 27.10.:** die Whitelist wird übernommen, **keine Operatoren**.
+   - Dafür gibt es jetzt `setup.sh --switch --import-allowlist`: Es übernimmt nur `allowlist.json`; die
+     `permissions.json` aus Mojangs Zip bleibt leer.
+   - Gebaut als `import-players.sh --allowlist-only` bzw. `players.py import … --allowlist-only`, mit Test.
+     Mit Kopien der echten Dateien geprüft: 3 Whitelist-Einträge, 0 Operatoren.
+   - Ohne Operatoren wandern auch die **offenen Operator-Aufträge** des Portals (`pending_operator.json`, früher
+     `pending_survival.json`) ins Archiv. Sonst würde jemand beim ersten Beitreten doch Operator.
+     `--switch-back` holt sie zurück.
+   - Operatoren lassen sich später jederzeit im Portal festlegen.
+5. ~~**Portal-Daten der Testphase**~~ – **entschieden 27.10.:** neue Welt, alle Erfolge und Statistiken beginnen
+   bei 0; die alten Daten werden nicht gebraucht.
+   - `--switch` verschiebt sie ins Archiv `/var/lib/mcportal/archive/<Zeit>_testphase/`. Gelöscht wird erst
+     einmal nichts, damit `--switch-back` funktioniert. Das Archiv kann weg, sobald die neue Welt gut läuft.
+6. ~~**Automatische Events**~~ – **entschieden 27.10.:** ja, ab Tag 1. Das ist der Standard des Events-Packs in
+   einer neuen Welt; nichts zu tun.
+7. **Termin** für den Umstieg – offen.
+
+### `/etc/mcportal/server.conf` für den Stichtag
+
+```text
+SERVER_NAME=Family and Friends
+WORLD_NAME=FAF
+LEVEL_SEED=-278472841329850337
+GAMEMODE=survival
+DIFFICULTY=normal
+MAX_PLAYERS=10
+VIEW_DISTANCE=32
+TICK_DISTANCE=4
+PORT_V4=19132
+PORT_V6=19133
+LAN_VISIBILITY=true
+MC_USER=minecraft
+MC_DIR=/opt/minecraft/bedrock
+```

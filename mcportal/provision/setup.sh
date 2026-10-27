@@ -2,7 +2,7 @@
 # Minecraft Family Portal - set up the real Bedrock server from the repo (docs/04-reproduzierbarer-aufbau.md).
 #
 #   sudo bash provision/setup.sh --prepare     [--conf FILE]
-#   sudo bash provision/setup.sh --switch      [--conf FILE] [--import-players]
+#   sudo bash provision/setup.sh --switch      [--conf FILE] [--import-players | --import-allowlist]
 #   sudo bash provision/setup.sh --switch-back
 #
 # --prepare runs alongside the test server, without downtime:
@@ -20,9 +20,11 @@
 # --switch (cut-over day, ~5 minutes without Minecraft; needs the real settings, not the example):
 #   1-6 as --prepare with the final settings (still without downtime), then
 #   7. restore point in /var/backups/mcportal-switch/<time>/ (old unit + socket, portal config) - root only
-#   8. stop the test server; with --import-players: allowlist + operators from the test installation
+#   8. stop the test server; with --import-players: allowlist + operators from the test installation,
+#      with --import-allowlist: only the allowlist (27.10.: the new world starts without operators)
 #   9. portal data of the test phase -> /var/lib/mcportal/archive/<time>_testphase/ (statistics, achievements,
-#      events, waypoints, map, update backups - the update rollback must never bring back the test server)
+#      events, waypoints, map, update backups - the update rollback must never bring back the test server;
+#      without --import-players also the pending operator assignments, so nobody becomes operator on joining)
 #  10. main unit (User=MC_USER, sandbox) + console socket for MC_USER; deploy/install.sh points the portal to
 #      the new folder (ACLs, config, helper units)
 #  11. start - the world is created now, with the seed from server.conf; game rules from gamerules.list
@@ -50,20 +52,23 @@ UNIT_FILE="/etc/systemd/system/$UNIT"
 SOCKET_FILE=/etc/systemd/system/minecraft-bedrock.socket
 # portal files that belong to the world of the test phase (archived on --switch)
 GAME_DATA=(stats.json achievements.json events.json waypoints.json map)
+# pending operator assignments of the portal (current and first file name)
+PENDING_OPS=(pending_operator.json pending_survival.json)
 
-MODE="" CONF="" IMPORT=0
+MODE="" CONF="" IMPORT=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --prepare) MODE=prepare ;;
     --switch) MODE=switch ;;
     --switch-back) MODE=switch-back ;;
-    --import-players) IMPORT=1 ;;
+    --import-players) IMPORT=all ;;
+    --import-allowlist) IMPORT=allowlist ;;
     --conf) CONF="${2:-}"; shift ;;
     *) MODE=""; break ;;
   esac
   shift
 done
-[[ -n "$MODE" ]] || { echo "Aufruf: sudo bash $0 --prepare|--switch|--switch-back [--conf DATEI] [--import-players]"; exit 2; }
+[[ -n "$MODE" ]] || { echo "Aufruf: sudo bash $0 --prepare|--switch|--switch-back [--conf DATEI] [--import-players|--import-allowlist]"; exit 2; }
 [[ "$(id -u)" == 0 ]] || fail "Bitte mit sudo ausführen"
 
 laravel_code() { curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1/ || true; }
@@ -308,18 +313,23 @@ do_switch() {
   systemctl stop "$UNIT"
   systemctl stop minecraft-bedrock.socket
   info "gestoppt (sauber über die Konsole)"
-  if (( IMPORT )); then
-    bash "$HERE/import-players.sh" --from "$old_dir" --conf "$CONF" 2>&1 | sed 's/^/  | /' \
+  if [[ -n "$IMPORT" ]]; then
+    local only=()
+    [[ "$IMPORT" == allowlist ]] && only=(--allowlist-only)
+    bash "$HERE/import-players.sh" --from "$old_dir" "${only[@]}" --conf "$CONF" 2>&1 | sed 's/^/  | /' \
       || { do_switch_back; fail "Übernahme der Spieler fehlgeschlagen – zurückgestellt"; }
   else
-    info "Whitelist/Operatoren nicht übernommen (--import-players) – neue Welt startet mit leerer Whitelist"
+    info "Whitelist/Operatoren nicht übernommen (--import-players/--import-allowlist) – neue Welt startet mit leerer Whitelist"
   fi
 
   step "9/11 Portal-Daten der Testphase archivieren"
   systemctl stop mcportal.service
   local archive="$DATA/archive/${ts}_testphase" f
   install -d -m 750 -o mcportal -g mcportal "$DATA/archive" "$archive"
-  for f in "${GAME_DATA[@]}"; do
+  local data=("${GAME_DATA[@]}")
+  # operator assignments waiting for a player's first join - only valid if the operators came along
+  [[ "$IMPORT" == all ]] || data+=("${PENDING_OPS[@]}")
+  for f in "${data[@]}"; do
     [[ -e "$DATA/$f" ]] && mv "$DATA/$f" "$archive/" && info "$f"
   done
   if compgen -G "$DATA/backups/*_pre_update" >/dev/null; then
@@ -376,7 +386,7 @@ do_switch_back() {
     local after f
     after="$DATA/archive/$(date +%Y-%m-%d_%H-%M-%S)_after-switch"
     install -d -m 750 -o mcportal -g mcportal "$after"
-    for f in "${GAME_DATA[@]}"; do
+    for f in "${GAME_DATA[@]}" "${PENDING_OPS[@]}"; do
       [[ -e "$DATA/$f" ]] && mv "$DATA/$f" "$after/"
       [[ -e "$archive/$f" ]] && mv "$archive/$f" "$DATA/"
     done

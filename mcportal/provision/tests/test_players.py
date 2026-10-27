@@ -64,6 +64,20 @@ class ImportTest(unittest.TestCase):
             self.assertIn('"permission" : "operator"', (dst / "permissions.json").read_text())
             self.assertEqual(P.import_players(src, dst)["allowlist"], 2, "running twice changes nothing")
 
+    def test_allowlist_only_keeps_operators_out(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, dst = Path(tmp, "old"), Path(tmp, "new")
+            src.mkdir(), dst.mkdir()
+            (src / "allowlist.json").write_text(json.dumps([STEVE, ALEX]))
+            (src / "permissions.json").write_text('[{"permission":"operator","xuid":"2535400000000001"}]')
+            (dst / "allowlist.json").write_text("[]\n")
+            (dst / "permissions.json").write_text("[]\n")
+            counts = P.import_players(src, dst, operators=False)
+            self.assertEqual((counts["allowlist"], counts["from_operators"], counts["operators"]), (2, 0, 0))
+            self.assertEqual(json.loads((dst / "permissions.json").read_text()), [])
+            self.assertEqual(P.main(["players.py", "import", str(src), str(dst), "--allowlist-only"]), 0)
+            self.assertEqual(P.main(["players.py", "import", str(src), str(dst), "--everything"]), 2)
+
     def test_broken_source_changes_nothing(self):
         with tempfile.TemporaryDirectory() as tmp:
             src, dst = Path(tmp, "old"), Path(tmp, "new")

@@ -1,6 +1,8 @@
 """Take over the allowlist and operators from another server folder - for provision/import-players.sh.
 
-    python3 players.py import <from dir> <to dir>     -> merges, writes <to dir>/allowlist.json + permissions.json
+    python3 players.py import <from dir> <to dir> [--allowlist-only]
+                                                      -> merges, writes <to dir>/allowlist.json + permissions.json
+                                                         (--allowlist-only: operators stay as they are in <to dir>)
     python3 players.py count  <dir>                   -> "allowlist=N operators=N"
 
 Both files are checked strictly and written in the server's own layout (in place, owner stays). Entries already in
@@ -94,9 +96,9 @@ def dump_permissions(entries: list[dict]) -> str:
     return json.dumps(entries, ensure_ascii=False, indent=3, separators=(",", " : "))  # like the server
 
 
-def import_players(src: Path, dst: Path) -> dict[str, int]:
+def import_players(src: Path, dst: Path, operators: bool = True) -> dict[str, int]:
     src_allow = check_allowlist(_load(src / "allowlist.json"))
-    src_perm = check_permissions(_load(src / "permissions.json"))
+    src_perm = check_permissions(_load(src / "permissions.json")) if operators else []
     dst_allow = check_allowlist(_load(dst / "allowlist.json"))
     dst_perm = check_permissions(_load(dst / "permissions.json"))
     allow = merge_allowlist(dst_allow, src_allow)
@@ -113,7 +115,9 @@ def import_players(src: Path, dst: Path) -> dict[str, int]:
 def main(argv: list[str]) -> int:
     try:
         if argv[1] == "import":
-            counts = import_players(Path(argv[2]), Path(argv[3]))
+            if argv[4:] not in ([], ["--allowlist-only"]):
+                raise PlayersError(f"unbekannte Option {argv[4]}")
+            counts = import_players(Path(argv[2]), Path(argv[3]), operators=argv[4:] != ["--allowlist-only"])
             print(" ".join(f"{k}={v}" for k, v in counts.items()))
         elif argv[1] == "count":
             d = Path(argv[2])

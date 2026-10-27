@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Minecraft Family Portal - take over the allowlist and operators from another server folder (e.g. the test phase).
 #
-#   sudo bash provision/import-players.sh --from <old server dir> [--conf FILE]
+#   sudo bash provision/import-players.sh --from <old server dir> [--allowlist-only] [--conf FILE]
+#
+# --allowlist-only: only the allowlist; operators stay as they are in the target (27.10.: none in the new world)
 #
 # Target is MC_DIR from server.conf. Minecraft must not be running there (the server rewrites both files itself).
 # Entries already in the target stay; for the same player the old folder wins. Backup of the target files first:
@@ -10,12 +12,13 @@
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-FROM="" CONF=""
+FROM="" CONF="" ONLY=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --from) FROM="${2:-}"; shift ;;
     --conf) CONF="${2:-}"; shift ;;
-    *) echo "Aufruf: sudo bash $0 --from <alter Serverordner> [--conf DATEI]"; exit 2 ;;
+    --allowlist-only) ONLY=(--allowlist-only) ;;
+    *) echo "Aufruf: sudo bash $0 --from <alter Serverordner> [--allowlist-only] [--conf DATEI]"; exit 2 ;;
   esac
   shift
 done
@@ -49,10 +52,10 @@ chmod 750 "$MC_HOME/mcportal-backups" "$BK"
 info "$BK"
 
 step "3/3 Übernehmen"
-COUNTS="$(python3 -I "$HERE/players.py" import "$FROM" "$MC_DIR")" || fail "nichts geändert (Sicherung: $BK)"
+COUNTS="$(python3 -I "$HERE/players.py" import "$FROM" "$MC_DIR" "${ONLY[@]}")" || fail "nichts geändert (Sicherung: $BK)"
 for f in allowlist.json permissions.json; do   # new files (none in the target before) belong to MC_USER
   chown "$MC_USER:$MC_USER" "$MC_DIR/$f"
 done
 read -r _ _ kept total ops <<<"$(tr ' ' '\n' <<<"$COUNTS" | cut -d= -f2 | tr '\n' ' ')"
-info "Whitelist: $total Einträge ($kept waren schon im Ziel), Operatoren: $ops"
+info "Whitelist: $total Einträge ($kept waren schon im Ziel), Operatoren: $ops${ONLY:+ (nur Whitelist übernommen)}"
 printf '\n\033[1;32mÜbernommen.\033[0m Wirksam beim nächsten Start. Rückgängig: sudo cp -a %s/*.json %s/\n' "$BK" "$MC_DIR"
