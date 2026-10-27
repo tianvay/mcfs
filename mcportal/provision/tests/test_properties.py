@@ -55,8 +55,8 @@ class MergeTest(unittest.TestCase):
         self.assertIn('# Allowed values: "survival"', out, "Mojang's comments stay")
         self.assertEqual(out.count("allow-cheats="), 1, "replaced, not duplicated")
         self.assertLess(out.index("server-name="), out.index("gamemode="), "order stays")
-        self.assertIn("# added by provision/setup.sh\ndifficulty=easy\nmax-players=10", out,
-                      "keys Mojang's file doesn't have are appended")
+        self.assertIn("# added by provision/setup.sh\nserver-udp-ports=19140-19159\ndifficulty=easy\nmax-players=10", out,
+                      "keys Mojang's file doesn't have (or only as a comment) are appended")
 
     def test_unit_template(self):
         conf = P.read_conf(EXAMPLE)
