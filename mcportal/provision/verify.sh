@@ -50,6 +50,18 @@ PORT="$(sed -n 's/^server-port=//p' "$U_DIR/server.properties")"
 if ss -Htuln "sport = :$PORT" | grep -q .; then ok "Spieler-Port $PORT offen"; else bad "Spieler-Port $PORT nicht offen"; fi
 
 # ---------------------------------------------------------------------------
+step "Spielregeln (gamerules.list)"
+# a query through the console ("gamerule <rule>") reads the rule from the running world, it changes nothing
+while read -r rule value; do
+  if line="$(console /run/minecraft-bedrock/console "$UNIT" "gamerule $rule" "] $rule = ")"; then
+    have="${line##* = }"
+    [[ "$have" == "$value" ]] && ok "$rule = $value" || bad "$rule = $have (soll $value) – in der Konsole: gamerule $rule $value"
+  else
+    bad "$rule: keine Antwort über die Konsole"
+  fi
+done < <(gamerule_lines)
+
+# ---------------------------------------------------------------------------
 step "Packs (Stand des letzten Starts)"
 LEVEL="$(sed -n 's/^level-name=//p' "$U_DIR/server.properties")"
 WORLD="$U_DIR/worlds/$LEVEL"

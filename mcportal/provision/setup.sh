@@ -11,7 +11,8 @@
 #   3. newest official server from minecraft.net (same checks as the portal's update button)
 #   4. server.properties = Mojang's file + provision/server.properties.overrides
 #   5. all packs from packs.list into worlds/<WORLD_NAME>/ BEFORE the first start (no world is generated here)
-#   6. probe start of a throwaway copy on other ports (no LAN), with the real unit + console + start check as
+#   6. probe start of a throwaway copy on other ports (no LAN), with the real unit + console + start check + game
+#      rules as
 #      runtime units mcportal-probe.* (/run, gone after a reboot): the start check must pass, every pack must
 #      report, no script errors, clean stop via "stop"; then the copy is deleted
 #   Does NOT touch the systemd units of the test server, the portal or Laravel.
@@ -24,7 +25,8 @@
 #      events, waypoints, map, update backups - the update rollback must never bring back the test server)
 #  10. main unit (User=MC_USER, sandbox) + console socket for MC_USER; deploy/install.sh points the portal to
 #      the new folder (ACLs, config, helper units)
-#  11. start - the world is created now, with the seed from server.conf; verify.sh
+#  11. start - the world is created now, with the seed from server.conf; game rules from gamerules.list
+#      (e.g. pvp false) through the console; verify.sh
 #   The test installation stays as it is (folder, world, files) - nothing is deleted.
 #   If the start fails, --switch-back runs automatically.
 #
@@ -222,6 +224,7 @@ PY
   sleep 3   # late script errors
   local inv; inv="$(systemctl show -p InvocationID --value "$PROBE_UNIT.service")"
   if (( started )); then
+    gamerules_apply "$PROBE_FIFO" "$PROBE_UNIT.service" || ok=0   # same commands as on the real world
     systemctl stop "$PROBE_UNIT.service" || ok=0   # ExecStop: "stop" through the console
   fi
   journalctl -q -o cat --no-pager _SYSTEMD_INVOCATION_ID="$inv" > "$log" 2>/dev/null || true
@@ -344,6 +347,9 @@ do_switch() {
     fail "Start fehlgeschlagen – Testserver läuft wieder"
   fi
   info "$(journalctl -u "$UNIT" -o cat --no-pager -n 300 | grep -a -m1 'start-check: OK' || echo 'gestartet')"
+  # game rules live in the world, so they can only be set now that it exists (verify.sh checks them again)
+  gamerules_apply /run/minecraft-bedrock/console "$UNIT" \
+    || warn "Spielregeln nicht vollständig gesetzt – von Hand in der Konsole: gamerule <Regel> <Wert>"
   bash "$HERE/verify.sh" --conf "$CONF" --laravel "$LARAVEL_BEFORE" || warn "verify.sh meldet Fehler (siehe oben)"
   printf '\n\033[1;32mUmgestellt.\033[0m Minecraft läuft aus %s als %s. Die Testinstallation liegt unverändert in %s.\n' \
     "$MC_DIR" "$MC_USER" "$old_dir"

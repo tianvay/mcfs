@@ -250,6 +250,25 @@ die Anleitungen, nach denen gearbeitet wird (Skill, dieses Dokument).
   - Der Testordner selbst wird nie angefasst.
 - **Bleiben bei der Umstellung:** Versionshistorie, Protokoll, offene Operator-/Überleben-Aufträge, PIN.
 
+## Spielregeln der neuen Welt: `provision/gamerules.list` (2026-10-27)
+
+- **Wunsch:** Spieler können sich nicht gegenseitig schlagen, sonst artet es bei den Kindern aus. In Bedrock ist
+  das die Spielregel `pvp`. Sie steht in der Welt (`level.dat`), nicht in `server.properties`, und kann deshalb
+  erst gesetzt werden, wenn die Welt existiert.
+- **`provision/gamerules.list`:** eine Regel pro Zeile, `<Regel> <Wert>`, zurzeit nur `pvp false`. Die Einträge
+  werden streng geprüft, weil sie als Konsolenbefehl laufen.
+- **Ablauf:**
+  - `setup.sh` setzt die Regeln über die Konsole (`gamerule pvp false`) und fragt sie danach ab. Das passiert
+    beim Probestart auf der Wegwerf-Kopie und bei `--switch` direkt nach dem ersten Start der echten Welt.
+  - `verify.sh` fragt jede Regel ab (Abschnitt „Spielregeln“); die Abfrage ändert nichts. Eine Abweichung ist ein
+    FEHLER, mit dem passenden Befehl in der Meldung.
+- **Geprüft:**
+  - **Wegwerf-Server:** Auf `gamerule pvp false` antwortet der Server „Game rule pvp has been updated to false“.
+    Die Abfrage danach ergibt „pvp = false“, auch nach einem Neustart. Ein ungültiger Wert ergibt einen
+    Syntaxfehler.
+  - **`verify.sh` gegen die Testwelt:** meldet richtig `pvp = true (soll false)`. Die Testwelt bleibt unverändert,
+    bis du etwas anderes entscheidest.
+
 ## Umstieg am Stichtag (auf diesem Laptop)
 
 ```text

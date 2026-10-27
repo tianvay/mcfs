@@ -56,6 +56,10 @@ Stand: 2026-10-26
       R1–R5 erledigt (26.10.), `/opt/minecraft/bedrock` ist vorbereitet. Offen: **R6 Stichtag** – vorher
       Entscheidungen (Welt-/Servername, Seed, Spieleinstellungen, Whitelist übernehmen, Portal-Daten
       archivieren, Auto-Events, Termin). `setup.sh --switch`/`--switch-back` sind gebaut; vorher `install.sh` + `--prepare` erneut (neue Startprüfung, Probe mit Konsole).
+      Fest für die neue Welt: **kein PvP** (`provision/gamerules.list`, wird beim Umstieg gesetzt und geprüft).
+- [ ] Später: **`setup.sh --install`** für einen frischen Ubuntu-Server (fehlende Pakete wie `acl`/`curl`, Unit +
+      Konsole + Startprüfung direkt anlegen statt eine Testinstallation abzulösen, dann `install.sh`, Start,
+      `verify.sh`; Test in einer Wegwerf-VM). Startet mit neuer Welt – Welt-Umzug wäre ein eigener Schritt.
 - [ ] Später: **Web-Konsole** und **Log-Ansicht**.
 - [ ] Prüfen, ob ein Spieler, der gerade online ist, Operator-Rechte durch `permission reload` sofort bekommt.
 

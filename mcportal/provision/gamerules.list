@@ -1,0 +1,6 @@
+# Game rules of the real world - stored in the world (level.dat), not in server.properties.
+# provision/setup.sh sets them through the console right after the world was created (and on the probe copy),
+# provision/verify.sh queries them. <rule> <value>; value true, false or a whole number.
+
+# players cannot hurt each other (wish 27.10.: otherwise it gets out of hand with the kids)
+pvp false
