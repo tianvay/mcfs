@@ -35,7 +35,8 @@
 # --switch-back: back to the test installation from the newest restore point (unit, socket, portal config and
 #   portal data); the data of the real server is moved to /var/lib/mcportal/archive/<time>_after-switch/.
 #
-# Idempotent: --prepare keeps the server program and an existing world, re-applies the overrides and probes again.
+# Idempotent: with a world, --prepare keeps program and world; without one (only prepared) it fetches the newest
+# server again. It always re-applies the overrides and probes again.
 # Settings: --conf FILE, else /etc/mcportal/server.conf, else provision/server.conf.example (placeholder names).
 set -euo pipefail
 
@@ -109,14 +110,18 @@ prepare_user() {
 
 prepare_program() {
   step "3/6 Serverprogramm"
-  if [[ -x "$MC_DIR/bedrock_server" ]]; then
-    info "schon vorhanden in $MC_DIR – bleibt (Updates später über den Knopf im Portal)"
+  if [[ -x "$MC_DIR/bedrock_server" ]] && compgen -G "$MC_DIR/worlds/*/db" >/dev/null; then
+    info "schon vorhanden in $MC_DIR, mit Welt – bleibt (Updates über den Knopf im Portal)"
   else
+    # never started (only prepared): always the newest version - players' clients update automatically and
+    # cannot join an older server. Packs and server.properties are rebuilt in the next steps anyway.
+    [[ -d "$MC_DIR" ]] && info "nur vorbereitet ($(cat "$MC_DIR/.provisioned-version" 2>/dev/null || echo '?')), noch nie gestartet – neueste Version"
     local stage="$MC_HOME/.staging" version
     rm -rf "$stage"
     mkdir "$stage"
     # as root: MC_USER cannot read the repo in the admin's home; owner is fixed right after
     version="$(python3 -I "$HERE/fetch_server.py" "$stage/server")" || fail "Download fehlgeschlagen"
+    rm -rf "$MC_DIR"   # only after a good download; no world in it (checked above)
     mv "$stage/server" "$MC_DIR"
     rm -rf "$stage"
     printf '%s\n' "$version" > "$MC_DIR/.provisioned-version"
