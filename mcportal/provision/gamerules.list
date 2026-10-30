@@ -4,3 +4,5 @@
 
 # players cannot hurt each other (wish 27.10.: otherwise it gets out of hand with the kids)
 pvp false
+# coordinates always shown on screen (wish 30.10.)
+showcoordinates true
