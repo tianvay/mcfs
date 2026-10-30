@@ -74,7 +74,7 @@ Events machen keinen alten Erfolg ungültig. Im Katalog hängt jede Stufe an ein
 
 - Laufende Events mit Restzeit; „automatische Events: an/aus“; ungefähr wann das nächste kommen kann.
 - Verlauf der letzten Events (Art, Start, Dauer, wer mitgemacht hat).
-- **Knöpfe** (nur mit PIN-Freigabe, falls aktiviert): jedes Event starten, laufendes beenden, Automatik an/aus.
+- **Knöpfe** (der ganze Events-Tab nur nach Admin-Anmeldung): jedes Event starten, laufendes beenden, Automatik an/aus.
   Das Portal schickt dafür feste Befehle über die Server-Konsole – `scriptevent mcfs:event start mining_rush`
   usw., nur Werte aus einer festen Liste, keine freien Eingaben. Damit lässt sich jedes Event auch gezielt testen.
 - Daten wie bisher aus dem Log: Das Pack schreibt `[mcportal-events] {"v":1,"event":"started"|"ended"|"state",…}`;

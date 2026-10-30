@@ -12,12 +12,13 @@ const STATUS_TEXT = {
 const ACTION_TEXT = { start: "Starten", stop: "Stoppen", restart: "Neustart", update: "Update" };
 const AUDIT_TEXT = {
   SERVER_START: "Server gestartet", SERVER_STOP: "Server gestoppt", SERVER_RESTART: "Server neu gestartet",
-  WHITELIST_ADD: "Whitelist: hinzugefügt", WHITELIST_REMOVE: "Whitelist: entfernt", LOGIN: "PIN-Anmeldung",
+  WHITELIST_ADD: "Whitelist: hinzugefügt", WHITELIST_REMOVE: "Whitelist: entfernt", LOGIN: "Admin-Anmeldung",
   OPERATOR_GRANT: "Operator-Rechte vergeben", OPERATOR_REVOKE: "Operator-Rechte entzogen",
   UPDATE: "Server-Update", GAMEMODE_SURVIVAL: "Spielmodus auf Überleben gesetzt", MAP: "Karte gezeichnet", EVENT: "Event", WORLD_WEATHER: "Wetter", WORLD_TIME: "Tageszeit", EVENT_UNDO: "Event rückgängig",
 };
 
 let state = null;
+let admin = false;
 let clockOffset = 0; // server time - client time
 let lastAllowCount = null;
 let lastStatsUpdate = null;
@@ -62,6 +63,8 @@ function dialog(text, { input = false } = {}) {
   const inp = $("#dlg-input");
   inp.hidden = !input;
   inp.value = "";
+  // Enter in the field means OK (the form would otherwise take its first button, "Abbrechen")
+  inp.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); dlg.close("ok"); } };
   return new Promise((resolve) => {
     dlg.onclose = () => resolve(dlg.returnValue === "ok" ? (input ? inp.value : true) : null);
     dlg.returnValue = "";
@@ -78,11 +81,10 @@ async function api(method, path, body) {
       body: body ? JSON.stringify(body) : undefined,
       credentials: "same-origin",
     });
-    if (res.status === 401 && attempt === 0 && path !== "/api/login") {
-      const pin = await dialog("Bitte PIN eingeben:", { input: true });
-      if (pin === null) throw new Error("Abgebrochen");
-      await api("POST", "/api/login", { pin });
-      continue;
+    // 401 = not (or no longer) logged in; only an action asks for the password, a view just fails
+    if (res.status === 401 && path !== "/api/login") {
+      if (admin) setAdmin(false);
+      if (attempt === 0 && method !== "GET" && await login()) continue;
     }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || data.detail || `Fehler ${res.status}`);
@@ -90,17 +92,50 @@ async function api(method, path, body) {
   }
 }
 
+// ---------- admin login ----------
+
+function setAdmin(on) {
+  const changed = on !== admin;
+  admin = on;
+  document.body.classList.toggle("admin", on);
+  $("#login-btn").textContent = on ? "🔓 Abmelden" : "🔒 Anmelden";
+  if (!changed) return;
+  connect();  // the live status carries more fields for the admin
+  const current = document.querySelector('.tabs button[aria-selected="true"]');
+  showTab(current ? current.dataset.tab : "home");
+}
+
+async function login() {
+  const password = await dialog("Admin-Passwort:", { input: true });
+  if (password === null || password === "") return false;
+  try {
+    await api("POST", "/api/login", { password });
+  } catch (e) { toast(e.message, true); return false; }
+  setAdmin(true);
+  toast("Angemeldet");
+  return true;
+}
+
+$("#login-btn").addEventListener("click", async () => {
+  if (!admin) { await login(); return; }
+  try { await api("POST", "/api/logout"); } catch (e) { toast(e.message, true); return; }
+  setAdmin(false);
+  toast("Abgemeldet");
+});
+
 // ---------- tabs ----------
 
 function showTab(name) {
+  const btn = document.querySelector(`.tabs button[data-tab="${name}"]`);
+  if (!btn || (!admin && btn.classList.contains("admin-only"))) name = "home";
   document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach((s) => (s.hidden = s.id !== `tab-${name}`));
   try { sessionStorage.setItem("tab", name); } catch {}
   if (name === "home" || name === "events") loadEvents();
-  if (name === "allow") loadAllowlist();
+  if (name === "allow" && admin) loadAllowlist();
   if (name === "stats") loadStats();
   if (name === "map") loadMap();
-  if (name === "server") loadAudit();
+  if (name === "server" && admin) loadAudit();
 }
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
 document.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.goto)));
@@ -153,7 +188,7 @@ function render(s) {
   if (statsKey !== lastStatsUpdate && lastStatsUpdate !== null && !$("#tab-stats").hidden) loadStats();
   lastStatsUpdate = statsKey;
 
-  if (prevBusy && !s.busy) loadAudit();
+  if (prevBusy && !s.busy && admin) loadAudit();
   if (lastAllowCount !== null && lastAllowCount !== s.allowlist_count && !$("#tab-allow").hidden) loadAllowlist();
   lastAllowCount = s.allowlist_count;
 }
@@ -164,9 +199,11 @@ function tickUptime() {
 }
 setInterval(tickUptime, 1000);
 
+let source = null;
 function connect() {
   const conn = $("#conn");
-  const es = new EventSource("/api/events");
+  if (source) source.close();
+  const es = source = new EventSource("/api/events");
   es.onopen = () => { conn.className = "conn live"; conn.title = "Live verbunden"; };
   es.onmessage = (e) => render(JSON.parse(e.data));
   es.onerror = () => { conn.className = "conn down"; conn.title = "Verbindung unterbrochen – verbinde neu …"; };
@@ -568,7 +605,15 @@ async function loadAudit() {
 
 // ---------- start ----------
 
-let initial = "home";
-try { initial = sessionStorage.getItem("tab") || "home"; } catch {}
-showTab(initial);
-connect();
+(async () => {
+  try {
+    const a = await api("GET", "/api/auth");
+    admin = a.admin;
+    document.body.classList.toggle("admin", admin);
+    $("#login-btn").textContent = admin ? "🔓 Abmelden" : "🔒 Anmelden";
+  } catch { /* stays logged out */ }
+  let initial = "home";
+  try { initial = sessionStorage.getItem("tab") || "home"; } catch {}
+  showTab(initial);
+  connect();
+})();

@@ -255,3 +255,7 @@ dialog input { width: 100%; margin-bottom: 12px; }
 .wp-badge.public { background: var(--ok-bg); color: var(--ok); }
 .wp-badge.private { background: var(--line); color: var(--muted); }
 .wp-desc { font-size: .8rem; color: var(--muted); margin-top: 2px; }
+
+/* admin areas: only after logging in (the server refuses their data anyway) */
+body:not(.admin) .admin-only { display: none !important; }
+.foot { display: flex; justify-content: center; padding: 8px 16px 24px; }

@@ -13,7 +13,7 @@ class Config:
     host: str
     port: int
     data_dir: Path
-    pin: str
+    password_hash: str
     adapter: str
     unit: str
     server_dir: str
@@ -40,7 +40,7 @@ def load(path: str | None = None) -> Config:
         host=portal.get("host", "0.0.0.0"),
         port=int(portal.get("port", 8080)),
         data_dir=Path(portal.get("data_dir", "/var/lib/mcportal")),
-        pin=str(portal.get("pin", "")),
+        password_hash=str(portal.get("password_hash", "")),
         adapter=portal.get("adapter", "bedrock"),
         unit=bedrock.get("unit", "minecraft-bedrock.service"),
         server_dir=bedrock["server_dir"],

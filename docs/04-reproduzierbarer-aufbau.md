@@ -226,7 +226,7 @@ die Anleitungen, nach denen gearbeitet wird (Skill, dieses Dokument).
   - **Geprüft als `fred`:** gerenderte Units mit Drop-ins bestehen `systemd-analyze verify`, `Restart=no` aus dem
     Probe-Drop-in gewinnt.
 - **`install.sh` richtet das Portal nach der Unit aus:** Steht in `/etc/mcportal/config.toml` ein anderer
-  `server_dir`, wird nur diese Zeile angepasst (PIN usw. bleiben); vorher wird die Datei gesichert.
+  `server_dir`, wird nur diese Zeile angepasst (Admin-Passwort usw. bleiben); vorher wird die Datei gesichert.
 - **`sudo setup.sh --switch [--import-players]`:**
   - **Prüft vorher:** echte `/etc/mcportal/server.conf` statt Beispiel, niemand online, die Welt gibt es noch
     nicht, die Unit zeigt noch auf den Testordner.
@@ -248,7 +248,7 @@ die Anleitungen, nach denen gearbeitet wird (Skill, dieses Dokument).
   - Holt die Portal-Daten der Testphase zurück; die des echten Servers kommen nach `…_after-switch/`.
   - Danach `install.sh`, Start und `verify.sh`.
   - Der Testordner selbst wird nie angefasst.
-- **Bleiben bei der Umstellung:** Versionshistorie, Protokoll, offene Operator-/Überleben-Aufträge, PIN.
+- **Bleiben bei der Umstellung:** Versionshistorie, Protokoll, offene Operator-/Überleben-Aufträge, Admin-Passwort und Anmeldungen.
 
 ## Spielregeln der neuen Welt: `provision/gamerules.list` (2026-10-27)
 

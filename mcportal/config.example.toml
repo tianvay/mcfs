@@ -5,8 +5,9 @@
 host = "0.0.0.0"
 port = 8080
 data_dir = "/var/lib/mcportal"
-# PIN für schreibende Aktionen (Start/Stop/Whitelist). Leer = kein PIN.
-pin = ""
+# Admin-Passwort (nur der Hash) - setzen mit deploy/set-password.sh.
+# Leer = Whitelist, Events und Server-Seite sind für alle gesperrt.
+password_hash = ""
 # "bedrock" für den echten Server, "fake" nur für lokale Entwicklung
 adapter = "bedrock"
 # Anzahl Whitelist-Sicherungen, die behalten werden

@@ -67,6 +67,9 @@ Stand: 2026-10-26
 - [x] **Neue Welt im Spiel** (30.10.): Beitreten klappt; erste Karte gezeichnet (349 Chunks Oberwelt).
       Im Lauf der nächsten Tage beobachten: Wegpunkte, Events, Erfolge, Statistik im Portal.
 - [ ] Beim nächsten `install.sh` kommt der Karten-Fix für ganz neue Welten mit (`app/map/render.py`).
+- [ ] **Admin-Anmeldung ausrollen** (gebaut 30.10.): erst `sudo bash ~/mcportal-src/deploy/set-password.sh`,
+      dann `install.sh`. Danach sehen Kinder/Gäste nur Übersicht, Statistik, Karte (ohne Seed); Whitelist,
+      Events, Server nur nach Anmeldung. Kinder-iPads: Seite in Safari „Zum Home-Bildschirm“.
 - [ ] Packs ab jetzt mit **sudo** installieren: `sudo bash ~/mcportal-src/deploy/world-pack.sh <pack> apply`.
 - [ ] **Aufräumen**, wenn die neue Welt ein paar Tage gut läuft: Testinstallation
       `~/Downloads/bedrock-server-1.21.51.02`, `/var/lib/mcportal/archive/*_testphase`,

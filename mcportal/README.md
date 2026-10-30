@@ -43,7 +43,7 @@ sudo bash ~/mcportal-src/deploy/m2-console.sh apply
 | Pfad | Inhalt |
 |---|---|
 | `/opt/mcportal` | Programm + Python-venv (root, nur lesbar) |
-| `/etc/mcportal/config.toml` | Konfiguration, u. a. `pin = ""` für PIN-Schutz |
+| `/etc/mcportal/config.toml` | Konfiguration, u. a. `password_hash` (Admin-Passwort, nur als Hash) |
 | `/var/lib/mcportal/audit.jsonl` | Aktionsprotokoll |
 | `/var/lib/mcportal/backups/` | Sicherungen (`*_pre_portal_install`, `*_pre_m2_console`, `*_pre_allowlist_*`) |
 
@@ -76,10 +76,34 @@ Bei jedem Vergeben/Entziehen bekommt der Spieler eine kurze Chat-Nachricht: „D
 Tab „Server“ → „Server-Update“. Ablauf, Schutz von Welt/Whitelist/Operatoren, Rollback und
 Speicherbedarf: [`../docs/02-update-per-knopfdruck.md`](../docs/02-update-per-knopfdruck.md)
 
-## PIN-Schutz (optional)
+## Wer was sieht (Admin-Anmeldung)
 
-In `/etc/mcportal/config.toml` z. B. `pin = "4711"` setzen, dann `sudo systemctl restart mcportal`.
-Anschauen bleibt ohne PIN möglich; Start/Stop/Whitelist fragen einmal pro Browser nach der PIN.
+| Bereich | Ohne Anmeldung (Kinder, Gäste im WLAN) | Admin (angemeldet) |
+|---|---|---|
+| Übersicht: Status, wer online ist, Version, Laufzeit | ✅ | ✅ |
+| Statistik, Erfolge | ✅ | ✅ |
+| Karte mit Wegpunkten | ✅ | ✅ |
+| Seed, „Karte neu zeichnen“ | – | ✅ |
+| Whitelist und Operatoren | – | ✅ |
+| Events (ansehen, starten, Hinweis auf der Übersicht) | – | ✅ |
+| Server: Start/Stop/Neustart/Update, Protokoll | – | ✅ |
+
+Der Schutz sitzt im Server, nicht nur in der Oberfläche: Ohne Anmeldung liefert die API diese
+Daten gar nicht aus (401), und der Live-Status enthält nur die freigegebenen Felder
+(`PUBLIC_STATUS` in `app/main.py` – neue Felder bleiben verborgen, bis sie dort stehen).
+
+Passwort setzen oder ändern (fragt zweimal, speichert nur einen scrypt-Hash, startet nur das Portal neu):
+
+```bash
+sudo bash ~/mcportal-src/deploy/set-password.sh
+```
+
+- Ohne Passwort sind die Admin-Bereiche für alle gesperrt.
+- Anmeldung unten auf der Seite („🔒 Anmelden“), gilt 30 Tage pro Browser, auch über einen
+  Portal-Neustart hinweg (`/var/lib/mcportal/sessions.json`, nur Hashes).
+- Nach 5 falschen Passwörtern ist das Gerät 15 Minuten gesperrt; jeder Versuch steht im Protokoll.
+- Ein neues Passwort meldet alle Browser ab.
+- Kinder-iPads: Safari → `http://192.168.178.38:8080` → Teilen → „Zum Home-Bildschirm“. Kein Konto nötig.
 
 ## Rückgängig machen
 

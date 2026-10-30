@@ -26,7 +26,8 @@ const evMinutes = (sec) => {
   return m >= 60 ? `${Math.floor(m / 60)} Std.${m % 60 ? ` ${m % 60} Min.` : ""}` : `${m} Min.`;
 };
 const evBy = (by) => (by && by.startsWith("player:") ? by.slice(7) : EVENT_BY[by] || by || "–");
-const eventsVisible = () => !$("#tab-events").hidden || !$("#tab-home").hidden;
+const eventsVisible = () => document.body.classList.contains("admin")
+  && (!$("#tab-events").hidden || !$("#tab-home").hidden);
 
 async function loadEvents() {
   eventsLoadedAt = Date.now();

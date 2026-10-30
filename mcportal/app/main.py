@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-import hmac
 import json
-import secrets
 import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -16,6 +14,7 @@ from pydantic import BaseModel
 
 from .adapters import create_adapter
 from .audit import AuditLog
+from .auth import SESSION_DAYS, Lockout, Sessions, verify_password
 from .config import Config
 from .services.achievements import AchievementsService
 from .services.map import MapService
@@ -29,6 +28,10 @@ from .services.waypoints import WaypointsService
 WEB_DIR = Path(__file__).parent / "web"
 SESSION_COOKIE = "mcportal_session"
 SSE_PING_SECONDS = 15
+# Status fields everyone may see; everything else (seed, whitelist, update, events, errors ...) is admin only.
+# A list of what is allowed, so a new field stays hidden until it is added here.
+PUBLIC_STATUS = {"server_name", "status", "active_state", "started_at", "last_start", "version", "last_update",
+                 "players", "max_players", "busy", "map", "stats", "achievements", "waypoints", "now"}
 # Set by the server on SIGTERM/SIGINT so open live streams end by themselves
 SHUTTING_DOWN = threading.Event()
 
@@ -37,8 +40,8 @@ class NameIn(BaseModel):
     name: str
 
 
-class PinIn(BaseModel):
-    pin: str
+class PasswordIn(BaseModel):
+    password: str
 
 
 class OperatorIn(BaseModel):
@@ -96,7 +99,8 @@ def create_app(cfg: Config) -> FastAPI:
     world_map = MapService(adapter, mc, audit, cfg.data_dir)
     game_events = EventsService(adapter, mc, audit, cfg.data_dir)
     world_map.after_render.append(game_events.sync_register)  # builds found on the map -> build register
-    sessions: set[str] = set()
+    sessions = Sessions(cfg.data_dir / "sessions.json", cfg.password_hash)
+    lockout = Lockout()
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -122,52 +126,70 @@ def create_app(cfg: Config) -> FastAPI:
     def client(request: Request) -> str:
         return request.client.host if request.client else "local"
 
-    def authorized(request: Request) -> bool:
-        return not cfg.pin or request.cookies.get(SESSION_COOKIE) in sessions
+    def is_admin(request: Request) -> bool:
+        return bool(cfg.password_hash) and sessions.valid(request.cookies.get(SESSION_COOKIE))
 
-    def require_write(request: Request) -> str:
-        if not authorized(request):
-            raise PortalError("PIN erforderlich", 401)
+    def require_admin(request: Request) -> str:
+        if not is_admin(request):
+            raise PortalError("Anmeldung erforderlich", 401)
         return client(request)
+
+    def visible(snap: dict, admin: bool) -> dict:
+        return snap if admin else {k: v for k, v in snap.items() if k in PUBLIC_STATUS}
 
     # ---------- auth ----------
 
     @app.get("/api/auth")
     async def auth_state(request: Request):
-        return {"pin_required": bool(cfg.pin), "authorized": authorized(request)}
+        return {"password_set": bool(cfg.password_hash), "admin": is_admin(request)}
 
     @app.post("/api/login")
-    async def login(body: PinIn, request: Request):
-        if not cfg.pin:
-            return {"authorized": True}
-        if not hmac.compare_digest(body.pin.encode(), cfg.pin.encode()):
+    async def login(body: PasswordIn, request: Request):
+        ip = client(request)
+        if not cfg.password_hash:
+            raise PortalError("Es ist noch kein Admin-Passwort eingerichtet (deploy/set-password.sh).", 403)
+        wait = lockout.wait_seconds(ip)
+        if wait:
+            raise PortalError(f"Zu viele Fehlversuche – bitte in {-(-wait // 60)} Minuten erneut versuchen.", 429)
+        if not await asyncio.to_thread(verify_password, body.password, cfg.password_hash):
+            lockout.failed(ip)
             await asyncio.sleep(1.5)
-            audit.write("LOGIN", "FAILED", client(request))
-            raise PortalError("Falsche PIN", 401)
-        token = secrets.token_urlsafe(32)
-        sessions.add(token)
-        resp = JSONResponse({"authorized": True})
-        resp.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="strict", max_age=30 * 24 * 3600)
+            audit.write("LOGIN", "FAILED", ip)
+            raise PortalError("Falsches Passwort", 401)
+        lockout.reset(ip)
+        audit.write("LOGIN", "SUCCESS", ip)
+        resp = JSONResponse({"admin": True})
+        resp.set_cookie(SESSION_COOKIE, await asyncio.to_thread(sessions.create), httponly=True,
+                        samesite="strict", max_age=SESSION_DAYS * 86400)
+        return resp
+
+    @app.post("/api/logout")
+    async def logout(request: Request):
+        await asyncio.to_thread(sessions.remove, request.cookies.get(SESSION_COOKIE))
+        resp = JSONResponse({"admin": False})
+        resp.delete_cookie(SESSION_COOKIE)
         return resp
 
     # ---------- status ----------
 
     @app.get("/api/status")
-    async def status():
-        return mc.snapshot()
+    async def status(request: Request):
+        return visible(mc.snapshot(), is_admin(request))
 
     @app.get("/api/events")
     async def events(request: Request):
         q = mc.subscribe()
+        # decided once per connection; the page reconnects after logging in or out
+        admin = is_admin(request)
 
         async def stream():
             try:
-                yield f"data: {json.dumps(mc.snapshot())}\n\n"
+                yield f"data: {json.dumps(visible(mc.snapshot(), admin))}\n\n"
                 idle = 0
                 while not SHUTTING_DOWN.is_set() and not await request.is_disconnected():
                     try:
                         snap = await asyncio.wait_for(q.get(), timeout=1)
-                        yield f"data: {json.dumps(snap)}\n\n"
+                        yield f"data: {json.dumps(visible(snap, admin))}\n\n"
                         idle = 0
                     except asyncio.TimeoutError:
                         idle += 1
@@ -183,39 +205,39 @@ def create_app(cfg: Config) -> FastAPI:
     # ---------- server control ----------
 
     @app.post("/api/server/{verb}", status_code=202)
-    async def server_control(verb: str, user: str = Depends(require_write)):
+    async def server_control(verb: str, user: str = Depends(require_admin)):
         mc.begin_control(verb, user)
         return {"accepted": verb}
 
     # ---------- allowlist ----------
 
     @app.get("/api/allowlist")
-    async def allowlist_get():
+    async def allowlist_get(_: str = Depends(require_admin)):
         return await asyncio.to_thread(allow.list)
 
     @app.post("/api/allowlist", status_code=201)
-    async def allowlist_add(body: NameIn, user: str = Depends(require_write)):
+    async def allowlist_add(body: NameIn, user: str = Depends(require_admin)):
         await allow.add(body.name, user)
         return await asyncio.to_thread(allow.list)
 
     @app.delete("/api/allowlist/{name}")
-    async def allowlist_remove(name: str, user: str = Depends(require_write)):
+    async def allowlist_remove(name: str, user: str = Depends(require_admin)):
         await allow.remove(name, user)
         return await asyncio.to_thread(allow.list)
 
     @app.put("/api/allowlist/{name}/operator")
-    async def allowlist_operator(name: str, body: OperatorIn, user: str = Depends(require_write)):
+    async def allowlist_operator(name: str, body: OperatorIn, user: str = Depends(require_admin)):
         await allow.set_operator(name, body.operator, user)
         return await asyncio.to_thread(allow.list)
 
     # ---------- update ----------
 
     @app.post("/api/update/check")
-    async def update_check():
+    async def update_check(_: str = Depends(require_admin)):
         return await update.check()
 
     @app.post("/api/update/start", status_code=202)
-    async def update_start(user: str = Depends(require_write)):
+    async def update_start(user: str = Depends(require_admin)):
         update.begin(user)
         return {"accepted": True}
 
@@ -236,33 +258,36 @@ def create_app(cfg: Config) -> FastAPI:
     # ---------- timed events (not /api/events - that is the live stream) ----------
 
     @app.get("/api/gameevents")
-    async def game_events_summary():
+    async def game_events_summary(_: str = Depends(require_admin)):
         return game_events.summary()
 
     # before /api/gameevents/{action}, which would take "undo" as an action
     @app.post("/api/gameevents/undo", status_code=202)
-    async def game_events_undo(body: WorldIn, user: str = Depends(require_write)):
+    async def game_events_undo(body: WorldIn, user: str = Depends(require_admin)):
         await game_events.undo(body.value, user)
         return {"accepted": body.value}
 
     @app.post("/api/gameevents/{action}", status_code=202)
-    async def game_events_control(action: str, body: EventControlIn, user: str = Depends(require_write)):
+    async def game_events_control(action: str, body: EventControlIn, user: str = Depends(require_admin)):
         await game_events.control(action, body.type, user)
         return {"accepted": action}
 
     @app.post("/api/world/{kind}", status_code=202)
-    async def world_control(kind: str, body: WorldIn, user: str = Depends(require_write)):
+    async def world_control(kind: str, body: WorldIn, user: str = Depends(require_admin)):
         await game_events.world(kind, body.value, user)
         return {"accepted": kind}
 
     # ---------- map ----------
 
     @app.get("/api/map")
-    async def map_summary():
-        return await asyncio.to_thread(world_map.summary)
+    async def map_summary(request: Request):
+        summary = await asyncio.to_thread(world_map.summary)
+        if not is_admin(request):
+            summary.pop("seed", None)
+        return summary
 
     @app.post("/api/map/render", status_code=202)
-    async def map_render(user: str = Depends(require_write)):
+    async def map_render(user: str = Depends(require_admin)):
         world_map.begin(user)
         return {"accepted": True}
 
@@ -275,7 +300,7 @@ def create_app(cfg: Config) -> FastAPI:
     # ---------- audit ----------
 
     @app.get("/api/audit")
-    async def audit_tail(limit: int = 30):
+    async def audit_tail(limit: int = 30, _: str = Depends(require_admin)):
         return await asyncio.to_thread(audit.tail, max(1, min(limit, 200)))
 
     # ---------- web ui ----------

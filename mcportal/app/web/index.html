@@ -16,11 +16,11 @@
 
   <nav class="tabs" role="tablist">
     <button role="tab" data-tab="home" aria-selected="true">Übersicht</button>
-    <button role="tab" data-tab="allow" aria-selected="false">Whitelist</button>
+    <button role="tab" class="admin-only" data-tab="allow" aria-selected="false">Whitelist</button>
     <button role="tab" data-tab="stats" aria-selected="false">Statistik</button>
-    <button role="tab" data-tab="events" aria-selected="false">Events</button>
+    <button role="tab" class="admin-only" data-tab="events" aria-selected="false">Events</button>
     <button role="tab" data-tab="map" aria-selected="false">Karte</button>
-    <button role="tab" data-tab="server" aria-selected="false">Server</button>
+    <button role="tab" class="admin-only" data-tab="server" aria-selected="false">Server</button>
   </nav>
 
   <main>
@@ -31,11 +31,11 @@
         <div class="players-count"><span id="player-count">–</span></div>
         <ul id="player-list" class="player-list"></ul>
       </div>
-      <div id="home-event" class="card update-hint event-hint" hidden>
+      <div id="home-event" class="card update-hint event-hint admin-only" hidden>
         <span>🎉 <span id="home-event-text"></span></span>
         <button class="btn primary small" data-goto="events">Ansehen</button>
       </div>
-      <div id="home-update" class="card update-hint" hidden>
+      <div id="home-update" class="card update-hint admin-only" hidden>
         <span id="home-update-text"></span>
         <button class="btn primary small" data-goto="server">Ansehen</button>
       </div>
@@ -44,9 +44,9 @@
         <div><dt>Laufzeit</dt><dd id="f-uptime">–</dd></div>
         <div><dt>Letzter Start</dt><dd id="f-start">–</dd></div>
         <div><dt>Letztes Update</dt><dd id="f-update">–</dd></div>
-        <div><dt>Whitelist</dt><dd id="f-allow">–</dd></div>
+        <div class="admin-only"><dt>Whitelist</dt><dd id="f-allow">–</dd></div>
       </dl>
-      <div class="row">
+      <div class="row admin-only">
         <button class="btn" data-goto="allow">📋 Whitelist</button>
         <button class="btn" data-goto="server">⚙️ Server</button>
       </div>
@@ -135,12 +135,12 @@
         <dl class="facts plain map-facts">
           <div><dt>Stand der Karte</dt><dd id="map-stand">–</dd></div>
           <div><dt>Nächstes Neuzeichnen</dt><dd id="map-next">–</dd></div>
-          <div class="wide"><dt>Seed</dt><dd id="map-seed" class="seed" title="Anklicken markiert den Seed zum Kopieren">–</dd></div>
+          <div class="wide admin-only"><dt>Seed</dt><dd id="map-seed" class="seed" title="Anklicken markiert den Seed zum Kopieren">–</dd></div>
         </dl>
         <h3 class="map-wp-head">📍 Wegpunkte <span id="map-wp-count"></span></h3>
         <ul id="map-wp-list" class="map-wp-list"></ul>
         <p id="map-error" class="note error" hidden></p>
-        <button id="map-render" class="btn" type="button">🔄 Jetzt neu zeichnen</button>
+        <button id="map-render" class="btn admin-only" type="button">🔄 Jetzt neu zeichnen</button>
         <p class="note small">Die Karte zeigt die Welt von oben, so wie sie gebaut ist. Schwarz = noch nie betreten.
           Gezeichnet wird aus einer Kopie der Welt – das Spiel läuft dabei normal weiter.</p>
       </div>
@@ -185,10 +185,14 @@
     </section>
   </main>
 
+  <footer class="foot">
+    <button id="login-btn" class="btn small" type="button">🔒 Anmelden</button>
+  </footer>
+
   <dialog id="dlg">
     <form method="dialog">
       <p id="dlg-text"></p>
-      <input id="dlg-input" type="password" inputmode="numeric" autocomplete="off" hidden>
+      <input id="dlg-input" type="password" autocomplete="current-password" hidden>
       <div class="row end">
         <button class="btn" value="cancel">Abbrechen</button>
         <button class="btn primary" value="ok" id="dlg-ok">OK</button>
