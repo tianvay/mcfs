@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""Minecraft Family Portal - public IPv4 for NetherNet game traffic (runs before every Minecraft start).
+
+    mc-public-ip [server.properties]      (default: ./server.properties - systemd starts it in the server folder)
+
+NetherNet tells players which address and UDP port to send the game traffic to. Behind the router that has to be
+the public IPv4 with the forwarded ports, otherwise only players in the home network get in. Bedrock only accepts
+one port per line with a literal IP (ranges and lists are not parsed - Mojira BDS-23108, at most 16 lines), so this
+writes one line per port:
+
+    server-udp-ports=<public IPv4>:19140:19140   ...   server-udp-ports=<public IPv4>:19149:19149
+
+The public IPv4 comes from the Fritzbox itself (UPnP "GetExternalIPAddress" in the home network: no outside service,
+no password). It changes when the provider assigns a new one, so it is asked on every start.
+Never blocks the start: if the router does not answer, the existing lines stay as they are.
+
+Environment: MC_UDP_PORTS (default 19140-19149), MC_ROUTER (default 192.168.178.1).
+"""
+from __future__ import annotations
+
+import ipaddress
+import os
+import re
+import sys
+import urllib.request
+from pathlib import Path
+
+KEY = "server-udp-ports"
+MAX_LINES = 16  # Bedrock refuses more ("too many port mappings (max 16)")
+SOAP = ('<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" '
+        's:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body>'
+        '<u:GetExternalIPAddress xmlns:u="urn:schemas-upnp-org:service:WANIPConnection:1"/></s:Body></s:Envelope>')
+
+
+def log(msg: str) -> None:
+    print(f"public-ip: {msg}", flush=True)
+
+
+def port_range(spec: str) -> range:
+    m = re.fullmatch(r"(\d{4,5})-(\d{4,5})", spec)
+    if not m:
+        raise ValueError(f"MC_UDP_PORTS ungültig: {spec!r}")
+    a, b = int(m.group(1)), int(m.group(2))
+    if not (1024 <= a <= b <= 65535) or b - a + 1 > MAX_LINES:
+        raise ValueError(f"MC_UDP_PORTS: 1024-65535, höchstens {MAX_LINES} Ports")
+    return range(a, b + 1)
+
+
+def public_ipv4(router: str, timeout: float = 5) -> str:
+    req = urllib.request.Request(
+        f"http://{router}:49000/igdupnp/control/WANIPConn1", data=SOAP.encode(), method="POST",
+        headers={"Content-Type": 'text/xml; charset="utf-8"',
+                 "SOAPAction": "urn:schemas-upnp-org:service:WANIPConnection:1#GetExternalIPAddress"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        body = r.read(65536).decode("utf-8", "replace")
+    m = re.search(r"<NewExternalIPAddress>([^<]*)</NewExternalIPAddress>", body)
+    ip = ipaddress.ip_address((m.group(1) if m else "").strip()) if m else None
+    # DS-Lite / carrier NAT give private or shared addresses - players could not reach those
+    if not isinstance(ip, ipaddress.IPv4Address) or not ip.is_global:
+        raise ValueError(f"keine öffentliche IPv4 vom Router ({m.group(1) if m else 'keine Antwort'})")
+    return str(ip)
+
+
+def rewrite(text: str, ip: str, ports: range) -> str:
+    """Replace every server-udp-ports line by one line per port; position of the first one stays."""
+    new = [f"{KEY}={ip}:{p}:{p}" for p in ports]
+    out, placed = [], False
+    for line in text.splitlines():
+        if line.strip().startswith(f"{KEY}="):
+            if not placed:
+                out += new
+                placed = True
+            continue
+        out.append(line)
+    if not placed:
+        out += ["", "# NetherNet: public IPv4 per forwarded UDP port, rewritten on every start by mc-public-ip", *new]
+    return "\n".join(out) + "\n"
+
+
+def main(argv: list[str]) -> int:
+    path = Path(argv[1] if len(argv) > 1 else "server.properties")
+    try:
+        ports = port_range(os.environ.get("MC_UDP_PORTS", "19140-19149"))
+        ip = public_ipv4(os.environ.get("MC_ROUTER", "192.168.178.1"))
+    except Exception as e:  # never block the start: old lines stay
+        log(f"WARNUNG: {e} - server-udp-ports bleibt unverändert")
+        return 0
+    old = path.read_text(encoding="utf-8")
+    new = rewrite(old, ip, ports)
+    if new == old:
+        log(f"{ip}, Ports {ports.start}-{ports.stop - 1} - unverändert")
+        return 0
+    with open(path, "r+", encoding="utf-8", newline="\n") as f:  # in place: owner and ACLs stay
+        f.seek(0)
+        f.write(new)
+        f.truncate()
+    log(f"{ip}, Ports {ports.start}-{ports.stop - 1} - eingetragen")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

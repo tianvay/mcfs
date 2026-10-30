@@ -141,6 +141,7 @@ install -m 644 "$SRC/requirements.txt" "$APP/requirements.txt"
 install -d -m 755 "$APP/bin"
 install -m 755 "$SRC/deploy/mcportal-update-helper" "$APP/bin/mcportal-update-helper"
 install -m 755 "$SRC/deploy/mc-start-check" "$APP/bin/mc-start-check"
+install -m 755 "$SRC/deploy/mc-public-ip" "$APP/bin/mc-public-ip"
 chown -R root:root "$APP"
 chmod -R go-w "$APP"
 
@@ -170,6 +171,9 @@ chown root:mcportal "$ETC/config.toml"; chmod 640 "$ETC/config.toml"
 install -d -m 755 "/etc/systemd/system/$UNIT.d"
 install -m 644 "$SRC/deploy/20-startcheck.conf" "/etc/systemd/system/$UNIT.d/20-startcheck.conf"
 info "/etc/systemd/system/$UNIT.d/20-startcheck.conf (wirksam ab dem nächsten Minecraft-Start)"
+# external access: public IPv4 from the router into server-udp-ports before every start (NetherNet)
+install -m 644 "$SRC/deploy/30-public-ip.conf" "/etc/systemd/system/$UNIT.d/30-public-ip.conf"
+info "/etc/systemd/system/$UNIT.d/30-public-ip.conf (öffentliche IPv4 vor jedem Start)"
 
 sed "s#@MC_DIR@#$MC_DIR#" "$SRC/deploy/mcportal.service.in" > /etc/systemd/system/mcportal.service
 systemd-analyze verify /etc/systemd/system/mcportal.service /etc/systemd/system/mcportal-update-apply.service \

@@ -16,6 +16,7 @@ fi
 
 systemctl disable --now mcportal.service 2>/dev/null || true
 rm -f /etc/systemd/system/minecraft-bedrock.service.d/20-startcheck.conf   # M8 (uses /opt/mcportal/bin)
+rm -f /etc/systemd/system/minecraft-bedrock.service.d/30-public-ip.conf    # external access (uses /opt/mcportal/bin)
 rm -f /etc/systemd/system/mcportal.service \
       /etc/systemd/system/mcportal-update-apply.service /etc/systemd/system/mcportal-update-rollback.service
 systemctl daemon-reload

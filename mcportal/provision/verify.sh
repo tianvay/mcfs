@@ -48,6 +48,19 @@ fi
 [[ "$U_USER" != root && -n "$U_USER" ]] && ok "Minecraft läuft nicht als root" || bad "Minecraft läuft als root"
 PORT="$(sed -n 's/^server-port=//p' "$U_DIR/server.properties")"
 if ss -Htuln "sport = :$PORT" | grep -q .; then ok "Spieler-Port $PORT offen"; else bad "Spieler-Port $PORT nicht offen"; fi
+# external access: the UDP lines must carry the router's current public IPv4 (written by mc-public-ip at the start)
+if PUB="$(python3 -I - "$REPO/deploy/mc-public-ip" "$U_DIR/server.properties" 2>&1 <<'PY'
+import importlib.machinery, importlib.util, sys
+loader = importlib.machinery.SourceFileLoader("mc_public_ip", sys.argv[1])
+spec = importlib.util.spec_from_loader("mc_public_ip", loader); m = importlib.util.module_from_spec(spec); loader.exec_module(m)
+ip = m.public_ipv4("192.168.178.1")
+lines = [l for l in open(sys.argv[2], encoding="utf-8").read().splitlines() if l.startswith("server-udp-ports=")]
+good = [l for l in lines if l.startswith(f"server-udp-ports={ip}:")]
+print(f"{len(good)} von {len(lines)} UDP-Zeilen mit der öffentlichen IPv4 {ip}")
+sys.exit(0 if lines and len(good) == len(lines) else 1)
+PY
+)"; then ok "Zugang von außen: $PUB"
+else bad "Zugang von außen: $PUB – Minecraft neu starten (mc-public-ip trägt die IPv4 beim Start ein)"; fi
 
 # ---------------------------------------------------------------------------
 step "Spielregeln (gamerules.list)"

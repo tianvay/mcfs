@@ -9,8 +9,8 @@ content-log-console-output-enabled=true
 content-log-level=warning
 # waypoint item icon, boss looks, haunt fog: every client loads the resource packs
 texturepack-required=true
-# NetherNet: game traffic on a fixed UDP range, forwarded in the router together with TCP 19132 (27.10.)
-server-udp-ports=19140-19159
+# NetherNet ports (server-udp-ports) are NOT set here: Bedrock only accepts one line per port with the public IP,
+# deploy/mc-public-ip writes them before every start (drop-in 30-public-ip.conf, ports 19140-19149).
 
 # --- from server.conf ---
 server-name=@SERVER_NAME@

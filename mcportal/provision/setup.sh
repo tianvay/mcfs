@@ -197,9 +197,7 @@ probe_start() {
   python3 -I - "$dir/server.properties" "$PROBE_V4" "$PROBE_V6" <<'PY'
 import sys
 path, v4, v6 = sys.argv[1:4]
-# own UDP range too, so the probe never takes ports from the running server's forwarded range
-want = {"server-port": v4, "server-portv6": v6, "enable-lan-visibility": "false", "server-name": "mcportal probe",
-        "server-udp-ports": "19170-19179"}
+want = {"server-port": v4, "server-portv6": v6, "enable-lan-visibility": "false", "server-name": "mcportal probe"}
 lines = [f"{l.split('=', 1)[0]}={want[l.split('=', 1)[0]]}" if l.split("=", 1)[0] in want else l
          for l in open(path, encoding="utf-8").read().splitlines()]
 open(path, "w", encoding="utf-8", newline="\n").write("\n".join(lines) + "\n")

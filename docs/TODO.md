@@ -4,6 +4,16 @@ Stand: 2026-10-26
 
 ## Offen
 
+- [ ] **`install.sh` ausführen**, damit `mc-public-ip` vor jedem Start die öffentliche IPv4 einträgt (Zugang von
+      außen, `docs/12-zugang-von-aussen.md`). Bis dahin stehen die 10 UDP-Zeilen fest in `server.properties`;
+      wechselt Vodafone die IPv4, kommt von außen niemand mehr hinein.
+- [ ] **Bedrock 26.60 für den Server** (ab 27.10. für Spieler): Update per Knopf im Portal, sobald verfügbar.
+      Danach prüfen: Zugang von außen (IPv4 + Mobilfunk) und ob `server-udp-ports` weiterhin eine Zeile pro Port
+      braucht (Mojira BDS-23108).
+- [ ] Zugang von außen: ein **Name statt der Zahl** für Freunde (MyFRITZ!-Adresse zeigt auch auf die IPv6 der
+      Fritzbox – testen oder einen Namen nur mit IPv4 einrichten).
+- [ ] playit.gg ist nicht mehr nötig – ob vom Laptop entfernt, prüfen (`systemctl status playit`).
+
 - [ ] **Creeper-Chaos, Hexenzirkel, Spuk-Nebel im Spiel ansehen** (installiert 26.10. 21:18: Events-Pack 1.4.0,
       Erfolge-Pack 1.4.0, Grafik-Pack 1.1.0).
 - [ ] Weitere Mob-Event-Ideen (Liste vom 26.10.): Knochensturm (Skelette, „Knochenbrecher“), Spinnennacht
