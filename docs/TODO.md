@@ -64,8 +64,8 @@ Stand: 2026-10-26
 - [x] **Reproduzierbarer Aufbau – Umstieg auf die neue Welt am 30.10.2026** („Family and Friends“, Welt „FAF“,
       `/opt/minecraft/bedrock`, Benutzer `minecraft`, kein PvP, Whitelist ohne Operatoren), siehe
       `docs/04-reproduzierbarer-aufbau.md` (R6).
-- [ ] **Neue Welt im Spiel prüfen:** beitreten (WLAN und von außen), kein PvP, Wegpunkte, Events, Erfolge,
-      Statistik im Portal, Karte (nach dem ersten Spielen „Karte zeichnen“ im Portal oder nachts um 04:00).
+- [x] **Neue Welt im Spiel** (30.10.): Beitreten klappt; erste Karte gezeichnet (349 Chunks Oberwelt).
+      Im Lauf der nächsten Tage beobachten: Wegpunkte, Events, Erfolge, Statistik im Portal.
 - [ ] Beim nächsten `install.sh` kommt der Karten-Fix für ganz neue Welten mit (`app/map/render.py`).
 - [ ] Packs ab jetzt mit **sudo** installieren: `sudo bash ~/mcportal-src/deploy/world-pack.sh <pack> apply`.
 - [ ] **Aufräumen**, wenn die neue Welt ein paar Tage gut läuft: Testinstallation
