@@ -4,12 +4,11 @@ Stand: 2026-10-26
 
 ## Offen
 
-- [ ] **`install.sh` ausführen**, damit `mc-public-ip` vor jedem Start die öffentliche IPv4 einträgt (Zugang von
-      außen, `docs/12-zugang-von-aussen.md`). Bis dahin stehen die 10 UDP-Zeilen fest in `server.properties`;
-      wechselt Vodafone die IPv4, kommt von außen niemand mehr hinein.
-- [ ] **Bedrock 26.60 für den Server** (ab 27.10. für Spieler): Update per Knopf im Portal, sobald verfügbar.
-      Danach prüfen: Zugang von außen (IPv4 + Mobilfunk) und ob `server-udp-ports` weiterhin eine Zeile pro Port
-      braucht (Mojira BDS-23108).
+- [x] **`install.sh` ausgeführt** (30.10.): `mc-public-ip` läuft vor jedem Start („188.…, Ports 19140-19149 –
+      unverändert“), neue Startprüfung (post als root) OK nach 4 s; `verify.sh`: Zugang von außen 10/10.
+- [x] **Bedrock 26.60 auf dem Server** per Update-Knopf: 27.10. 17:55 → 1.26.60.6, 30.10. 08:38 → 1.26.61.1.
+      Zugang von außen (IPv4 + Mobilfunk) am 28.10. mit 26.60 bestätigt. Bei späteren Updates prüfen, ob
+      `server-udp-ports` weiterhin eine Zeile pro Port braucht (Mojira BDS-23108).
 - [ ] Zugang von außen: ein **Name statt der Zahl** für Freunde (MyFRITZ!-Adresse zeigt auch auf die IPv6 der
       Fritzbox – testen oder einen Namen nur mit IPv4 einrichten).
 - [ ] playit.gg ist nicht mehr nötig – ob vom Laptop entfernt, prüfen (`systemctl status playit`).
