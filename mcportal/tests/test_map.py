@@ -163,6 +163,22 @@ class RenderTest(unittest.TestCase):
             index2 = render(world, out)
             self.assertEqual(sorted(p.name for p in out.glob("build-*")), [index2["build"]])
 
+    def test_new_world_without_chunks(self):
+        # seen 30.10. right after the cut-over: no chunk saved yet, and the map folder had just been archived
+        with tempfile.TemporaryDirectory() as tmp:
+            world = Path(tmp) / "snap"
+            db = world / "db"
+            db.mkdir(parents=True)
+            # a valid database without any table or log entry
+            manifest = varint(1) + varint(26) + b"leveldb.BytewiseComparator" + varint(2) + varint(6)
+            (db / "MANIFEST-000004").write_bytes(log_file([manifest]))
+            (db / "CURRENT").write_text("MANIFEST-000004\n")
+            out = Path(tmp) / "map"   # does not exist
+            index = render(world, out)
+            self.assertEqual(index["dims"], {})
+            self.assertEqual(index["built_chunks"], 0)
+            self.assertTrue((out / index["build"] / "index.json").exists())
+
     def test_column_colours(self):
         from app.map.render import DimensionImage, Palette, draw_chunk, COLORS_FILE
         with tempfile.TemporaryDirectory() as tmp:

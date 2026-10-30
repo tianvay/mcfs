@@ -61,14 +61,16 @@ Stand: 2026-10-26
 - [ ] Optional **Platz schaffen** im Serverordner: `bedrock-server.zip` (95 MB) und
       `xampp-linux-x64-8.2.12-0-installer.run` (160 MB) braucht der Server nicht.
 - [ ] **Sunny** kann erst Operator werden, nachdem Sunny einmal verbunden war.
-- [ ] **Reproduzierbarer Aufbau** für den echten Server (Plan: `docs/04-reproduzierbarer-aufbau.md`):
-      R1–R5 erledigt (26.10.), `/opt/minecraft/bedrock` ist vorbereitet. Offen: **R6 Stichtag** – vorher
-      Entscheidungen (Welt-/Servername, Seed, Spieleinstellungen, Whitelist übernehmen, Portal-Daten
-      archivieren, Auto-Events, Termin). `setup.sh --switch`/`--switch-back` sind gebaut; vorher `install.sh` + `--prepare` erneut (neue Startprüfung, Probe mit Konsole).
-      Fest für die neue Welt: **kein PvP** (`provision/gamerules.list`, wird beim Umstieg gesetzt und geprüft);
-      **Seed `-278472841329850337`** (geprüft, in `/etc/mcportal/server.conf` eintragen).
-      Entschieden 27.10.: „Family and Friends“ / Welt „FAF“, Schwierigkeit Normal, Whitelist ja / Operatoren nein
-      (`--switch --import-allowlist`), Portal-Daten bei 0, Auto-Events an. **Offen: nur noch der Termin.**
+- [x] **Reproduzierbarer Aufbau – Umstieg auf die neue Welt am 30.10.2026** („Family and Friends“, Welt „FAF“,
+      `/opt/minecraft/bedrock`, Benutzer `minecraft`, kein PvP, Whitelist ohne Operatoren), siehe
+      `docs/04-reproduzierbarer-aufbau.md` (R6).
+- [ ] **Neue Welt im Spiel prüfen:** beitreten (WLAN und von außen), kein PvP, Wegpunkte, Events, Erfolge,
+      Statistik im Portal, Karte (nach dem ersten Spielen „Karte zeichnen“ im Portal oder nachts um 04:00).
+- [ ] Beim nächsten `install.sh` kommt der Karten-Fix für ganz neue Welten mit (`app/map/render.py`).
+- [ ] Packs ab jetzt mit **sudo** installieren: `sudo bash ~/mcportal-src/deploy/world-pack.sh <pack> apply`.
+- [ ] **Aufräumen**, wenn die neue Welt ein paar Tage gut läuft: Testinstallation
+      `~/Downloads/bedrock-server-1.21.51.02`, `/var/lib/mcportal/archive/*_testphase`,
+      `/var/backups/mcportal-switch/*` (danach ist kein `--switch-back` mehr möglich).
 - [ ] Später: **`setup.sh --install`** für einen frischen Ubuntu-Server (fehlende Pakete wie `acl`/`curl`, Unit +
       Konsole + Startprüfung direkt anlegen statt eine Testinstallation abzulösen, dann `install.sh`, Start,
       `verify.sh`; Test in einer Wegwerf-VM). Startet mit neuer Welt – Welt-Umzug wäre ein eigener Schritt.

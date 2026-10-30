@@ -281,6 +281,8 @@ def render(world: Path, map_dir: Path, progress=lambda dim, n: None) -> dict:
         "spawn": [level["SpawnX"], level["SpawnZ"]] if "SpawnX" in level and "SpawnZ" in level else None,
         "unknown_blocks": sorted(palette.unknown)[:50],
     }
+    # a brand-new world can have no saved chunk yet (and the map folder may have just been archived)
+    tmp.mkdir(parents=True, exist_ok=True)
     (tmp / "index.json").write_text(json.dumps(index), encoding="utf-8")
     os.replace(tmp, build)
     cur = map_dir / "current.json"

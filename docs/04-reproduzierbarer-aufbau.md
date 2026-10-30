@@ -269,6 +269,34 @@ die Anleitungen, nach denen gearbeitet wird (Skill, dieses Dokument).
   - **`verify.sh` gegen die Testwelt:** meldet richtig `pvp = true (soll false)`. Die Testwelt bleibt unverändert,
     bis du etwas anderes entscheidest.
 
+## R6 – Umstieg erledigt (30.10.2026, ca. 15:25–15:31)
+
+- **Kurz vorher gefunden:** `/opt/minecraft/bedrock` war am 26.10. mit **1.26.52.3** vorbereitet. Der Testserver
+  lief inzwischen mit 1.26.61.1, und die Geräte der Kinder (26.60+) hätten einem älteren Server nicht beitreten
+  können.
+  - **Fix:** Ein nur vorbereiteter, nie gestarteter Ordner bekommt bei jedem Lauf die neueste Serverversion.
+    Erst mit einer Welt bleibt das Programm, wie es ist (Updates dann per Knopf).
+- **`sudo setup.sh --switch --import-allowlist`** mit `/etc/mcportal/server.conf` („Family and Friends“, Welt
+  „FAF“, Seed `-278472841329850337`, Schwierigkeit Normal). Ergebnis:
+  - Unit auf `/opt/minecraft/bedrock`, Benutzer `minecraft`, Bedrock 1.26.61.1.
+  - Alle 4 Behavior Packs in der Welt „FAF“ gestartet (Statistik 2.0.0, Wegpunkte 1.4.0, Events 1.4.1,
+    Erfolge 1.4.0), keine Script-Fehler.
+  - Kein PvP gesetzt („Game rule pvp has been updated to false“, Abfrage `pvp = false`).
+  - `mc-public-ip` hat die öffentliche IPv4 eingetragen, die Startprüfung war nach 4 s OK.
+  - Whitelist übernommen (4 Einträge), keine Operatoren.
+  - Portal zeigt „Family and Friends“, Seed und Konsole; Events automatisch an, Register leer (neue Welt).
+- **Nachbesserung Karte:** Der erste Kartenlauf direkt danach scheiterte. In der ganz neuen Welt war noch kein
+  Chunk gespeichert, also gab es keinen Zwischenordner für `index.json`; außerdem war der Kartenordner gerade
+  archiviert.
+  - **Fix:** `app/map/render.py` legt den Ordner immer an, mit Test („neue Welt ohne Chunks“).
+  - Sobald jemand gespielt hat, gelingt der Lauf auch ohne den Fix. Ins Portal kommt er mit dem nächsten
+    `install.sh`.
+- **Liegt noch da** (nichts gelöscht):
+  - Testinstallation `~/Downloads/bedrock-server-1.21.51.02`
+  - Portal-Daten der Testphase unter `/var/lib/mcportal/archive/<Zeit>_testphase/`
+  - Wiederherstellungspunkt unter `/var/backups/mcportal-switch/<Zeit>/`
+  - Aufräumen erst, wenn die neue Welt ein paar Tage gut läuft.
+
 ## Umstieg am Stichtag (auf diesem Laptop)
 
 ```text
@@ -292,7 +320,7 @@ Rückweg: sudo bash ~/mcportal-src/provision/setup.sh --switch-back – die Test
 | **R3** | `verify.sh` und `import-players.sh` |
 | **R4** | `world-pack.sh` & Co. für den Benutzer `minecraft`; Docs und Skill auf neue Pfade |
 | **R5** | Probelauf auf dem Laptop parallel zum laufenden Testserver (`--prepare`), danach aufräumen |
-| **R6** | `--switch` / `--switch-back` (gebaut), dann Stichtag (mit dir zusammen) |
+| **R6** | `--switch` / `--switch-back` – **Umstieg am 30.10.2026 erledigt** |
 
 ## Zu entscheiden
 
@@ -320,7 +348,7 @@ Rückweg: sudo bash ~/mcportal-src/provision/setup.sh --switch-back – die Test
      einmal nichts, damit `--switch-back` funktioniert. Das Archiv kann weg, sobald die neue Welt gut läuft.
 6. ~~**Automatische Events**~~ – **entschieden 27.10.:** ja, ab Tag 1. Das ist der Standard des Events-Packs in
    einer neuen Welt; nichts zu tun.
-7. **Termin** für den Umstieg – offen.
+7. ~~**Termin**~~ – Umstieg am **30.10.2026**.
 
 ### `/etc/mcportal/server.conf` für den Stichtag
 
