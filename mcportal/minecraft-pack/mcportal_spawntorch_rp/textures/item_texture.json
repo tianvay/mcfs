@@ -1,0 +1,7 @@
+{
+  "resource_pack_name": "mcportal_spawntorch_rp",
+  "texture_name": "atlas.items",
+  "texture_data": {
+    "mcfs_spawn_torch": { "textures": "textures/items/mcfs_spawn_torch" }
+  }
+}

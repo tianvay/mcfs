@@ -1,0 +1,28 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Family Portal Spawnfackel",
+    "description": "Zeigt mit rotem Schleier, wo Monster spawnen können.",
+    "uuid": "d763ec44-1b12-4d6e-8ad6-885bd7f20955",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 21, 0]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "9ccb9e24-ed3c-45fe-bf58-b8bcc5495b25",
+      "version": [1, 0, 0]
+    },
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "970ada1d-6ef8-4ef1-ae0e-0facda2e3061",
+      "version": [1, 0, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    { "module_name": "@minecraft/server", "version": "@SERVER_API@" },
+    { "uuid": "6bba00b5-16da-4df0-8dff-fd87b4f4ebb6", "version": [1, 0, 0] }
+  ]
+}

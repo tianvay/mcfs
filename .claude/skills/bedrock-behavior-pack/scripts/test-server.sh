@@ -12,7 +12,9 @@
 set -euo pipefail
 [[ "${1:-}" == "--" ]] && shift
 PACK="${1:?pack dir}"; API="${2:?api version}"; SECS="${3:-30}"
-REAL="$(systemctl show -p WorkingDirectory --value minecraft-bedrock.service)"
+# MC_SRC: server program to copy. Since the cut-over fred cannot read /opt/minecraft/bedrock -
+# fetch a copy first: python3 ~/mcportal-src/provision/fetch_server.py ~/bds-src
+REAL="${MC_SRC:-$(systemctl show -p WorkingDirectory --value minecraft-bedrock.service)}"
 T="$HOME/bds-test"
 for p in ${PACK//,/ }; do [[ -f "$p/manifest.json" ]] || { echo "kein manifest.json in $p"; exit 1; }; done
 

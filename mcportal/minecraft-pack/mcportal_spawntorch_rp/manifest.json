@@ -1,0 +1,13 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Family Portal Spawnfackel (Grafik)",
+    "description": "Bild für die Spawnfackel und der rote Schleier.",
+    "uuid": "6bba00b5-16da-4df0-8dff-fd87b4f4ebb6",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 21, 0]
+  },
+  "modules": [
+    { "type": "resources", "uuid": "23b2071d-fc4a-4779-bbcb-8cebaa401a40", "version": [1, 0, 0] }
+  ]
+}

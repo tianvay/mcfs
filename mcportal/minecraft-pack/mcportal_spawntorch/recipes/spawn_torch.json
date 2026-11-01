@@ -1,0 +1,13 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": { "identifier": "mcfs:spawn_torch" },
+    "tags": ["crafting_table"],
+    "pattern": ["TTT", "TTT", "TTT"],
+    "key": {
+      "T": { "item": "minecraft:torch" }
+    },
+    "unlock": [{ "item": "minecraft:torch" }],
+    "result": { "item": "mcfs:spawn_torch", "count": 1 }
+  }
+}
