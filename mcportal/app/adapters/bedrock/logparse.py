@@ -55,6 +55,14 @@ def parse_spawned(line: LogLine) -> str | None:
     return m.group("name") if m else None
 
 
+def parse_connect(line: LogLine) -> tuple[str, str] | None:
+    """(name, xuid) from "Player connected: <name>, xuid: <digits>"; xuid may be empty."""
+    if line.source != "server":
+        return None
+    m = _CONNECT_RE.match(line.message)
+    return (m.group("name"), m.group("xuid")) if m else None
+
+
 SAVE_READY = "Data saved. Files are now ready to be copied."
 _SAVE_ENTRY_RE = re.compile(r"^(?P<path>[^,:]+):(?P<length>\d+)$")
 

@@ -9,7 +9,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ..adapters.base import MinecraftAdapter
-from ..adapters.bedrock.logparse import LogLine, PlayerTracker, parse_version, version_history
+from ..adapters.bedrock.logparse import LogLine, PlayerTracker, parse_connect, parse_version, version_history
 from ..adapters.bedrock.systemd import ALLOWED_VERBS, UnitState
 from ..audit import AuditLog
 
@@ -35,6 +35,10 @@ class MinecraftService:
         self.tracker = PlayerTracker()
         self.unit: UnitState | None = None
         self.versions: list[tuple[float, str]] = self._load_versions()
+        # Xbox IDs of everybody who ever connected (lower name -> {name, xuid}). Bedrock 1.26 no longer writes
+        # the xuid into allowlist.json on the first join, so the whitelist takes it from here.
+        self.xuids_file = data_dir / "xuids.json"
+        self.known_xuids: dict[str, dict] = self._load_xuids()
         self.allowlist_count: int | None = None
         self.busy: str | None = None
         self.last_error: str | None = None
@@ -79,7 +83,10 @@ class MinecraftService:
             if self.unit.started_at:
                 since = min(since, self.unit.started_at)
             since -= 5
+        if not self.xuids_file.exists():
+            since = None  # once: learn the players who connected before this file existed
         lines = self.a.read_log(since)
+        self._learn_xuids(lines, save_always=not self.xuids_file.exists())
         self._scan_until = lines[-1].ts if lines else 0.0
         self._merge_versions(version_history(lines))
         if self.unit.active_state in ("active", "activating", "deactivating") and self.unit.started_at:
@@ -130,6 +137,7 @@ class MinecraftService:
             except Exception:
                 log.exception("log line listener failed")
         changed = self.tracker.feed(line)
+        self._learn_xuids([line])
         v = parse_version(line)
         if v:
             self._merge_versions([(line.ts, v)])
@@ -163,6 +171,35 @@ class MinecraftService:
                 self.versions_file.write_text(json.dumps(self.versions))
             except OSError:
                 log.warning("cannot write %s", self.versions_file)
+
+    # ---------- xuids ----------
+
+    def _load_xuids(self) -> dict[str, dict]:
+        try:
+            data = json.loads(self.xuids_file.read_text(encoding="utf-8"))
+            return {k: v for k, v in data.items() if isinstance(v, dict) and v.get("xuid")}
+        except (OSError, ValueError, AttributeError):
+            return {}
+
+    def _learn_xuids(self, lines: list[LogLine], save_always: bool = False) -> None:
+        changed = False
+        for line in lines:
+            found = parse_connect(line)
+            if not found or not found[1]:
+                continue
+            name, xuid = found
+            if self.known_xuids.get(name.lower()) != {"name": name, "xuid": xuid}:
+                self.known_xuids[name.lower()] = {"name": name, "xuid": xuid}
+                changed = True
+        if changed or save_always:
+            try:
+                self.xuids_file.write_text(json.dumps(self.known_xuids, ensure_ascii=False), encoding="utf-8")
+            except OSError:
+                log.warning("cannot write %s", self.xuids_file)
+
+    def known_xuid(self, name: str) -> str:
+        """Xbox ID of a player who connected at least once, else ""."""
+        return self.known_xuids.get(name.lower(), {}).get("xuid", "")
 
     # ---------- state ----------
 

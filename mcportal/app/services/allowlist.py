@@ -64,22 +64,27 @@ class AllowlistService:
         online = {p.lower() for p in (pl.name for pl in self.mc.tracker.players.values())}
         mode, reason = self.mode()
         op_mode, op_reason = self.mode("permissions.json")
+        entries = [(e, self._xuid(e)) for e in entries]
         return {
             "op_mode": op_mode,
             "op_reason": op_reason,
             "entries": [
                 {
                     "name": e.get("name", ""),
-                    "xuid": e.get("xuid", ""),
-                    "operator": bool(e.get("xuid")) and str(e.get("xuid")) in ops,
+                    "xuid": xuid,
+                    "operator": bool(xuid) and xuid in ops,
                     "online": e.get("name", "").lower() in online,
                     "survival_pending": bool(self.pending.get(e.get("name", "").lower(), {}).get("survival")),
                 }
-                for e in entries
+                for e, xuid in entries
             ],
             "mode": mode,
             "reason": reason,
         }
+
+    def _xuid(self, entry: dict) -> str:
+        """xuid from allowlist.json, else the one the server logged when the player connected"""
+        return str(entry.get("xuid") or "") or self.mc.known_xuid(entry.get("name", ""))
 
     async def add(self, name: str, user: str) -> None:
         name = name.strip()
@@ -99,7 +104,7 @@ class AllowlistService:
         entry = next((e for e in files.read_allowlist() if e.get("name", "").lower() == name.lower()), None)
         if entry is None:
             raise PortalError(f"{name} steht nicht auf der Whitelist.", 404)
-        name, xuid = entry["name"], str(entry.get("xuid") or "")
+        name, xuid = entry["name"], self._xuid(entry)
         if not xuid:
             raise PortalError(f"{name} war noch nie auf dem Server. Operator-Rechte sind erst nach der "
                               "ersten Verbindung möglich (der Server kennt die Xbox-ID dann).", 409)

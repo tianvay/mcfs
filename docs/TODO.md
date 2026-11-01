@@ -70,6 +70,9 @@ Stand: 2026-10-26
 - [ ] **Admin-Anmeldung ausrollen** (gebaut 30.10.): erst `sudo bash ~/mcportal-src/deploy/set-password.sh`,
       dann `install.sh`. Danach sehen Kinder/Gäste nur Übersicht, Statistik, Karte (ohne Seed); Whitelist,
       Events, Server nur nach Anmeldung. Kinder-iPads: Seite in Safari „Zum Home-Bildschirm“.
+- [ ] **Whitelist zeigt „noch nie verbunden“** obwohl der Spieler da war (Bedrock 1.26 trägt die XUID nicht mehr in
+      `allowlist.json` ein): Portal merkt sich die XUID jetzt aus dem Log (`/var/lib/mcportal/xuids.json`), gebaut
+      01.11. – kommt mit dem nächsten `install.sh`.
 - [ ] Packs ab jetzt mit **sudo** installieren: `sudo bash ~/mcportal-src/deploy/world-pack.sh <pack> apply`.
 - [ ] **Aufräumen**, wenn die neue Welt ein paar Tage gut läuft: Testinstallation
       `~/Downloads/bedrock-server-1.21.51.02`, `/var/lib/mcportal/archive/*_testphase`,
@@ -82,6 +85,7 @@ Stand: 2026-10-26
 
 ## Erledigt
 
+- [x] Spawnfackel (M14) installiert und im Spiel bestätigt; `world-pack.sh` startet mit sudo jetzt über systemd neu (Portal-Neustart braucht seit der Admin-Anmeldung ein Login) (2026-11-01)
 - [x] Timed Events Paket 3 installiert (Events-Pack 1.3.0, Erfolge-Pack 1.3.0 mit Meta-Erfolgen); Bau-Register mit 1.087 Chunks aus der Karte (2026-10-26 18:53)
 - [x] Events-Pack 1.1.2 installiert: verschwundener Boss kommt zurück, Spawns nur auf echtem Boden (2026-10-26)
 - [x] Events-Pack 1.1.1 installiert: Boss mit Lichtsäule, Hinweis alle 5 s mit Höhe, Y-Koordinate (2026-10-26 16:33)

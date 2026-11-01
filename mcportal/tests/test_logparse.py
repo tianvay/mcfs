@@ -94,3 +94,26 @@ class CommandTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ConnectAndKnownXuidsTest(unittest.TestCase):
+    def test_parse_connect(self):
+        from app.adapters.bedrock.logparse import parse_connect
+        line = parse_journal_line(
+            "1790000000.0 host bedrock_server[1]: [2026-10-30 23:17:22:033 INFO] Player connected: Steve, xuid: 2535400000000001")
+        self.assertEqual(parse_connect(line), ("Steve", "2535400000000001"))
+        self.assertIsNone(parse_connect(parse_journal_line("1790000000.0 host bedrock_server[1]: [2026-10-30 23:17:22:033 INFO] Server started.")))
+
+    def test_known_xuids_are_learned_and_kept_across_restarts(self):
+        import tempfile
+        from pathlib import Path
+        from app.services.minecraft import MinecraftService
+        with tempfile.TemporaryDirectory() as d:
+            mc = MinecraftService(None, None, Path(d))
+            mc._learn_xuids([parse_journal_line(f"1790000000.0 host bedrock_server[1]: [2026-10-30 23:17:22:033 INFO] {t}")
+                             for t in ("Player connected: Steve, xuid: 2535400000000001",
+                                       "Player connected: Alex, xuid: ",
+                                       "Player disconnected: Steve, xuid: 2535400000000001")])
+            self.assertEqual(mc.known_xuid("steve"), "2535400000000001")
+            self.assertEqual(mc.known_xuid("Alex"), "", "empty xuid is not learned")
+            self.assertEqual(MinecraftService(None, None, Path(d)).known_xuid("STEVE"), "2535400000000001")

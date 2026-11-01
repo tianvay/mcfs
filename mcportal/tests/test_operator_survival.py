@@ -37,6 +37,11 @@ class FakeMc:
     def refresh_allowlist_count(self):
         pass
 
+    known_xuids = {}
+
+    def known_xuid(self, name):
+        return self.known_xuids.get(name.lower(), "")
+
 
 class FakeAdapter:
     def __init__(self, server_dir):
@@ -75,6 +80,19 @@ class OperatorSurvivalTest(unittest.TestCase):
         s = AllowlistService(a, mc, AuditLog(self.dir / "audit.jsonl"), self.dir / "backups", 5,
                              self.dir / "pending_operator.json")
         return s, a, mc
+
+    def test_entry_without_xuid_uses_the_xuid_from_the_log(self):
+        # Bedrock 1.26 leaves the xuid out of allowlist.json even after the first join
+        (self.dir / "srv/allowlist.json").write_text(ALLOW[:-1] + ',{"ignoresPlayerLimit":false,"name":"Sunny"}]')
+        s, a, mc = self.make()
+        entry = lambda: next(e for e in s.list()["entries"] if e["name"] == "Sunny")
+        self.assertEqual(entry()["xuid"], "", "never connected")
+        mc.known_xuids = {"sunny": "2535400000000003"}
+        self.assertEqual(entry()["xuid"], "2535400000000003")
+        self.assertFalse(entry()["operator"])
+        asyncio.run(s.set_operator("Sunny", True, "test"))
+        self.assertTrue(entry()["operator"])
+        self.assertIn({"permission": "operator", "xuid": "2535400000000003"}, a.files.read_permissions())
 
     def test_online_player_is_set_to_survival_immediately(self):
         s, a, mc = self.make()
