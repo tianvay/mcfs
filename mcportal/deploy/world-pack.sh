@@ -68,8 +68,14 @@ players_online() {
 
 restart_and_wait() {  # all given patterns must appear in the log after the start
   local t0; t0="$(date +%s)"
-  local code; code="$(curl -s -o /dev/null -w '%{http_code}' -X POST "$PORTAL/api/server/restart")"
-  [[ "$code" == 202 ]] || fail "Portal hat den Neustart abgelehnt (HTTP $code – PIN gesetzt?)"
+  if [[ $EUID -eq 0 ]]; then
+    # the portal's restart button needs the admin login since 30.10.; root restarts through systemd instead
+    # (also a clean stop: ExecStop sends "stop" to the console, 10-portal.conf)
+    systemctl restart "$UNIT" || fail "systemctl restart $UNIT fehlgeschlagen"
+  else
+    local code; code="$(curl -s -o /dev/null -w '%{http_code}' -X POST "$PORTAL/api/server/restart")"
+    [[ "$code" == 202 ]] || fail "Portal hat den Neustart abgelehnt (HTTP $code – Admin-Anmeldung: mit sudo aufrufen)"
+  fi
   # the start check (M8) may wait for the port, so allow a few minutes
   for _ in $(seq 1 400); do
     sleep 1
