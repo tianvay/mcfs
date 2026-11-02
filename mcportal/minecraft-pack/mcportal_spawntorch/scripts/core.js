@@ -1,9 +1,12 @@
 // Spawn torch - rules without @minecraft/server, tested with node --test (tests/core.test.mjs).
 //
-// A block gets the red veil when a hostile mob could spawn ON it at night:
-//   1. the block itself has a full, solid top (no glass, leaves, bottom slab, stairs, carpet ...),
-//   2. the two blocks above are free (air, grass, flowers, thin snow ...),
-//   3. no block light reaches the space above (Bedrock: hostile mobs need block light 0).
+// A block gets the red veil when a hostile mob could spawn ON it at night (Bedrock rules, minecraft wiki "Spawn"):
+//   1. the block itself has a full, solid top (no glass, leaves, bottom slab, upright stairs, carpet ...),
+//   2. the block above is free for the mob's feet (air, grass, flowers, thin snow ...) - one block is enough,
+//      spiders fit; no rail or redstone part in the block above that either,
+//   3. no block light reaches the space above (Bedrock: block light 0 and sky light below 7 - at night the
+//      sky light in the open is 4, so only block light decides),
+//   4. not in a biome without monsters (mushroom fields, deep dark).
 // The rules lean towards red: a block we don't know counts as "mobs can spawn here".
 
 export const ITEM_ID = "mcfs:spawn_torch";
@@ -23,11 +26,11 @@ const NO_FLOOR = new RegExp(
     "tripwire|tripwire_hook|bell|campfire|soul_campfire|grindstone|stonecutter_block|composter|" +
     "magma|dragon_egg|cactus|bamboo|kelp|seagrass|sea_pickle|pointed_dripstone|amethyst_cluster|" +
     "chorus_plant|chorus_flower|snow_layer|cake|flower_pot|decorated_pot|bed|mangrove_roots)$|" +
-    "glass|_leaves$|^leaves2?$|_stairs$|carpet$|pressure_plate$|button$|rail$|fence|_wall$|door$|" +
-    "sign$|banner$|torch$|lantern$|chest$|candle|head$|skull|anvil$|_bud$|coral(?!_block)|_pane$",
+    "glass|_leaves$|^leaves2?$|carpet$|pressure_plate$|button$|rail$|fence|_wall$|door$|" +
+    "sign$|banner$|torch$|lantern$|chest$|candle|head$|skull|anvil$|_bud$|coral(?!_block)|_pane$|grate$",
 );
 
-// blocks a mob can spawn inside (the two blocks above the floor)
+// blocks a mob's feet can be in (the block above the floor)
 const OPEN = new RegExp(
   "^(air|short_grass|tall_grass|fern|large_fern|deadbush|dead_bush|short_dry_grass|tall_dry_grass|" +
     "bush|firefly_bush|snow_layer|vine|red_mushroom|brown_mushroom|sweet_berry_bush|pink_petals|wildflowers|" +
@@ -40,6 +43,7 @@ const OPEN = new RegExp(
 export function isSpawnFloor(typeId, states = {}) {
   const name = id(typeId);
   if (NO_FLOOR.test(name)) return false;
+  if (name.endsWith("_stairs")) return states.upside_down_bit === true; // upside-down stairs have a full top
   if (name.endsWith("_slab") || /^stone_block_slab\d$/.test(name)) {
     if (name.includes("double")) return true; // oak_double_slab, double_stone_block_slab
     // only the upper half of a slab has its top at the block's top
@@ -48,7 +52,10 @@ export function isSpawnFloor(typeId, states = {}) {
   return true;
 }
 
-/** typeId of a block above the floor -> room for a mob? */
+// rails and redstone parts stop spawning in the feet block and in the block above it
+const NO_HEAD = /rail$|redstone|repeater|comparator|^lever$|button$|pressure_plate$|tripwire|observer|daylight_detector|^target$|sculk_sensor/;
+
+/** typeId of a block above the floor -> room for a mob's feet? */
 export function isOpen(typeId) {
   return OPEN.test(id(typeId));
 }
@@ -102,7 +109,7 @@ export function isDark(total, sky, estimate) {
 
 /** biomes without hostile mobs */
 export function isPeacefulBiome(biomeId) {
-  return /mushroom/.test(biomeId ?? "");
+  return /mushroom|deep_dark/.test(biomeId ?? "");
 }
 
 /** text for the action bar while the torch is held */
@@ -114,13 +121,15 @@ export function statusText(dark, scanning) {
 
 /**
  * One column of blocks, top to bottom ([{typeId, states}], index 0 = highest block) ->
- * indexes of the free blocks a mob could spawn in (floor below is solid, it and the block above are open).
+ * indexes of the free blocks a mob could spawn in (floor below is solid, the block is open, no rail/redstone above).
  */
 export function spotsInColumn(column) {
   const spots = [];
   for (let i = 1; i < column.length - 1; i++) {
     const floor = column[i + 1];
-    if (isOpen(column[i].typeId) && isOpen(column[i - 1].typeId) && isSpawnFloor(floor.typeId, floor.states)) spots.push(i);
+    if (isOpen(column[i].typeId) && !NO_HEAD.test(id(column[i - 1].typeId)) && isSpawnFloor(floor.typeId, floor.states)) {
+      spots.push(i);
+    }
   }
   return spots;
 }

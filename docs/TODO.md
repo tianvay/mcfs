@@ -70,6 +70,8 @@ Stand: 2026-10-26
 - [ ] **Admin-Anmeldung ausrollen** (gebaut 30.10.): erst `sudo bash ~/mcportal-src/deploy/set-password.sh`,
       dann `install.sh`. Danach sehen Kinder/Gäste nur Übersicht, Statistik, Karte (ohne Seed); Whitelist,
       Events, Server nur nach Anmeldung. Kinder-iPads: Seite in Safari „Zum Home-Bildschirm“.
+- [ ] **Spawnfackel 1.1.0 installieren** (umgedrehte Treppen, 1 Block hohe Lücken, Tiefes Dunkel – mit dem Wiki
+      abgeglichen), wenn niemand spielt: `sudo bash ~/mcportal-src/deploy/world-pack.sh mcportal_spawntorch apply`.
 - [ ] **Whitelist zeigt „noch nie verbunden“** obwohl der Spieler da war (Bedrock 1.26 trägt die XUID nicht mehr in
       `allowlist.json` ein): Portal merkt sich die XUID jetzt aus dem Log (`/var/lib/mcportal/xuids.json`), gebaut
       01.11. – kommt mit dem nächsten `install.sh`.

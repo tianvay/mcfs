@@ -8,17 +8,19 @@ import {
 
 test("floors mobs can stand on", () => {
   for (const b of ["stone", "grass_block", "dirt", "deepslate", "oak_planks", "sand", "netherrack", "farmland",
-    "brain_coral_block", "dead_tube_coral_block", "oak_double_slab", "double_stone_block_slab", "packed_ice"]) {
+    "brain_coral_block", "dead_tube_coral_block", "oak_double_slab", "double_stone_block_slab", "packed_ice",
+    "deepslate_tiles", "white_glazed_terracotta", "cut_copper"]) {
     assert.equal(isSpawnFloor("minecraft:" + b), true, b);
   }
 });
 
 test("spawn-proof floors", () => {
   for (const b of ["air", "water", "lava", "glass", "white_stained_glass", "glass_pane", "tinted_glass",
-    "oak_leaves", "azalea_leaves", "oak_stairs", "white_carpet", "moss_carpet", "stone_pressure_plate",
+    "oak_leaves", "azalea_leaves", "white_carpet", "moss_carpet", "stone_pressure_plate",
     "oak_button", "rail", "golden_rail", "oak_fence", "oak_fence_gate", "cobblestone_wall", "oak_trapdoor",
     "iron_door", "torch", "lantern", "chest", "ender_chest", "bed", "magma", "hopper", "barrier", "brain_coral",
-    "oak_hanging_sign", "candle_cake", "mob_spawner", "snow_layer", "scaffolding"]) {
+    "oak_hanging_sign", "candle_cake", "mob_spawner", "snow_layer", "scaffolding", "copper_grate",
+    "waxed_oxidized_copper_grate"]) {
     assert.equal(isSpawnFloor("minecraft:" + b), false, b);
   }
 });
@@ -29,6 +31,12 @@ test("slabs: only the upper half is a floor", () => {
   assert.equal(isSpawnFloor("minecraft:stone_block_slab2", { top_slot_bit: true }), true);
   assert.equal(isSpawnFloor("minecraft:stone_block_slab2", { top_slot_bit: false }), false);
   assert.equal(isSpawnFloor("minecraft:oak_slab"), false, "unknown half -> bottom");
+});
+
+test("stairs: only upside-down stairs are a floor", () => {
+  assert.equal(isSpawnFloor("minecraft:oak_stairs", { upside_down_bit: false }), false);
+  assert.equal(isSpawnFloor("minecraft:stone_brick_stairs", { upside_down_bit: true }), true);
+  assert.equal(isSpawnFloor("minecraft:oak_stairs"), false, "unknown -> upright");
 });
 
 test("open space", () => {
@@ -74,12 +82,15 @@ test("dark or lit, from total and sky light (values from the test server)", () =
   assert.equal(isDark(4, 4, () => 0), true, "midnight in the open");
 });
 
-test("column: spots need a solid floor and two open blocks", () => {
+test("column: spots need a solid floor and an open block above it", () => {
   const col = (...ids) => ids.map((b) => (typeof b === "string" ? { typeId: "minecraft:" + b, states: {} } : b));
   // index:        0      1      2        3       4      5      6
   assert.deepEqual(spotsInColumn(col("air", "air", "stone", "air", "air", "glass", "air")), [1]);
   assert.deepEqual(spotsInColumn(col("air", "short_grass", "grass_block")), [1]);
-  assert.deepEqual(spotsInColumn(col("stone", "air", "stone")), [], "only one block high");
+  assert.deepEqual(spotsInColumn(col("stone", "air", "stone")), [1], "one block high is enough (spiders)");
+  assert.deepEqual(spotsInColumn(col("rail", "air", "stone")), [], "rail in the block above");
+  assert.deepEqual(spotsInColumn(col("air", "water", "stone")), [], "water");
+  assert.deepEqual(spotsInColumn(col("air", "air", { typeId: "minecraft:oak_stairs", states: { upside_down_bit: true } })), [1]);
   assert.deepEqual(spotsInColumn(col("air", "white_carpet", "stone")), [], "carpet on the floor");
   assert.deepEqual(spotsInColumn(col("air", "torch", "stone")), []);
   assert.deepEqual(spotsInColumn(col("air", "air", { typeId: "minecraft:oak_slab", states: { "minecraft:vertical_half": "top" } })), [1]);
@@ -87,6 +98,7 @@ test("column: spots need a solid floor and two open blocks", () => {
 
 test("biomes and status text", () => {
   assert.equal(isPeacefulBiome("minecraft:mushroom_island"), true);
+  assert.equal(isPeacefulBiome("minecraft:deep_dark"), true);
   assert.equal(isPeacefulBiome("minecraft:plains"), false);
   assert.equal(isPeacefulBiome(undefined), false);
   assert.match(statusText(0, false), /hell genug/);

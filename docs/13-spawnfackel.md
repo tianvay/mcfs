@@ -1,6 +1,6 @@
 # Spawnfackel (Änderung M14)
 
-Stand: 2026-11-01 · Packs `mcportal_spawntorch` (Verhalten) + `mcportal_spawntorch_rp` (Grafik)
+Stand: 2026-11-02 (Version 1.1.0) · Packs `mcportal_spawntorch` (Verhalten) + `mcportal_spawntorch_rp` (Grafik)
 
 ## Für Spieler
 
@@ -12,20 +12,28 @@ könnten. Dort fehlt Licht. Unten in der Leiste steht, wie viele dunkle Stellen 
 („Alles hell genug …“, wenn keine).
 
 - Nur wer die Spawnfackel hält, sieht den Schleier.
+- Rot heißt: Hier kann etwas spawnen, **sobald man weggeht**. Monster spawnen erst ab 24 Blöcken Abstand zum
+  Spieler, also nie direkt neben einem.
+- Nicht angezeigt: Ertrunkene (spawnen im Wasser) und Schleime in Schleim-Chunks (spawnen unabhängig vom Licht).
 - Wird eine Fackel gesetzt, verschwindet das Rot in der Umgebung nach 2–3 Sekunden.
 - Nur in der Oberwelt (im Nether und im Ende zählt Licht für die meisten Monster nicht).
 
 ## Wann ein Block rot wird
 
-Alle drei Bedingungen zusammen (Regeln in `scripts/core.js`, Tests in `tests/core.test.mjs`):
+Alle Bedingungen zusammen (Regeln in `scripts/core.js`, Tests in `tests/core.test.mjs`; abgeglichen mit dem
+Minecraft-Wiki, Seite „Spawn“, Abschnitt „Bedrock spawn conditions“):
 
 1. **Boden:** Der Block hat eine volle, feste Oberseite. Nicht rot werden Glas, Laub, untere Stufen (Slabs),
-   Treppen, Zäune, Mauern, Truhen, Magma u. Ä.
-2. **Platz:** Die zwei Blöcke darüber sind frei – Luft, Gras, Blumen, dünner Schnee. Teppich, Schienen,
-   Druckplatten, Knöpfe, Fackeln oder Redstone auf dem Boden machen die Stelle sicher.
-3. **Licht:** Kein Fackel-/Lampenlicht erreicht die Stelle (Bedrock: Monster brauchen Blocklicht 0).
+   richtig herum gesetzte Treppen, Kupfergitter, Zäune, Mauern, Truhen, Magma u. Ä. Obere Stufen und **umgedrehte Treppen**
+   zählen als Boden (seit 1.1.0).
+2. **Platz:** Der Block darüber ist frei – Luft, Gras, Blumen, dünner Schnee. **Ein Block Höhe reicht**
+   (seit 1.1.0; Spinnen passen hinein). Teppich, Schienen, Druckplatten, Knöpfe, Fackeln oder Redstone auf dem
+   Boden machen die Stelle sicher, Schienen und Redstone-Teile auch im Block darüber.
+3. **Licht:** Kein Fackel-/Lampenlicht erreicht die Stelle. Bedrock: Blocklicht 0 und Himmelslicht unter 7 –
+   nachts ist das Himmelslicht im Freien 4, also entscheidet nur das Blocklicht.
+4. **Biom:** Pilzinseln und **Tiefes Dunkel** (seit 1.1.0) sind ausgenommen, dort spawnen keine normalen Monster.
 
-Pilzinseln sind ausgenommen. Im Zweifel zeigt die Spawnfackel lieber Rot.
+Im Zweifel zeigt die Spawnfackel lieber Rot.
 
 ## Technik
 
@@ -49,10 +57,12 @@ Pilzinseln sind ausgenommen. Im Zweifel zeigt die Spawnfackel lieber Rot.
 - Selbsttest (`tests/engine_selftest.js`, nur Testserver): Höhle mit Glas-, Teppich- und Stufenstreifen und einer
   Fackel; Plattform im Freien mittags. Rot genau dort, wo erwartet; keine Script-, Rezept- oder Item-Fehler.
 - Installiert am 2026-11-01 und im Spiel bestätigt („funktioniert gut“).
+- 1.1.0 (2026-11-02): Selbsttest zusätzlich mit umgedrehten/normalen Treppen und einer 1 Block hohen Lücke –
+  Ergebnis wie erwartet. Das Biom „Tiefes Dunkel“ ist nur per Node-Test geprüft (Biom-Name `deep_dark`).
 
 ## Installieren / rückgängig
 
-Wenn niemand spielt, auf dem Server:
+Wenn niemand spielt, auf dem Server (ein Update auf eine neue Version geht genauso, nur das Behavior Pack):
 
 ```bash
 sudo NO_RESTART=1 bash ~/mcportal-src/deploy/world-pack.sh mcportal_spawntorch_rp apply

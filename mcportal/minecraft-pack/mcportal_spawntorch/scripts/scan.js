@@ -59,7 +59,7 @@ export function* scanArea(dim, center, result) {
         for (let y = top; y >= bottom; y--) {
           const b = dim.getBlock({ x, y, z });
           if (!b) { column = []; break; }
-          column.push({ typeId: b.typeId, states: b.typeId.includes("slab") ? b.permutation.getAllStates() : undefined });
+          column.push({ typeId: b.typeId, states: /slab|stairs/.test(b.typeId) ? b.permutation.getAllStates() : undefined });
         }
       } catch {
         column = []; // chunk not loaded
