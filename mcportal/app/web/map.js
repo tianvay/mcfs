@@ -17,6 +17,10 @@ async function loadMap() {
     const m = await api("GET", "/api/map");
     renderMapState(m);
     $("#map-seed").textContent = m.seed || "–";
+    const cb = $("#map-chunkbase");
+    if (m.seed) cb.href = "https://www.chunkbase.com/apps/seed-map#seed=" + encodeURIComponent(m.seed) + "&platform=bedrock_26_50&dimension=overworld";
+    cb.hidden = !m.seed;
+    $("#map-chunkbase-none").hidden = !!m.seed;
     if (m.index && m.index.build !== (mapView.index && mapView.index.build)) {
       mapView.index = m.index;
       mapView.images.clear();

@@ -25,7 +25,8 @@ inkrementellem Zeichnen (K4) danach Sekunden.
 - Tab **„Karte“**: Oberwelt und Ende umschaltbar (der Nether wird bewusst nicht gezeichnet – von oben sieht man
   nur seine Grundgesteindecke); ziehen, Mausrad/Pinch, ＋/－, ⭐ = zurück zum Spawn;
   unten links Koordinaten unter der Maus. Darunter Stand, nächstes Neuzeichnen, **Seed** (aus der Übersicht
-  hierher verschoben) und der Knopf **„Jetzt neu zeichnen“**.
+  hierher verschoben), ein Link zur **Chunkbase-Seedkarte** (Seed vorausgefüllt, Bedrock 26.50; beides nur für
+  Admins) und der Knopf **„Jetzt neu zeichnen“**.
 - Gemessen auf dem Laptop (echte Welt, damals noch mit Nether: 20 404 + 1 404 + 666 Chunks): **106 s**, **200 MB RAM**,
   **5 MB Kacheln**; ohne Nether am PC 28 statt 33 s.
 - Abweichung vom Plan: Statt eigener systemd-Unit und Timer startet das Portal den Renderer selbst als
