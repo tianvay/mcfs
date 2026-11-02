@@ -1,0 +1,58 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Family Portal Blaupause",
+    "description": "Bereiche bis 32 × 32 × 32 speichern und einmal einsetzen.",
+    "uuid": "6ccfdabd-7de3-402a-9823-6a5f735c4f14",
+    "version": [
+      1,
+      0,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      21,
+      0
+    ]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "e94686f5-da27-4bd1-a9dc-7354e09ec134",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "6475e297-377a-48f4-88af-fda35fcb0a75",
+      "version": [
+        1,
+        0,
+        0
+      ],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "@SERVER_API@"
+    },
+    {
+      "module_name": "@minecraft/server-ui",
+      "version": "2.2.0"
+    },
+    {
+      "uuid": "144aa109-e9bd-41a2-9234-9dad52e50cc3",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    }
+  ]
+}

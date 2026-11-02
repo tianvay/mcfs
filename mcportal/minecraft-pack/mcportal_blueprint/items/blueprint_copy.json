@@ -1,0 +1,19 @@
+{
+  "format_version": "1.21.50",
+  "minecraft:item": {
+    "description": {
+      "identifier": "mcfs:blueprint_copy",
+      "menu_category": {
+        "category": "none"
+      }
+    },
+    "components": {
+      "minecraft:icon": "mcfs_blueprint_filled",
+      "minecraft:display_name": {
+        "value": "Blaupause (Kopie)"
+      },
+      "minecraft:max_stack_size": 2,
+      "minecraft:glint": true
+    }
+  }
+}

@@ -4,6 +4,9 @@ Stand: 2026-10-26
 
 ## Offen
 
+- [ ] **Blaupause (M15) installieren und im Spiel prüfen** (`docs/14-blaupause.md`): Craften, Markieren mit Umriss,
+      Namensfenster, Einsetzen in alle Richtungen, Kopieren über die Werkbank (wird der Platzhalter zu zwei
+      Blaupausen?), Schleichen + Benutzen.
 - [x] **`install.sh` ausgeführt** (30.10.): `mc-public-ip` läuft vor jedem Start („188.…, Ports 19140-19149 –
       unverändert“), neue Startprüfung (post als root) OK nach 4 s; `verify.sh`: Zugang von außen 10/10.
 - [x] **Bedrock 26.60 auf dem Server** per Update-Knopf: 27.10. 17:55 → 1.26.60.6, 30.10. 08:38 → 1.26.61.1.

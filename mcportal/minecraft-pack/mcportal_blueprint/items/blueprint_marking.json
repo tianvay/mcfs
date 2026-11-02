@@ -1,0 +1,18 @@
+{
+  "format_version": "1.21.50",
+  "minecraft:item": {
+    "description": {
+      "identifier": "mcfs:blueprint_marking",
+      "menu_category": {
+        "category": "none"
+      }
+    },
+    "components": {
+      "minecraft:icon": "mcfs_blueprint_marking",
+      "minecraft:display_name": {
+        "value": "Blaupause – Ecke 2 wählen"
+      },
+      "minecraft:max_stack_size": 1
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Family Portal Blaupause (Grafik)",
+    "description": "Bilder für die Blaupause und der Umriss beim Einsetzen.",
+    "uuid": "144aa109-e9bd-41a2-9234-9dad52e50cc3",
+    "version": [
+      1,
+      0,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      21,
+      0
+    ]
+  },
+  "modules": [
+    {
+      "type": "resources",
+      "uuid": "26fe0be2-84b3-41ab-9c46-0f261f81e0f2",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    }
+  ]
+}

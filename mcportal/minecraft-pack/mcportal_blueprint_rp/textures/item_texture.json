@@ -1,0 +1,15 @@
+{
+  "resource_pack_name": "mcportal_blueprint_rp",
+  "texture_name": "atlas.items",
+  "texture_data": {
+    "mcfs_blueprint": {
+      "textures": "textures/items/mcfs_blueprint"
+    },
+    "mcfs_blueprint_marking": {
+      "textures": "textures/items/mcfs_blueprint_marking"
+    },
+    "mcfs_blueprint_filled": {
+      "textures": "textures/items/mcfs_blueprint_filled"
+    }
+  }
+}
