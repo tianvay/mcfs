@@ -16,6 +16,16 @@ Update per Knopfdruck mit Backup und Rollback, Block-Statistik pro Spieler, Welt
 | [`analyse/inspect.sh`](analyse/inspect.sh) | Read-only Bestandsaufnahme eines Servers |
 | [`.claude/skills/bedrock-behavior-pack/`](.claude/skills/bedrock-behavior-pack/) | Skill für Claude Code: Behavior Packs für diesen Server bauen, testen, installieren und ans Portal anbinden |
 
+## Installation
+
+Auf einem frischen Ubuntu 24.04 (oder neuer), mit eigenem Seed (`123456789` ersetzen, ohne `--seed` wird gefragt):
+
+```bash
+sudo apt-get update && sudo apt-get install -y git && git clone https://github.com/tianvay/mcfs.git ~/mcfs && sudo bash ~/mcfs/mcportal/provision/setup.sh --install --seed 123456789
+```
+
+Details: [Installation auf einem frischen Server](docs/15-installation.md).
+
 ## Dokumentation
 
 1. [Analyse & Architektur](docs/01-analyse-und-architektur.md) – Ausgangslage, Rechtekonzept, M1–M3
@@ -29,7 +39,11 @@ Update per Knopfdruck mit Backup und Rollback, Block-Statistik pro Spieler, Welt
 9. [Timed Events](docs/09-events.md) – Paket 1: Mining Rush, Unwetter, Glückstag, M11
 10. [Timed Events Paket 2](docs/10-events-paket2.md) – Nachtgefahren: Zombie-Invasion, Blutmond, Kopfgeld-Boss, M12
 11. [Timed Events Paket 3](docs/11-events-paket3.md) – Meteorit, Sternschnuppen, Schatzsuche, Spukort, Meta-Erfolge, M13
-8. [To-dos](docs/TODO.md)
+12. [Zugang von außen](docs/12-zugang-von-aussen.md) – NetherNet, Portfreigaben, öffentliche IPv4
+13. [Spawnfackel](docs/13-spawnfackel.md) – roter Schleier, wo nachts Monster spawnen können, M14
+14. [Blaupause](docs/14-blaupause.md) – Bereiche speichern und einmal einsetzen, M15
+15. [Installation auf einem frischen Server](docs/15-installation.md) – ein Befehl, eigener Seed, M16
+16. [To-dos](docs/TODO.md)
 
 ## Grundsätze
 

@@ -6,6 +6,8 @@ behavior mcportal_waypoints
 behavior mcportal_events
 behavior mcportal_achievements
 behavior mcportal_spawntorch
+behavior mcportal_blueprint
 resource mcportal_waypoints_rp
 resource mcportal_events_rp
 resource mcportal_spawntorch_rp
+resource mcportal_blueprint_rp

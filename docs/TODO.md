@@ -82,9 +82,9 @@ Stand: 2026-10-26
 - [ ] **Aufräumen**, wenn die neue Welt ein paar Tage gut läuft: Testinstallation
       `~/Downloads/bedrock-server-1.21.51.02`, `/var/lib/mcportal/archive/*_testphase`,
       `/var/backups/mcportal-switch/*` (danach ist kein `--switch-back` mehr möglich).
-- [ ] Später: **`setup.sh --install`** für einen frischen Ubuntu-Server (fehlende Pakete wie `acl`/`curl`, Unit +
-      Konsole + Startprüfung direkt anlegen statt eine Testinstallation abzulösen, dann `install.sh`, Start,
-      `verify.sh`; Test in einer Wegwerf-VM). Startet mit neuer Welt – Welt-Umzug wäre ein eigener Schritt.
+- [ ] Beim nächsten Aktualisieren von `~/mcportal-src` prüft `verify.sh` auch die Blaupause (steht jetzt in
+      `packs.list`, M16) – vorher die Blaupause installieren, sonst meldet `verify.sh` sie als fehlend.
+- [ ] Später: Welt-Umzug auf einen neuen Server (`setup.sh --install` startet immer mit neuer Welt).
 - [ ] Später: **Web-Konsole** und **Log-Ansicht**.
 - [ ] Prüfen, ob ein Spieler, der gerade online ist, Operator-Rechte durch `permission reload` sofort bekommt.
 

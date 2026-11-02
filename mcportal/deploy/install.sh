@@ -199,7 +199,8 @@ for i in $(seq 1 60); do
   sleep 1
 done
 [[ -n "$ok" ]] || { journalctl -u mcportal -n 30 --no-pager; fail "Portal antwortet nicht (Log oben)"; }
-info "Portal: $(curl -s "http://127.0.0.1:$PORT/api/status" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["status"], "| Version", d["version"], "| Whitelist", d["allowlist_count"], "| Konsole", d["console_available"])')"
+# only the fields everyone may see (whitelist, console ... need the admin login since 30.10.)
+info "Portal: $(curl -s "http://127.0.0.1:$PORT/api/status" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["status"], "| Version", d["version"], "| Spieler", len(d["players"]))')"
 LARAVEL_AFTER="$(curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1/ || true)"
 info "Laravel: HTTP $LARAVEL_AFTER (vorher $LARAVEL_BEFORE)"
 [[ "$LARAVEL_AFTER" == "$LARAVEL_BEFORE" ]] || printf '    \033[1;33mWARNUNG: Laravel-Antwort hat sich geändert!\033[0m\n'

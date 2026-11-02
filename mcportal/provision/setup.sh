@@ -4,6 +4,14 @@
 #   sudo bash provision/setup.sh --prepare     [--conf FILE]
 #   sudo bash provision/setup.sh --switch      [--conf FILE] [--import-players | --import-allowlist]
 #   sudo bash provision/setup.sh --switch-back
+#   sudo bash provision/setup.sh --install     [--conf FILE] [--seed SEED] [--name SERVERNAME]
+#
+# --install sets up a FRESH Ubuntu server (no test installation to replace, docs/15-installation.md):
+#   packages (python3-venv, acl, curl, polkit, libcurl), /etc/mcportal/server.conf from the example (seed: --seed,
+#   else asked on a terminal, empty = random), steps 1-5 as --prepare, main unit + console socket, deploy/install.sh
+#   (portal, start check, public IP, update helpers), firewall ports, no suspend, first start (the world is created
+#   now), game rules, verify.sh. No probe copy: the real start is checked the same way (start check, every pack
+#   reports, no script errors). Re-running is safe; an existing world is kept (the seed then changes nothing).
 #
 # --prepare runs alongside the test server, without downtime:
 #   1. checks (root, tools, disk space, probe ports free, Laravel answer as reference)
@@ -56,31 +64,37 @@ GAME_DATA=(stats.json achievements.json events.json waypoints.json map)
 # pending operator assignments of the portal (current and first file name)
 PENDING_OPS=(pending_operator.json pending_survival.json)
 
-MODE="" CONF="" IMPORT=""
+MODE="" CONF="" IMPORT="" SEED="" SEED_SET=0 NAME=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --prepare) MODE=prepare ;;
     --switch) MODE=switch ;;
     --switch-back) MODE=switch-back ;;
+    --install) MODE=install ;;
     --import-players) IMPORT=all ;;
     --import-allowlist) IMPORT=allowlist ;;
     --conf) CONF="${2:-}"; shift ;;
+    --seed) SEED="${2:-}"; SEED_SET=1; shift ;;
+    --name) NAME="${2:-}"; shift ;;
     *) MODE=""; break ;;
   esac
   shift
 done
-[[ -n "$MODE" ]] || { echo "Aufruf: sudo bash $0 --prepare|--switch|--switch-back [--conf DATEI] [--import-players|--import-allowlist]"; exit 2; }
+[[ -n "$MODE" ]] || { echo "Aufruf: sudo bash $0 --prepare|--switch|--switch-back|--install [--conf DATEI] [--seed SEED] [--name SERVERNAME] [--import-players|--import-allowlist]"; exit 2; }
 [[ "$(id -u)" == 0 ]] || fail "Bitte mit sudo ausführen"
 
 laravel_code() { curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1/ || true; }
 players_online() { curl -s -m 5 "$PORTAL/api/status" | python3 -I -c 'import sys,json; print(len(json.load(sys.stdin)["players"]))'; }
 as_mc() { runuser -u "$MC_USER" -- "$@"; }
+# step numbers: --install runs the preparation as steps 3-7 of 12
+STEP_OFFSET=0 STEP_TOTAL=6
+pstep() { local n="$1"; shift; step "$((n + STEP_OFFSET))/$STEP_TOTAL $*"; }
 
 # ===========================================================================
-# preparation (steps 1-6) - shared by --prepare and --switch
+# preparation (steps 1-6) - shared by --prepare, --switch and --install
 # ===========================================================================
 prepare_checks() {
-  step "1/6 Prüfungen"
+  pstep 1 "Prüfungen"
   info "Einstellungen: $CONF"
   for tool in python3 curl tar runuser ss systemd-analyze; do command -v "$tool" >/dev/null || fail "$tool fehlt"; done
   mkdir -p "$MC_HOME"   # needed for the free-space check; owner fixed below
@@ -97,7 +111,7 @@ prepare_checks() {
 }
 
 prepare_user() {
-  step "2/6 Benutzer und Ordner"
+  pstep 2 "Benutzer und Ordner"
   if id -u "$MC_USER" >/dev/null 2>&1; then
     info "Benutzer $MC_USER gibt es schon"
   else
@@ -109,7 +123,7 @@ prepare_user() {
 }
 
 prepare_program() {
-  step "3/6 Serverprogramm"
+  pstep 3 "Serverprogramm"
   if [[ -x "$MC_DIR/bedrock_server" ]] && compgen -G "$MC_DIR/worlds/*/db" >/dev/null; then
     info "schon vorhanden in $MC_DIR, mit Welt – bleibt (Updates über den Knopf im Portal)"
   else
@@ -132,7 +146,7 @@ prepare_program() {
 }
 
 prepare_properties() {
-  step "4/6 server.properties"
+  pstep 4 "server.properties"
   python3 -I "$HERE/properties.py" merge "$MC_DIR/server.properties" "$HERE/server.properties.overrides" "$CONF" \
     || fail "server.properties konnte nicht angepasst werden"
   local key value
@@ -145,7 +159,7 @@ prepare_properties() {
 
 EXPECT=()   # log lines the probe start must show
 prepare_packs() {
-  step "5/6 Packs in die Welt"
+  pstep 5 "Packs in die Welt"
   if [[ -d "$WORLD/db" ]]; then
     info "Welt $WORLD_NAME gibt es schon – Packs bleiben unverändert (Änderungen: deploy/world-pack.sh)"
     return 0
@@ -191,7 +205,7 @@ probe_cleanup() {
 }
 
 probe_start() {
-  step "6/6 Probestart (Kopie, Ports $PROBE_V4/$PROBE_V6, mit Konsole und Startprüfung)"
+  pstep 6 "Probestart (Kopie, Ports $PROBE_V4/$PROBE_V6, mit Konsole und Startprüfung)"
   if [[ ${#EXPECT[@]} == 0 ]]; then
     info "übersprungen – die Welt gibt es schon, sie wird nicht für einen Probelauf kopiert"
     return 0
@@ -405,6 +419,175 @@ do_switch_back() {
 }
 
 # ===========================================================================
+# fresh installation (--install)
+# ===========================================================================
+install_packages() {
+  step "1/12 Pakete"
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update -q >/dev/null || fail "apt-get update fehlgeschlagen"
+  local pkgs=(python3 python3-venv curl acl ca-certificates iproute2 tar util-linux) missing=() p
+  # the portal's polkit rule is JavaScript: "polkitd" (Ubuntu 23.10 and newer); Bedrock needs libcurl
+  pkgs+=("$(apt-cache show polkitd >/dev/null 2>&1 && echo polkitd || echo policykit-1)")
+  pkgs+=("$(apt-cache show libcurl4t64 >/dev/null 2>&1 && echo libcurl4t64 || echo libcurl4)")
+  for p in "${pkgs[@]}"; do dpkg -s "$p" >/dev/null 2>&1 || missing+=("$p"); done
+  if (( ${#missing[@]} )); then
+    apt-get install -y -q --no-install-recommends "${missing[@]}" >/dev/null || fail "apt-get install ${missing[*]} fehlgeschlagen"
+    info "installiert: ${missing[*]}"
+  else
+    info "alles vorhanden"
+  fi
+  [[ -d /etc/polkit-1/rules.d ]] || fail "polkit ohne /etc/polkit-1/rules.d – Ubuntu 24.04 oder neuer nötig"
+}
+
+# set_conf <key> <value>: change one line of server.conf; checked by properties.py before it is kept
+set_conf() {
+  local tmp="$CONF.new"
+  if grep -q "^$1=" "$CONF"; then sed "s|^$1=.*|$1=$2|" "$CONF" > "$tmp"; else { cat "$CONF"; printf '%s=%s\n' "$1" "$2"; } > "$tmp"; fi
+  python3 -I "$HERE/properties.py" conf "$tmp" >/dev/null || { rm -f "$tmp"; fail "ungültiger Wert für $1: '$2'"; }
+  chmod 644 "$tmp"
+  mv "$tmp" "$CONF"
+}
+
+install_conf() {
+  step "2/12 Einstellungen"
+  if [[ -z "$CONF" ]]; then
+    CONF=/etc/mcportal/server.conf
+    if [[ ! -f "$CONF" ]]; then
+      install -d -m 755 /etc/mcportal
+      install -m 644 "$HERE/server.conf.example" "$CONF"
+      info "$CONF angelegt (aus server.conf.example – später anpassen, dann erneut --install)"
+    fi
+  fi
+  load_conf "$CONF"
+  info "Einstellungen: $CONF"
+  if [[ -d "$MC_DIR/worlds/$WORLD_NAME/db" ]]; then
+    (( SEED_SET )) && warn "Die Welt $WORLD_NAME gibt es schon – der Seed ändert nichts mehr"
+  else
+    if (( ! SEED_SET )) && [[ -t 0 ]]; then
+      read -r -p "    Seed für die neue Welt (Enter = zufällig): " SEED
+      SEED_SET=1
+    fi
+    (( SEED_SET )) && set_conf LEVEL_SEED "$SEED"
+  fi
+  [[ -n "$NAME" ]] && set_conf SERVER_NAME "$NAME"
+  load_conf "$CONF"
+  local seed; seed="$(sed -n 's/^LEVEL_SEED=//p' "$CONF")"
+  info "Server: $(sed -n 's/^SERVER_NAME=//p' "$CONF"), Welt: $WORLD_NAME, Seed: ${seed:-zufällig}"
+
+  if [[ -f "$UNIT_FILE" ]]; then
+    local dir; dir="$(systemctl show -p WorkingDirectory --value "$UNIT")"
+    [[ "$dir" == "$MC_DIR" ]] || fail "Hier gibt es schon einen Minecraft-Server ($dir) – zum Ablösen: --prepare / --switch"
+    info "$UNIT gibt es schon ($MC_DIR) – erneute Installation"
+  fi
+}
+
+# the home network of the default route, e.g. 192.168.1.0/24 (the portal is only reachable from there)
+lan_cidr() {
+  local dev; dev="$(ip -4 route show default | awk '{for (i = 1; i < NF; i++) if ($i == "dev") {print $(i + 1); exit}}')"
+  [[ -n "$dev" ]] || return 0
+  ip -4 -o addr show dev "$dev" | awk '{print $4; exit}' \
+    | python3 -I -c 'import ipaddress,sys; print(ipaddress.ip_interface(sys.stdin.read().strip()).network)' 2>/dev/null || true
+}
+
+install_units() {
+  step "8/12 Dienst und Konsole"
+  python3 -I "$HERE/properties.py" render "$HERE/minecraft-bedrock.service.in" "$CONF" > "$UNIT_FILE.new" \
+    || fail "Unit konnte nicht erzeugt werden"
+  chmod 644 "$UNIT_FILE.new"
+  mv "$UNIT_FILE.new" "$UNIT_FILE"
+  render_socket "$MC_USER"
+  install -d -m 755 "$UNIT_FILE.d"
+  install -m 644 "$REPO/deploy/10-portal.conf" "$UNIT_FILE.d/10-portal.conf"
+  # mc-public-ip asks the router (UPnP) for the public IPv4 - here the default gateway, not a fixed address
+  local gw; gw="$(ip -4 route show default | awk '{print $3; exit}')"
+  if [[ -n "$gw" ]]; then
+    printf '# Router for mc-public-ip (default gateway at installation, provision/setup.sh --install)\n[Service]\nEnvironment=MC_ROUTER=%s\n' "$gw" \
+      > "$UNIT_FILE.d/31-router.conf"
+    info "Router für die öffentliche IPv4: $gw"
+  fi
+  systemctl daemon-reload
+  systemctl enable "$UNIT" >/dev/null 2>&1
+  info "$UNIT_FILE: $MC_DIR, Benutzer $MC_USER, Konsole $SOCKET_FILE"
+}
+
+install_portal() {
+  step "9/12 Portal, Startprüfung, öffentliche IP"
+  local lan; lan="$(lan_cidr)"
+  [[ -n "$lan" ]] && export LAN_CIDR="$lan"
+  portal_install || fail "deploy/install.sh fehlgeschlagen"
+}
+
+install_system() {
+  step "10/12 Firewall und Ruhezustand"
+  if ufw status 2>/dev/null | grep -q '^Status: active'; then
+    local udp; udp="$(sed -n 's/^Environment=MC_UDP_PORTS=//p' "$REPO/deploy/30-public-ip.conf")"
+    ufw allow "$PORT_V4" comment minecraft >/dev/null
+    ufw allow "$PORT_V6" comment minecraft >/dev/null
+    ufw allow "${udp/-/:}/udp" comment 'minecraft nethernet' >/dev/null
+    info "ufw: $PORT_V4, $PORT_V6 (TCP+UDP) und $udp/udp erlaubt"
+  else
+    info "ufw nicht aktiv – nichts zu tun"
+  fi
+  bash "$REPO/deploy/no-suspend.sh" apply 2>&1 | sed 's/^/    /' || warn "no-suspend.sh fehlgeschlagen"
+}
+
+install_start() {
+  step "11/12 Start (die Welt entsteht jetzt)"
+  if systemctl is-active -q "$UNIT"; then
+    info "läuft schon – kein Neustart (Packs ändern: deploy/world-pack.sh)"
+  elif ! systemctl start "$UNIT" || ! wait_minecraft; then
+    journalctl -u "$UNIT" -n 30 -o cat --no-pager | sed 's/^/    /'
+    fail "Start fehlgeschlagen (Log oben)"
+  fi
+  info "$(journalctl -u "$UNIT" -o cat --no-pager -n 300 | grep -a -m1 'start-check: OK' || echo 'gestartet')"
+  local seed
+  seed="$(python3 -I - "$REPO/app/adapters/bedrock/leveldat.py" "$WORLD" <<'PY'
+import importlib.util, sys
+from pathlib import Path
+spec = importlib.util.spec_from_file_location("leveldat", sys.argv[1]); m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+print(m.read_seed(Path(sys.argv[2])))
+PY
+)" || seed="?"
+  info "Seed der Welt: $seed"
+  gamerules_apply /run/minecraft-bedrock/console "$UNIT" \
+    || warn "Spielregeln nicht vollständig gesetzt – von Hand in der Konsole: gamerule <Regel> <Wert>"
+}
+
+do_install() {
+  install_packages
+  install_conf
+  PACKS="$(pack_lines)"
+  WORLD="$MC_DIR/worlds/$WORLD_NAME"
+  STEP_OFFSET=2 STEP_TOTAL=12
+  prepare_checks
+  prepare_user
+  prepare_program
+  prepare_properties
+  prepare_packs
+  chown -R "$MC_USER:$MC_USER" "$MC_DIR"
+  install_units
+  install_portal
+  install_system
+  install_start
+  step "12/12 Abnahme (verify.sh)"
+  check_rights
+  local ok=1
+  bash "$HERE/verify.sh" --conf "$CONF" || ok=0
+  if [[ -t 0 ]] && grep -qx 'password_hash = ""' /etc/mcportal/config.toml; then
+    step "Admin-Passwort für das Portal (Whitelist, Events, Server-Seite)"
+    bash "$REPO/deploy/set-password.sh" || warn "Passwort nicht gesetzt – später: sudo bash $REPO/deploy/set-password.sh"
+  fi
+  (( ok )) || fail "verify.sh meldet Fehler (siehe oben)"
+  printf '\n\033[1;32mInstalliert.\033[0m Minecraft läuft aus %s als %s, Portal: http://%s:8080\n' \
+    "$MC_DIR" "$MC_USER" "$(hostname -I | awk '{print $1}')"
+}
+
+# ===========================================================================
+if [[ "$MODE" == install ]]; then
+  do_install
+  exit 0
+fi
 LARAVEL_BEFORE="$(laravel_code)"
 info "Laravel: HTTP $LARAVEL_BEFORE auf Port 80 (Vergleichswert)"
 case "$MODE" in

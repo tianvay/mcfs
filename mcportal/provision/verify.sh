@@ -48,19 +48,29 @@ fi
 [[ "$U_USER" != root && -n "$U_USER" ]] && ok "Minecraft läuft nicht als root" || bad "Minecraft läuft als root"
 PORT="$(sed -n 's/^server-port=//p' "$U_DIR/server.properties")"
 if ss -Htuln "sport = :$PORT" | grep -q .; then ok "Spieler-Port $PORT offen"; else bad "Spieler-Port $PORT nicht offen"; fi
-# external access: the UDP lines must carry the router's current public IPv4 (written by mc-public-ip at the start)
-if PUB="$(python3 -I - "$REPO/deploy/mc-public-ip" "$U_DIR/server.properties" 2>&1 <<'PY'
+# external access: the UDP lines must carry the router's current public IPv4 (written by mc-public-ip at the start).
+# Router as the unit gives it to mc-public-ip (31-router.conf from setup.sh --install), else its default.
+ROUTER="$(systemctl show -p Environment --value "$UNIT" | tr ' ' '\n' | sed -n 's/^MC_ROUTER=//p')"
+PUB="$(python3 -I - "$REPO/deploy/mc-public-ip" "$U_DIR/server.properties" "${ROUTER:-192.168.178.1}" 2>&1 <<'PY'
 import importlib.machinery, importlib.util, sys
 loader = importlib.machinery.SourceFileLoader("mc_public_ip", sys.argv[1])
 spec = importlib.util.spec_from_loader("mc_public_ip", loader); m = importlib.util.module_from_spec(spec); loader.exec_module(m)
-ip = m.public_ipv4("192.168.178.1")
+try:
+    ip = m.public_ipv4(sys.argv[3])
+except Exception as e:  # no UPnP router (other router, VM): nothing to compare with
+    print(f"Router {sys.argv[3]} nennt keine öffentliche IPv4 ({e}) – Portfreigaben von Hand, docs/12-zugang-von-aussen.md")
+    sys.exit(2)
 lines = [l for l in open(sys.argv[2], encoding="utf-8").read().splitlines() if l.startswith("server-udp-ports=")]
 good = [l for l in lines if l.startswith(f"server-udp-ports={ip}:")]
 print(f"{len(good)} von {len(lines)} UDP-Zeilen mit der öffentlichen IPv4 {ip}")
 sys.exit(0 if lines and len(good) == len(lines) else 1)
 PY
-)"; then ok "Zugang von außen: $PUB"
-else bad "Zugang von außen: $PUB – Minecraft neu starten (mc-public-ip trägt die IPv4 beim Start ein)"; fi
+)" && RC=0 || RC=$?
+case "$RC" in
+  0) ok "Zugang von außen: $PUB" ;;
+  2) note "Zugang von außen: $PUB" ;;
+  *) bad "Zugang von außen: $PUB – Minecraft neu starten (mc-public-ip trägt die IPv4 beim Start ein)" ;;
+esac
 
 # ---------------------------------------------------------------------------
 step "Spielregeln (gamerules.list)"
@@ -114,13 +124,20 @@ fi
 
 # ---------------------------------------------------------------------------
 step "Portal"
+# without the admin login the portal shows only its public status fields (console, update check: admin only)
 STATUS="$(curl -s -m 10 "$PORTAL/api/status" || true)"
-if python3 -I -c 'import json,sys; d=json.loads(sys.argv[1]); assert d["active_state"]=="active" and d["console_available"]' "$STATUS" 2>/dev/null
-then ok "Portal antwortet, sieht den Server und die Konsole"; else bad "Portal: /api/status nicht wie erwartet"; fi
-UPD="$(curl -s -m 40 -X POST "$PORTAL/api/update/check" || true)"
-if VERS="$(python3 -I -c 'import json,sys; d=json.loads(sys.argv[1]); assert d["latest"] and not d["check_error"]; print("läuft", d["current"], "- neueste", d["latest"])' "$UPD" 2>/dev/null)"
-then ok "Update-Prüfung geht ($VERS)"
-else bad "Update-Prüfung fehlgeschlagen"; fi
+if CURRENT="$(python3 -I -c 'import json,sys; d=json.loads(sys.argv[1]); assert d["active_state"]=="active"; print(d["version"])' "$STATUS" 2>/dev/null)"
+then ok "Portal antwortet und sieht den Server (Version $CURRENT)"; else bad "Portal: /api/status nicht wie erwartet"; fi
+# the update button's check, with the portal's own release module (minecraft.net reachable, newest version)
+if LATEST="$(python3 -I - "$REPO/app/adapters/bedrock/release.py" 2>&1 <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("mcfs_release", sys.argv[1]); m = importlib.util.module_from_spec(spec)
+sys.modules["mcfs_release"] = m
+spec.loader.exec_module(m)
+print(m.latest().version)
+PY
+)"; then ok "Update-Prüfung geht (läuft ${CURRENT:-?}, neueste $LATEST)"
+else bad "Update-Prüfung fehlgeschlagen: $(tail -n 1 <<<"$LATEST")"; fi
 LARAVEL="$(curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1/ || true)"
 if [[ -z "$LARAVEL_EXPECT" ]]; then info "Laravel: HTTP $LARAVEL (Vergleich mit --laravel CODE)"
 elif [[ "$LARAVEL" == "$LARAVEL_EXPECT" ]]; then ok "Laravel antwortet wie vorher (HTTP $LARAVEL)"
