@@ -82,12 +82,14 @@ test("dark or lit, from total and sky light (values from the test server)", () =
   assert.equal(isDark(4, 4, () => 0), true, "midnight in the open");
 });
 
-test("column: spots need a solid floor and an open block above it", () => {
+test("column: spots need a solid floor and two open blocks above it", () => {
   const col = (...ids) => ids.map((b) => (typeof b === "string" ? { typeId: "minecraft:" + b, states: {} } : b));
   // index:        0      1      2        3       4      5      6
   assert.deepEqual(spotsInColumn(col("air", "air", "stone", "air", "air", "glass", "air")), [1]);
   assert.deepEqual(spotsInColumn(col("air", "short_grass", "grass_block")), [1]);
-  assert.deepEqual(spotsInColumn(col("stone", "air", "stone")), [1], "one block high is enough (spiders)");
+  assert.deepEqual(spotsInColumn(col("stone", "air", "stone")), [], "one block high is not enough");
+  assert.deepEqual(spotsInColumn(col("stone", "air", "air", "stone")), [2], "two blocks high");
+  assert.deepEqual(spotsInColumn(col("air", "short_grass", "air", "stone")), [2], "grass in the head block");
   assert.deepEqual(spotsInColumn(col("rail", "air", "stone")), [], "rail in the block above");
   assert.deepEqual(spotsInColumn(col("air", "water", "stone")), [], "water");
   assert.deepEqual(spotsInColumn(col("air", "air", { typeId: "minecraft:oak_stairs", states: { upside_down_bit: true } })), [1]);

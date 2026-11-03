@@ -2,8 +2,7 @@
 //
 // A block gets the red veil when a hostile mob could spawn ON it at night (Bedrock rules, minecraft wiki "Spawn"):
 //   1. the block itself has a full, solid top (no glass, leaves, bottom slab, upright stairs, carpet ...),
-//   2. the block above is free for the mob's feet (air, grass, flowers, thin snow ...) - one block is enough,
-//      spiders fit; no rail or redstone part in the block above that either,
+//   2. the two blocks above are free for the mob (air, grass, flowers, thin snow ...) - a 1 block gap counts as safe,
 //   3. no block light reaches the space above (Bedrock: block light 0 and sky light below 7 - at night the
 //      sky light in the open is 4, so only block light decides),
 //   4. not in a biome without monsters (mushroom fields, deep dark).
@@ -12,8 +11,8 @@
 export const ITEM_ID = "mcfs:spawn_torch";
 export const PARTICLE_ID = "mcfs:spawn_veil";
 export const RADIUS = 16; // ~1 chunk around the player
-export const BELOW = 10; // blocks below the feet that are still scanned
-export const ABOVE = 6; // blocks above the feet
+export const BELOW = 3; // spots up to 3 blocks below the player's feet are scanned
+export const ABOVE = 3; // and up to 3 blocks above
 
 const id = (typeId) => typeId.replace(/^minecraft:/, "");
 
@@ -52,10 +51,7 @@ export function isSpawnFloor(typeId, states = {}) {
   return true;
 }
 
-// rails and redstone parts stop spawning in the feet block and in the block above it
-const NO_HEAD = /rail$|redstone|repeater|comparator|^lever$|button$|pressure_plate$|tripwire|observer|daylight_detector|^target$|sculk_sensor/;
-
-/** typeId of a block above the floor -> room for a mob's feet? */
+/** typeId of a block above the floor -> room for a mob's body? */
 export function isOpen(typeId) {
   return OPEN.test(id(typeId));
 }
@@ -121,13 +117,13 @@ export function statusText(dark, scanning) {
 
 /**
  * One column of blocks, top to bottom ([{typeId, states}], index 0 = highest block) ->
- * indexes of the free blocks a mob could spawn in (floor below is solid, the block is open, no rail/redstone above).
+ * indexes of the free blocks a mob could spawn in (floor below is solid, the block and the one above it are open).
  */
 export function spotsInColumn(column) {
   const spots = [];
   for (let i = 1; i < column.length - 1; i++) {
     const floor = column[i + 1];
-    if (isOpen(column[i].typeId) && !NO_HEAD.test(id(column[i - 1].typeId)) && isSpawnFloor(floor.typeId, floor.states)) {
+    if (isOpen(column[i].typeId) && isOpen(column[i - 1].typeId) && isSpawnFloor(floor.typeId, floor.states)) {
       spots.push(i);
     }
   }

@@ -1,13 +1,13 @@
 # Spawnfackel (Änderung M14)
 
-Stand: 2026-11-02 (Version 1.1.0) · Packs `mcportal_spawntorch` (Verhalten) + `mcportal_spawntorch_rp` (Grafik)
+Stand: 2026-11-03 (Version 1.2.0) · Packs `mcportal_spawntorch` (Verhalten) + `mcportal_spawntorch_rp` (Grafik)
 
 ## Für Spieler
 
 **Spawnfackel craften** (Werkbank): alle 9 Felder mit **Fackeln** füllen → 1 **Spawnfackel** (nicht stapelbar).
 
 **Benutzen:** Die Spawnfackel in die Hand nehmen. Rund um den Spieler (etwa 1 Chunk = 16 Blöcke in jede Richtung,
-10 Blöcke nach unten, 6 nach oben) bekommt jeder Block einen **roten Schleier**, auf dem nachts Monster spawnen
+3 Blöcke nach unten und 3 nach oben, seit 1.2.0) bekommt jeder Block einen **roten Schleier**, auf dem nachts Monster spawnen
 könnten. Dort fehlt Licht. Unten in der Leiste steht, wie viele dunkle Stellen es gibt
 („Alles hell genug …“, wenn keine).
 
@@ -26,9 +26,9 @@ Minecraft-Wiki, Seite „Spawn“, Abschnitt „Bedrock spawn conditions“):
 1. **Boden:** Der Block hat eine volle, feste Oberseite. Nicht rot werden Glas, Laub, untere Stufen (Slabs),
    richtig herum gesetzte Treppen, Kupfergitter, Zäune, Mauern, Truhen, Magma u. Ä. Obere Stufen und **umgedrehte Treppen**
    zählen als Boden (seit 1.1.0).
-2. **Platz:** Der Block darüber ist frei – Luft, Gras, Blumen, dünner Schnee. **Ein Block Höhe reicht**
-   (seit 1.1.0; Spinnen passen hinein). Teppich, Schienen, Druckplatten, Knöpfe, Fackeln oder Redstone auf dem
-   Boden machen die Stelle sicher, Schienen und Redstone-Teile auch im Block darüber.
+2. **Platz:** Die **zwei Blöcke** darüber sind frei – Luft, Gras, Blumen, dünner Schnee (seit 1.2.0; eine nur
+   1 Block hohe Lücke bleibt ohne Schleier). Teppich, Schienen, Druckplatten, Knöpfe, Fackeln oder Redstone auf
+   dem Boden oder im Block darüber machen die Stelle sicher.
 3. **Licht:** Kein Fackel-/Lampenlicht erreicht die Stelle. Bedrock: Blocklicht 0 und Himmelslicht unter 7 –
    nachts ist das Himmelslicht im Freien 4, also entscheidet nur das Blocklicht.
 4. **Biom:** Pilzinseln und **Tiefes Dunkel** (seit 1.1.0) sind ausgenommen, dort spawnen keine normalen Monster.
@@ -57,6 +57,8 @@ Im Zweifel zeigt die Spawnfackel lieber Rot.
 - Selbsttest (`tests/engine_selftest.js`, nur Testserver): Höhle mit Glas-, Teppich- und Stufenstreifen und einer
   Fackel; Plattform im Freien mittags. Rot genau dort, wo erwartet; keine Script-, Rezept- oder Item-Fehler.
 - Installiert am 2026-11-01 und im Spiel bestätigt („funktioniert gut“).
+- 1.2.0 (2026-11-03): Höhe auf 3 Blöcke über/unter dem Spieler begrenzt, 2 Blöcke Platz nötig – nur per
+  Node-Test geprüft, noch nicht installiert.
 - 1.1.0 (2026-11-02): Selbsttest zusätzlich mit umgedrehten/normalen Treppen und einer 1 Block hohen Lücke –
   Ergebnis wie erwartet. Das Biom „Tiefes Dunkel“ ist nur per Node-Test geprüft (Biom-Name `deep_dark`).
 
