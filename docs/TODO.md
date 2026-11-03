@@ -1,95 +1,80 @@
 # To-do – Minecraft Family Portal
 
-Stand: 2026-10-26
+Stand: 2026-11-03 (mit dem Server abgeglichen: Log, sudo-Verlauf, Prüfsummen von `/opt/mcportal/app` und
+`~/mcportal-src`)
 
 ## Offen
 
-- [ ] **Blaupause (M15) installieren und im Spiel prüfen** (`docs/14-blaupause.md`): Craften, Markieren mit Umriss,
-      Namensfenster, Einsetzen in alle Richtungen, Kopieren über die Werkbank (wird der Platzhalter zu zwei
-      Blaupausen?), Schleichen + Benutzen.
-- [x] **`install.sh` ausgeführt** (30.10.): `mc-public-ip` läuft vor jedem Start („188.…, Ports 19140-19149 –
-      unverändert“), neue Startprüfung (post als root) OK nach 4 s; `verify.sh`: Zugang von außen 10/10.
-- [x] **Bedrock 26.60 auf dem Server** per Update-Knopf: 27.10. 17:55 → 1.26.60.6, 30.10. 08:38 → 1.26.61.1.
-      Zugang von außen (IPv4 + Mobilfunk) am 28.10. mit 26.60 bestätigt. Bei späteren Updates prüfen, ob
-      `server-udp-ports` weiterhin eine Zeile pro Port braucht (Mojira BDS-23108).
+### Im Spiel ansehen
+
+- [ ] **Blaupause (M15)** (installiert 02.11. 18:29, Pack startet ohne Fehler; `docs/14-blaupause.md`): Craften,
+      Markieren mit Umriss, Namensfenster, Einsetzen in alle Richtungen, Kopieren über die Werkbank (wird der
+      Platzhalter zu zwei Blaupausen?), Schleichen + Benutzen.
+- [ ] **Spawnfackel 1.1.0** (installiert 02.11. 10:00): Schleier bei umgedrehten Treppen, 1 Block hohen Lücken,
+      im Tiefen Dunkel stimmig?
+- [ ] **Events – Aussehen und Wirkung.** Laut Log sind alle Events schon mit Spielern gelaufen außer **Glückstag** und
+      **Creeper-Chaos** (liefen nur, als niemand online war). Keine Script-Fehler. Offen ist nur noch, ob alles so
+      aussieht und wirkt wie gedacht: Titel/Chat/Sound, Unwetter mit Blitzen (nicht bei Bauten), Erze doppelt beim
+      Mining Rush, Blutmond (Nebel, roter Bildschirm, Wölfe, Schlafsperre), Zombie-Wellen am Dorf, Lichtsäule beim
+      Kopfgeld, Meteor-Krater, Sternenstücke, Schatztruhe, Spukort, Hexenzirkel, Spuk-Nebel.
+- [ ] **Boss-Aussehen**: Bosse 1,5-fach groß und eingefärbt (Bernd violett, Sven gold, Susi rot).
+- [ ] **Statistik 2.0** im Tab „Statistik“ durchsehen (Tode, Mobs, Essen, XP, Setzlinge, Züchten, Strecke, Spielzeit) –
+      die Daten kommen an; Auffälligkeiten melden.
+- [ ] Wegpunkte: Teleport in den Nether/ins Ende, Diamant abbauen, Xbox (Grafik-Download); Ruinen ansehen (einen
+      Wegpunkt löschen); „Dorf“ ggf. mit `/warp public Dorf` freigeben.
+- [ ] Operator-Nachrichten ausprobieren (Vergeben/Entziehen, online und offline); bekommt ein Spieler, der gerade
+      online ist, die Rechte durch `permission reload` sofort?
+
+### Zugang und Aufräumen
+
 - [ ] Zugang von außen: ein **Name statt der Zahl** für Freunde (MyFRITZ!-Adresse zeigt auch auf die IPv6 der
       Fritzbox – testen oder einen Namen nur mit IPv4 einrichten).
-- [ ] playit.gg ist nicht mehr nötig – ob vom Laptop entfernt, prüfen (`systemctl status playit`).
+- [ ] **Aufräumen** (die neue Welt läuft seit 30.10. ohne Probleme): Testinstallation
+      `~/Downloads/bedrock-server-1.21.51.02` (darin liegen auch `bedrock-server.zip` und der XAMPP-Installer),
+      `/var/lib/mcportal/archive/*_testphase`, `/var/backups/mcportal-switch/*` (danach ist kein `--switch-back` mehr
+      möglich). Platz ist genug (79 GB frei), es eilt also nicht.
+- [ ] Kosmetik: Beim Beenden des Portals kann die gerade laufende Statusabfrage einen Fehler protokollieren
+      („status poll failed … SIGTERM“, `app/services/minecraft.py`) – seit 30.10. nicht mehr aufgetreten, aber nicht behoben.
 
-- [ ] **Creeper-Chaos, Hexenzirkel, Spuk-Nebel im Spiel ansehen** (installiert 26.10. 21:18: Events-Pack 1.4.0,
-      Erfolge-Pack 1.4.0, Grafik-Pack 1.1.0).
-- [ ] Weitere Mob-Event-Ideen (Liste vom 26.10.): Knochensturm (Skelette, „Knochenbrecher“), Spinnennacht
+### Beobachten / warten
+
+- [ ] **Sunny** kann erst Operator werden, nachdem Sunny einmal verbunden war (bis 03.11. noch nie im Log).
+- [ ] **Beitritt nach Neustart gescheitert** (2026-10-26, seitdem nicht wieder). Falls es wieder passiert:
+      Zeitpunkt notieren, Server über das Portal neu starten, Bescheid geben. Diagnose: `~/mcportal-backups/diagnose-06-41/`.
+- [ ] **Chatlog im Portal** (nur Nachrichten an alle): wartet, bis Mojang `world.afterEvents.chatSend` aus dem
+      Beta-Stadium holt (Stand 26.10.: nur in `@minecraft/server` 2.11.0-beta). Bei jedem Server-Update prüfen.
+- [ ] Bei Bedrock-Updates prüfen, ob `server-udp-ports` weiterhin eine Zeile pro Port braucht (Mojira BDS-23108).
+- [ ] Nach größeren Minecraft-Updates: `tools/make_bosses.py` neu laufen lassen (Bosse folgen dem Vanilla-Verhalten).
+
+### Später / Ideen
+
+- [ ] Weitere Mob-Events (Liste vom 26.10.): Knochensturm (Skelette, „Knochenbrecher“), Spinnennacht
       („Arachnophobie“), Untotenarmee (Zombies+Skelette+Ertrunkene, „Letzte Bastion“), Wilde Jagd („Jäger oder
       Gejagter“), Tierwanderung („Tierfreund“), Elite-Mob („Bosskiller“), Der eine Zombie („David gegen Goliath“),
       Königin der Nacht (große Spinne + kleine, „Arachnidenjäger“), Geisterstunde (unsichtbare Gegner, „Ich habe
       nichts gesehen“).
-- [ ] **Events im Spiel prüfen** (über die Kachel „Events“ starten): Titel/Chat/Sound, Unwetter mit Blitzen
-      (nicht bei Bauten), Mining Rush (Erze doppelt, mit Glück; Silk Touch einfach), Glückstag (Erfahrung doppelt),
-      Restzeit in der Aktionsleiste, Erfolge „Mittendrin…“ usw. nach dem 5. Event.
-- [ ] **Paket 2 im Spiel prüfen** (Reiter „Events“): Blutmond (Nebel, roter Bildschirm, Wölfe greifen an,
-      Schlafsperre), Zombie-Invasion (Wellen am Dorf, Dorfbewohner bleiben heil, Extra-Beute), Kopfgeld (Lichtsäule von
-      weitem sichtbar? Helm/Schwert, Hinweise mit Höhe, Kopfgeld). Wetter-/Tageszeit-Knöpfe ausprobieren.
-- [ ] **Paket 3 im Spiel prüfen** (Reiter Events): Meteorit (Countdown, Feuerspur, Krater mit Diamanten; nicht bei
-      Bauten), Sternschnuppen (Spuren am Himmel, Sternenstücke aufsammeln), Schatzsuche (Hinweise, Truhe öffnen),
-      Spukort (Nebel, Glocke, Fluch brechen). Erfolge: Welle III, Volltreffer, Sterntaler, Schatzsucher, Geisterjäger,
-      Meta-Erfolge.
-- [ ] **Boss-Aussehen im Spiel ansehen** (installiert 26.10. 16:57): Bosse 1,5-fach groß und eingefärbt
-      (Bernd violett, Sven gold, Susi rot).
-- [x] **Zombie-Bernd sichtbar?** (27.10. im Spiel bestätigt) Events-Pack 1.4.1 + Grafik-Pack 1.1.1 (installiert 27.10. 06:16; Bernd im 1.8.0-Grafikformat, keine
-      Verwandlung in Ertrunkenen/Eiswanderer): nach der Installation einmal `/summon mcfs:boss_zombie ~ ~ ~3 0 0
-      minecraft:as_adult` und ansehen.
-- [ ] Nach größeren Minecraft-Updates: `tools/make_bosses.py` neu laufen lassen (Bosse folgen dem Vanilla-Verhalten).
-- [ ] **Chatlog im Portal** (eigener Punkt in der Übersicht, nur Nachrichten an alle – keine `/tell`, keine Befehle):
-      warten, bis Mojang das Chat-Ereignis (`world.afterEvents.chatSend`) aus dem Beta-Stadium holt. Stand 2026-10-26:
-      nur in `@minecraft/server` 2.11.0-beta; stabil ist 2.10.0 ohne Chat; der Server-Log enthält keinen Chat.
-      Bei jedem Server-Update prüfen (Probe-Pack wie in der Sitzung vom 26.10., Testserver).
-- [ ] Prüfen, ob der Karten-Nachtlauf am 27.10. um 04:00 kam (Protokoll im Server-Tab).
-- [ ] Später, nicht dringend: Karte K3 Spielerpositionen (Statistik-Pack 2.1.0) · K4 nur Geändertes neu
-      zeichnen, Biom-Färbung (Plan: `docs/08-karte.md`).
-
-- [ ] Ruinen im Spiel ansehen: einen Wegpunkt löschen (Kohleblock, Kupferlaternen).
-- [ ] „Dorf“ ggf. mit `/warp public Dorf` freigeben; Schalter „Öffentlich“ beim nächsten Setzen ausprobieren.
-- [ ] Wegpunkte noch ausprobieren: Teleport in den Nether/ins Ende, Diamant abbauen, Xbox (Grafik-Download).
-- [ ] Operator-Nachrichten im Spiel ausprobieren (Vergeben/Entziehen, online und offline).
-- [ ] Kosmetik: Beim Beenden des Portals protokolliert die gerade laufende Statusabfrage einen Fehler
-      („status poll failed … SIGTERM“) – beim Herunterfahren nicht mehr als Fehler loggen.
-- [ ] **Beobachten: Beitritt nach Neustart gescheitert** (2026-10-26). Nach dem Neustart fürs Pack-Upgrade
-      (06:33) kam niemand mehr auf den Server (PC und Xbox: `InitialConnection-145`, `NetherNet:2193`); im
-      Server-Log kam kein Versuch an. Ein weiterer Neustart (06:42) hat es behoben, mit Pack 2.0. Ursache
-      unklar: Die Verbindungen zu Microsofts Verbindungsdienst stehen auch im Normalbetrieb nach ~2 min auf
-      CLOSE-WAIT, das war es also nicht. Diagnose: `~/mcportal-backups/diagnose-06-41/`. Falls es wieder
-      passiert: Zeitpunkt notieren, Server über das Portal neu starten, Bescheid geben.
-- [ ] **Statistik 2.0 im Spiel prüfen**: Tode, Mobs, Essen, XP, Setzlinge, Züchten, Strecke (Boot/Elytra …), Spielzeit –
-      nach dem nächsten Spielen im Tab „Statistik“ ansehen; Auffälligkeiten melden.
-- [ ] Optional **Platz schaffen** im Serverordner: `bedrock-server.zip` (95 MB) und
-      `xampp-linux-x64-8.2.12-0-installer.run` (160 MB) braucht der Server nicht.
-- [ ] **Sunny** kann erst Operator werden, nachdem Sunny einmal verbunden war.
-- [x] **Reproduzierbarer Aufbau – Umstieg auf die neue Welt am 30.10.2026** („Family and Friends“, Welt „FAF“,
-      `/opt/minecraft/bedrock`, Benutzer `minecraft`, kein PvP, Whitelist ohne Operatoren), siehe
-      `docs/04-reproduzierbarer-aufbau.md` (R6).
-- [x] **Neue Welt im Spiel** (30.10.): Beitreten klappt; erste Karte gezeichnet (349 Chunks Oberwelt).
-      Im Lauf der nächsten Tage beobachten: Wegpunkte, Events, Erfolge, Statistik im Portal.
-- [ ] Beim nächsten `install.sh` kommt der Karten-Fix für ganz neue Welten mit (`app/map/render.py`).
-- [ ] **Admin-Anmeldung ausrollen** (gebaut 30.10.): erst `sudo bash ~/mcportal-src/deploy/set-password.sh`,
-      dann `install.sh`. Danach sehen Kinder/Gäste nur Übersicht, Statistik, Karte (ohne Seed); Whitelist,
-      Events, Server nur nach Anmeldung. Kinder-iPads: Seite in Safari „Zum Home-Bildschirm“.
-- [ ] **Spawnfackel 1.1.0 installieren** (umgedrehte Treppen, 1 Block hohe Lücken, Tiefes Dunkel – mit dem Wiki
-      abgeglichen), wenn niemand spielt: `sudo bash ~/mcportal-src/deploy/world-pack.sh mcportal_spawntorch apply`.
-- [ ] **Whitelist zeigt „noch nie verbunden“** obwohl der Spieler da war (Bedrock 1.26 trägt die XUID nicht mehr in
-      `allowlist.json` ein): Portal merkt sich die XUID jetzt aus dem Log (`/var/lib/mcportal/xuids.json`), gebaut
-      01.11. – kommt mit dem nächsten `install.sh`.
-- [ ] Packs ab jetzt mit **sudo** installieren: `sudo bash ~/mcportal-src/deploy/world-pack.sh <pack> apply`.
-- [ ] **Aufräumen**, wenn die neue Welt ein paar Tage gut läuft: Testinstallation
-      `~/Downloads/bedrock-server-1.21.51.02`, `/var/lib/mcportal/archive/*_testphase`,
-      `/var/backups/mcportal-switch/*` (danach ist kein `--switch-back` mehr möglich).
-- [ ] Beim nächsten Aktualisieren von `~/mcportal-src` prüft `verify.sh` auch die Blaupause (steht jetzt in
-      `packs.list`, M16) – vorher die Blaupause installieren, sonst meldet `verify.sh` sie als fehlend.
-- [ ] Später: Welt-Umzug auf einen neuen Server (`setup.sh --install` startet immer mit neuer Welt).
-- [ ] Später: **Web-Konsole** und **Log-Ansicht**.
-- [ ] Prüfen, ob ein Spieler, der gerade online ist, Operator-Rechte durch `permission reload` sofort bekommt.
+- [ ] Karte K3 Spielerpositionen (Statistik-Pack 2.1.0) · K4 nur Geändertes neu zeichnen, Biom-Färbung
+      (Plan: `docs/08-karte.md`).
+- [ ] Welt-Umzug auf einen neuen Server (`setup.sh --install` startet immer mit neuer Welt).
+- [ ] **Web-Konsole** und **Log-Ansicht**.
 
 ## Erledigt
 
+- [x] `~/mcportal-src` auf den Stand von M16 gebracht (Git-Stand mit LF, alle 161 Dateien identisch; Sicherung vorher:
+      `~/mcportal-backups/mcportal-src-2026-11-03_pre_m16.tgz`); `verify.sh` danach: alles in Ordnung (Dienste,
+      Zugang von außen 10/10, Spielregeln, alle 10 Packs inkl. Spawnfackel 1.1.0 und Blaupause 1.0.0, Portal, Rechte)
+      (2026-11-03)
+- [x] Abgleich mit dem Server (2026-11-03): Admin-Anmeldung ausgerollt (`set-password.sh` + `install.sh` am 30.10.),
+      Karten-Fix für neue Welten und Whitelist-XUID aus dem Log sind im Portal (`install.sh` 01.11. 18:31; installierter
+      Code = aktueller Stand), Spawnfackel 1.1.0 (02.11. 10:00) und Blaupause (02.11. 18:29) installiert, Packs werden
+      mit sudo installiert, Karten-Nachtlauf läuft jede Nacht um 04:00, playit ist nicht mehr installiert, die neue Welt
+      läuft (Wegpunkte, Events, Erfolge, Statistik melden sich im Log, keine Script-Fehler)
+- [x] Zombie-Bernd sichtbar (Events-Pack 1.4.1 + Grafik-Pack 1.1.1, im Spiel bestätigt) (2026-10-27)
+- [x] Neue Welt im Spiel: Beitreten klappt; erste Karte gezeichnet (349 Chunks Oberwelt) (2026-10-30)
+- [x] Reproduzierbarer Aufbau – Umstieg auf die neue Welt („Family and Friends“, Welt „FAF“,
+      `/opt/minecraft/bedrock`, Benutzer `minecraft`, kein PvP, Whitelist ohne Operatoren), `docs/04-reproduzierbarer-aufbau.md` (R6) (2026-10-30)
+- [x] `install.sh` mit `mc-public-ip`: läuft vor jedem Start, Startprüfung OK nach 4 s; `verify.sh`: Zugang von außen 10/10 (2026-10-30)
+- [x] Bedrock 26.60 per Update-Knopf: 27.10. → 1.26.60.6, 30.10. → 1.26.61.1; Zugang von außen (IPv4 + Mobilfunk) am 28.10. bestätigt
 - [x] Spawnfackel (M14) installiert und im Spiel bestätigt; `world-pack.sh` startet mit sudo jetzt über systemd neu (Portal-Neustart braucht seit der Admin-Anmeldung ein Login) (2026-11-01)
 - [x] Timed Events Paket 3 installiert (Events-Pack 1.3.0, Erfolge-Pack 1.3.0 mit Meta-Erfolgen); Bau-Register mit 1.087 Chunks aus der Karte (2026-10-26 18:53)
 - [x] Events-Pack 1.1.2 installiert: verschwundener Boss kommt zurück, Spawns nur auf echtem Boden (2026-10-26)
