@@ -257,6 +257,12 @@ class FakeAdapter:
     def tell_operator_status_live(self, name: str, granted: bool) -> None:
         self._log(f"[tellraw {name}] {'Du bist jetzt Operator.' if granted else 'Du bist nicht mehr Operator.'}")
 
+    def give_live(self, name: str, item_id: str, count: int, item_name: str) -> None:
+        from .bedrock.commands import give, tell_gift
+        give(name, item_id, count), tell_gift(name, item_name, count)  # same validation as the real console
+        who = ", ".join(self._online) if name == "@a" else name
+        self._log(f"Gave {item_id} * {count} to {who}")
+
     def _ev_log(self, payload: dict, ts: float | None = None) -> None:
         self._log("[Scripting] [mcportal-events] " + json.dumps({"v": 1, **payload}), ts=ts)
 

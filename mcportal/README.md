@@ -46,6 +46,7 @@ sudo bash ~/mcportal-src/deploy/m2-console.sh apply
 | `/etc/mcportal/config.toml` | Konfiguration, u. a. `password_hash` (Admin-Passwort, nur als Hash) |
 | `/var/lib/mcportal/audit.jsonl` | Aktionsprotokoll |
 | `/var/lib/mcportal/backups/` | Sicherungen (`*_pre_portal_install`, `*_pre_m2_console`, `*_pre_allowlist_*`) |
+| `/var/lib/mcportal/item-icons/` | Item-Bilder für den Tab „Spenden“ (vom Portal einmalig geladen) |
 
 Logs des Portals: `journalctl -u mcportal -f`
 
@@ -75,6 +76,21 @@ Bei jedem Vergeben/Entziehen bekommt der Spieler eine kurze Chat-Nachricht: „D
 
 Tab „Server“ → „Server-Update“. Ablauf, Schutz von Welt/Whitelist/Operatoren, Rollback und
 Speicherbedarf: [`../docs/02-update-per-knopfdruck.md`](../docs/02-update-per-knopfdruck.md)
+
+## Spenden
+
+Tab „Spenden“ (nur Admin): Spieler wählen (nur wer online ist, oder „Alle online“), Item wählen
+(Suche oder Kategorien), Menge wählen, „Spenden“. Das Portal schickt `give <Spieler> <item> <Menge>`
+und eine Chat-Nachricht („Geschenk vom Admin: 16x Diamant“) über die Server-Konsole; jede Spende
+steht im Protokoll (`DONATE`).
+
+- Nur Items aus dem Katalog in `app/services/donate.py` sind möglich (ca. 100, mit deutschem Namen
+  und Stapelgröße); höchstens 999 Stück bzw. ein volles Inventar (36 Stapel).
+- Die Bilder sind Mojangs Original-Texturen aus dem offiziellen Repository
+  [`Mojang/bedrock-samples`](https://github.com/Mojang/bedrock-samples) (feste Version in `ICON_SOURCE`).
+  Sie liegen **nicht** in diesem öffentlichen Repository: Das Portal lädt beim Start fehlende Bilder
+  nach `/var/lib/mcportal/item-icons/`. Ohne Internet zeigt der Tab farbige Platzhalter.
+  Neu laden: Ordner löschen und `systemctl restart mcportal`.
 
 ## Wer was sieht (Admin-Anmeldung)
 

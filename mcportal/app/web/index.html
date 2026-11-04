@@ -24,6 +24,7 @@
     <button role="tab" class="admin-only" data-tab="allow" aria-selected="false">Whitelist</button>
     <button role="tab" data-tab="stats" aria-selected="false">Statistik</button>
     <button role="tab" class="admin-only" data-tab="events" aria-selected="false">Events</button>
+    <button role="tab" class="admin-only" data-tab="donate" aria-selected="false">Spenden</button>
     <button role="tab" data-tab="map" aria-selected="false">Karte</button>
     <button role="tab" class="admin-only" data-tab="server" aria-selected="false">Server</button>
   </nav>
@@ -112,6 +113,41 @@
         <ul id="events-undo" class="events-list"></ul>
         <p class="note small">Wirkt sofort für alle Spieler. Während eines Unwetters stellt das Event das Gewitter
           nach spätestens einer Minute wieder her; Tageszeit „Morgen“ beendet ein laufendes Nacht-Event.</p>
+      </div>
+    </section>
+
+    <!-- Spenden -->
+    <section id="tab-donate" class="tab" hidden>
+      <p id="gift-note" class="note" hidden></p>
+      <div class="card">
+        <h2 class="gift-step"><span class="gift-num">1</span>Wer bekommt es?</h2>
+        <div id="gift-players" class="gift-chips"></div>
+      </div>
+      <div class="card">
+        <h2 class="gift-step"><span class="gift-num">2</span>Was?</h2>
+        <input id="gift-search" class="gift-search" type="search" placeholder="Item suchen, z. B. Diamant" autocomplete="off">
+        <div id="gift-cats" class="gift-cats"></div>
+        <div id="gift-items" class="gift-items"></div>
+      </div>
+      <div class="card">
+        <h2 class="gift-step"><span class="gift-num">3</span>Wie viel?</h2>
+        <div class="gift-amount">
+          <button id="gift-minus" class="btn" type="button" aria-label="Eins weniger">−</button>
+          <input id="gift-count" type="number" inputmode="numeric" min="1" value="16" aria-label="Menge">
+          <button id="gift-plus" class="btn" type="button" aria-label="Eins mehr">+</button>
+          <span id="gift-stack" class="gift-stack"></span>
+        </div>
+        <div id="gift-quick" class="gift-quick"></div>
+      </div>
+      <div id="gift-summary" class="card gift-summary">
+        <span class="gift-sum-icon"></span>
+        <span id="gift-summary-text" class="gift-sum-text"></span>
+        <button id="gift-send" class="btn primary" type="button">🎁 Spenden</button>
+      </div>
+      <div class="card">
+        <h2>Zuletzt gespendet</h2>
+        <ul id="gift-recent" class="gift-recent"></ul>
+        <p class="note small">Item-Bilder: Original-Texturen aus Mojangs offiziellen Bedrock-Beispielpaketen.</p>
       </div>
     </section>
 
@@ -209,6 +245,7 @@
 
   <script src="/static/map.js"></script>
   <script src="/static/events.js"></script>
+  <script src="/static/donate.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

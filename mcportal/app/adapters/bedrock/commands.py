@@ -108,5 +108,28 @@ def event_control(action: str, event_type: str | None = None) -> str:
     raise ValueError("unknown event action")
 
 
+# tab "Spenden": the service only passes ids from its catalog; checked here once more
+_ITEM_ID = re.compile(r"^[a-z0-9_]{1,40}$")
+GIFT_MAX = 999
+
+
+def _target(name: str) -> str:
+    return "@a" if name == "@a" else _name_arg(name)
+
+
+def give(name: str, item_id: str, count: int) -> str:
+    if not _ITEM_ID.match(item_id) or not 1 <= count <= GIFT_MAX:
+        raise ValueError("invalid gift")
+    return f"give {_target(name)} {item_id} {count}"
+
+
+def tell_gift(name: str, item_name: str, count: int) -> str:
+    """Chat line for the receiver; item_name is the German catalog name (fixed text)."""
+    if not 1 <= count <= GIFT_MAX or not re.match(r"^[\w .äöüÄÖÜß-]{1,40}$", item_name):
+        raise ValueError("invalid gift text")
+    raw = json.dumps({"rawtext": [{"text": f"§6Geschenk vom Admin: §e{count}x {item_name}"}]}, ensure_ascii=False)
+    return f"tellraw {_target(name)} {raw}"
+
+
 def allowlist_remove(name: str) -> str:
     return f"allowlist remove {_name_arg(name)}"

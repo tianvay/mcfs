@@ -19,6 +19,7 @@ from .config import Config
 from .services.achievements import AchievementsService
 from .services.map import MapService
 from .services.allowlist import AllowlistService
+from .services.donate import DonateService
 from .services.events import EventsService
 from .services.minecraft import MinecraftService, PortalError
 from .services.stats import StatsService
@@ -50,6 +51,12 @@ class OperatorIn(BaseModel):
 
 class EventControlIn(BaseModel):
     type: str | None = None
+
+
+class GiftIn(BaseModel):
+    player: str
+    item: str
+    count: int
 
 
 class WorldIn(BaseModel):
@@ -98,6 +105,7 @@ def create_app(cfg: Config) -> FastAPI:
     waypoints = WaypointsService(adapter, mc, cfg.data_dir)
     world_map = MapService(adapter, mc, audit, cfg.data_dir)
     game_events = EventsService(adapter, mc, audit, cfg.data_dir)
+    donate = DonateService(adapter, mc, audit, cfg.data_dir)
     world_map.after_render.append(game_events.sync_register)  # builds found on the map -> build register
     sessions = Sessions(cfg.data_dir / "sessions.json", cfg.password_hash)
     lockout = Lockout()
@@ -111,6 +119,7 @@ def create_app(cfg: Config) -> FastAPI:
         await game_events.startup()
         await update.startup()
         await world_map.startup()
+        await donate.startup()
         yield
         await world_map.shutdown()
         await update.shutdown()
@@ -276,6 +285,22 @@ def create_app(cfg: Config) -> FastAPI:
     async def world_control(kind: str, body: WorldIn, user: str = Depends(require_admin)):
         await game_events.world(kind, body.value, user)
         return {"accepted": kind}
+
+    # ---------- donations (tab "Spenden") ----------
+
+    @app.get("/api/donate")
+    async def donate_summary(_: str = Depends(require_admin)):
+        return await asyncio.to_thread(donate.summary)
+
+    @app.post("/api/donate")
+    async def donate_give(body: GiftIn, user: str = Depends(require_admin)):
+        return await donate.give(body.player, body.item, body.count, user)
+
+    @app.get("/api/donate/icons/{item_id}.png")
+    async def donate_icon(item_id: str):
+        # Mojang's item pictures; the same for every viewer, so the browser may keep them
+        return FileResponse(donate.icon_path(item_id), media_type="image/png",
+                            headers={"Cache-Control": "public, max-age=604800"})
 
     # ---------- map ----------
 
