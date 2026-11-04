@@ -38,6 +38,9 @@ Stand: 2026-11-03 (mit dem Server abgeglichen: Log, sudo-Verlauf, Prüfsummen vo
 
 ### Beobachten / warten
 
+- [ ] **WLAN-Aussetzer** (2026-11-04 13:23–13:40, schon einmal am 02.11. 23:49): Der Realtek-Treiber rtw88 hat die
+      Verbindung zum Router verloren, Minecraft lief weiter. Gegenmittel `deploy/wifi-no-powersave.sh apply`
+      (WLAN-Stromsparen aus). Wenn es trotzdem wieder passiert: LAN-Kabel an `eno1` anschließen.
 - [ ] **Sunny** kann erst Operator werden, nachdem Sunny einmal verbunden war (bis 03.11. noch nie im Log).
 - [ ] **Beitritt nach Neustart gescheitert** (2026-10-26, seitdem nicht wieder). Falls es wieder passiert:
       Zeitpunkt notieren, Server über das Portal neu starten, Bescheid geben. Diagnose: `~/mcportal-backups/diagnose-06-41/`.

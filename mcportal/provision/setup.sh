@@ -529,6 +529,7 @@ install_system() {
     info "ufw nicht aktiv – nichts zu tun"
   fi
   bash "$REPO/deploy/no-suspend.sh" apply 2>&1 | sed 's/^/    /' || warn "no-suspend.sh fehlgeschlagen"
+  bash "$REPO/deploy/wifi-no-powersave.sh" apply 2>&1 | sed 's/^/    /' || warn "wifi-no-powersave.sh fehlgeschlagen"
 }
 
 install_start() {
