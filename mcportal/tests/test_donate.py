@@ -4,7 +4,9 @@ import unittest
 from pathlib import Path
 
 from app.adapters.bedrock import commands
+from app.adapters.bedrock.logparse import LogLine
 from app.audit import AuditLog
+from app.services import donate as donate_mod
 from app.services.donate import CATALOG, DonateService
 from app.services.minecraft import PortalError
 
@@ -22,6 +24,7 @@ class Tracker:
 class FakeMc:
     def __init__(self, names):
         self.tracker = Tracker(names)
+        self.line_listeners = []
 
 
 class Files:
@@ -30,17 +33,30 @@ class Files:
 
 
 class FakeAdapter:
-    def __init__(self, console=True):
+    """answer: what the server writes to its log after "give" (None = nothing)"""
+
+    def __init__(self, mc, console=True, answer="Gave {item} * {count} to {name}"):
         self.files = Files()
+        self.mc = mc
         self.console = console
+        self.answer = answer
         self.sent = []
+        self.loop = None
 
     def console_available(self):
         return self.console
 
-    def give_live(self, name, item_id, count, item_name):
+    def give_live(self, name, item_id, count):
         # what the real adapter sends - also checks the command builders
-        self.sent.append((commands.give(name, item_id, count), commands.tell_gift(name, item_name, count)))
+        self.sent.append(commands.give(name, item_id, count))
+        if self.answer:
+            line = LogLine(0.0, "server", "[2026-11-04 15:00:00:000 INFO] "
+                           + self.answer.format(item=item_id, count=count, name=name))
+            for listener in self.mc.line_listeners:  # the log follower runs on the event loop
+                self.loop.call_soon_threadsafe(listener, line)
+
+    def tell_gift_live(self, name, item_name, count):
+        self.sent.append(commands.tell_gift(name, item_name, count))
 
 
 class CommandsTest(unittest.TestCase):
@@ -56,17 +72,24 @@ class CommandsTest(unittest.TestCase):
                 commands.give(*args)
 
     def test_tell_gift(self):
-        cmd = commands.tell_gift("Steve", "Goldener Apfel", 3)
+        cmd = commands.tell_gift("Steve", "Bottle o' Enchanting", 3)
         self.assertTrue(cmd.startswith("tellraw Steve {"))
-        self.assertIn("3x Goldener Apfel", cmd)
+        self.assertIn("3x Bottle o' Enchanting", cmd)
         with self.assertRaises(ValueError):
             commands.tell_gift("Steve", '"}]} op Steve', 1)
 
-    def test_every_catalog_entry_builds(self):
+    def test_catalog(self):
+        cats = {c for c, _ in donate_mod.CATEGORIES}
         for item in CATALOG.values():
             commands.give("Steve", item["id"], 1)
             commands.tell_gift("Steve", item["name"], 1)
-            self.assertTrue(item["texture"].startswith(("items/", "blocks/")))
+            self.assertIn(item["cat"], cats)
+            self.assertIn(item["stack"], (1, 16, 64))
+        self.assertGreater(len(CATALOG), 1000)
+        self.assertEqual(CATALOG["cow_spawn_egg"]["name"], "Cow Spawn Egg")
+        self.assertEqual(CATALOG["diamond_sword"]["stack"], 1)
+        self.assertNotIn("command_block", CATALOG)
+        self.assertGreaterEqual(sum(i["popular"] for i in CATALOG.values()), 10)
 
 
 class DonateServiceTest(unittest.TestCase):
@@ -78,18 +101,23 @@ class DonateServiceTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def service(self, online=("Steve",), console=True):
-        self.adapter = FakeAdapter(console)
-        return DonateService(self.adapter, FakeMc(list(online)), self.audit, self.dir)
+    def service(self, online=("Steve",), **kw):
+        mc = FakeMc(list(online))
+        self.adapter = FakeAdapter(mc, **kw)
+        return DonateService(self.adapter, mc, self.audit, self.dir)
 
     def give(self, svc, *args):
-        return asyncio.run(svc.give(*args, "127.0.0.1"))
+        async def run():
+            self.adapter.loop = asyncio.get_running_loop()
+            return await svc.give(*args, "127.0.0.1")
+        return asyncio.run(run())
 
     def test_give_to_online_player(self):
         svc = self.service()
         r = self.give(svc, "steve", "diamond", 16)
-        self.assertEqual(r["player"], "Steve")
-        self.assertEqual(self.adapter.sent[0][0], "give Steve diamond 16")
+        self.assertEqual((r["player"], r["name"], r["confirmed"]), ("Steve", "Diamond", True))
+        self.assertEqual(self.adapter.sent[0], "give Steve diamond 16")
+        self.assertIn("16x Diamond", self.adapter.sent[1])
         entry = self.audit.tail(1)[0]
         self.assertEqual((entry["action"], entry["result"], entry["item"], entry["count"]), ("DONATE", "SUCCESS", "diamond", 16))
         self.assertEqual(svc.summary()["recent"][0]["player"], "Steve")
@@ -97,7 +125,27 @@ class DonateServiceTest(unittest.TestCase):
     def test_give_to_everybody(self):
         svc = self.service(online=("Steve", "Alex"))
         self.assertEqual(self.give(svc, "@a", "bread", 32)["player"], "alle online")
-        self.assertEqual(self.adapter.sent[0][0], "give @a bread 32")
+        self.assertEqual(self.adapter.sent[0], "give @a bread 32")
+
+    def test_spawn_egg(self):
+        self.assertEqual(self.give(self.service(), "Steve", "cow_spawn_egg", 1)["name"], "Cow Spawn Egg")
+
+    def test_refused_by_the_game(self):
+        svc = self.service(answer='Syntax error: Unexpected "{item}": at "give {name} >>{item}<< {count}"')
+        with self.assertRaises(PortalError) as ctx:
+            self.give(svc, "Steve", "diamond", 1)
+        self.assertIn("abgelehnt", str(ctx.exception))
+        self.assertEqual(len(self.adapter.sent), 1)  # no chat message for a gift that did not arrive
+        self.assertEqual(self.audit.tail(1)[0]["result"], "FAILED")
+
+    def test_no_answer(self):
+        old, donate_mod.ANSWER_SECONDS = donate_mod.ANSWER_SECONDS, 0.2
+        try:
+            r = self.give(self.service(answer=None), "Steve", "diamond", 1)
+        finally:
+            donate_mod.ANSWER_SECONDS = old
+        self.assertFalse(r["confirmed"])
+        self.assertEqual(self.audit.tail(1)[0]["result"], "SUCCESS")
 
     def test_refusals(self):
         svc = self.service()
@@ -119,18 +167,23 @@ class DonateServiceTest(unittest.TestCase):
         self.assertEqual(s["online"], ["Steve"])
         self.assertEqual(s["offline"], ["Alex", "Sunny"])
         sword = next(i for i in s["items"] if i["id"] == "diamond_sword")
-        self.assertEqual((sword["stack"], sword["max"], sword["icon"]), (1, 36, False))
-        self.assertTrue(any(i["popular"] for i in s["items"]))
+        self.assertEqual((sword["name"], sword["stack"], sword["max"], sword["icon"]), ("Diamond Sword", 1, 36, True))
 
     def test_icon_path(self):
         svc = self.service()
         with self.assertRaises(PortalError):
             svc.icon_path("../config")
-        with self.assertRaises(PortalError):
-            svc.icon_path("diamond")  # not downloaded yet
-        (self.dir / "item-icons").mkdir()
-        (self.dir / "item-icons" / "diamond.png").write_bytes(b"\x89PNG\r\n\x1a\n")
-        self.assertEqual(svc.icon_path("diamond").name, "diamond.png")
+        icon_dir = self.dir / "item-icons" / donate_mod.SAMPLES_TAG
+        icon_dir.mkdir(parents=True)
+        (icon_dir / "items__diamond.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+        self.assertEqual(svc.icon_path("diamond").name, "items__diamond.png")  # already there: no download
+
+    def test_old_icons_are_removed(self):
+        (self.dir / "item-icons" / "v1.0").mkdir(parents=True)
+        (self.dir / "item-icons" / "diamond.png").write_bytes(b"x")
+        (self.dir / "item-icons" / donate_mod.SAMPLES_TAG).mkdir()
+        asyncio.run(self.service().startup())
+        self.assertEqual([p.name for p in (self.dir / "item-icons").iterdir()], [donate_mod.SAMPLES_TAG])
 
 
 if __name__ == "__main__":

@@ -266,7 +266,7 @@ dialog input { width: 100%; margin-bottom: 12px; }
 .gift-chip.off { color: var(--muted); font-weight: 400; cursor: default; border-style: dashed; }
 .gift-none { width: 100%; margin: 0; }
 .gift-search { width: 100%; }
-.gift-cats { display: flex; gap: 6px; overflow-x: auto; margin: 10px -4px; padding: 0 4px 2px; scrollbar-width: none; }
+.gift-cats { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
 .gift-cat { flex: none; padding: 6px 12px; border-radius: 999px; border: 0; background: var(--bg); color: var(--muted);
   font: inherit; font-size: .9rem; font-weight: 600; cursor: pointer; }
 .gift-cat.sel { background: var(--accent); color: var(--accent-text); }
@@ -274,7 +274,8 @@ dialog input { width: 100%; margin-bottom: 12px; }
 .gift-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px 8px;
   border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--text);
   font: inherit; font-size: .78rem; line-height: 1.2; cursor: pointer; min-width: 0; }
-.gift-item > span:last-child { hyphens: manual; overflow-wrap: break-word; text-align: center; max-width: 100%; }
+.gift-item > span:last-child { overflow-wrap: break-word; text-align: center; max-width: 100%; }
+.gift-more { grid-column: 1 / -1; }
 .gift-item.sel { border: 2px solid var(--accent); padding: 9px 3px 7px; background: var(--ok-bg); }
 /* Minecraft textures are 16 px pixel art: scale up without blurring */
 .gift-icon { width: 32px; height: 32px; image-rendering: pixelated; flex: none; display: block; }

@@ -24,9 +24,8 @@ function donateOnState(s) {
   giftPlayersKey = key;
 }
 
-// soft hyphen after the material, so "Diamantspitzhacke" breaks as "Diamant-/spitzhacke" in the small tiles
-const GIFT_PREFIX = /^(Diamant|Netherit|Eisen|Gold|Kupfer|Smaragd|Eichen|Schildkröten|Erfahrungs|Feuerwerks|Melonen|Honig|Namens|Knochen|Amethyst|Bücher|Stein|Ziegel|Kürbis|Lapis|Nether|Süß|Ofen)(?=\p{Ll}{3})/u;
-const giftTileName = (name) => name.replace(GIFT_PREFIX, "$1­");
+const GIFT_PAGE = 120; // tiles shown at once; "Mehr anzeigen" adds the next ones (the block list has ~1000)
+let giftShown = GIFT_PAGE;
 
 function giftIcon(item, cls = "gift-icon") {
   if (item.icon) {
@@ -95,29 +94,34 @@ function renderGiftCats() {
   $("#gift-cats").replaceChildren(...gift.data.categories.map((c) => {
     const b = el("button", { type: "button", className: `gift-cat${!gift.query && gift.cat === c.id ? " sel" : ""}`, textContent: c.name });
     b.addEventListener("click", () => {
-      gift.cat = c.id; gift.query = ""; $("#gift-search").value = "";
+      gift.cat = c.id; gift.query = ""; $("#gift-search").value = ""; giftShown = GIFT_PAGE;
       renderGiftCats(); renderGiftItems();
     });
     return b;
   }));
 }
 
-const giftNorm = (s) => s.toLowerCase().replace(/ä/g, "a").replace(/ö/g, "o").replace(/ü/g, "u").replace(/ß/g, "ss");
-
 function renderGiftItems() {
-  const q = giftNorm(gift.query.trim());
-  const items = gift.data.items.filter((i) => (q
-    ? giftNorm(i.name).includes(q) || i.id.includes(q.replace(/ /g, "_"))
+  const words = gift.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const items = gift.data.items.filter((i) => (words.length
+    ? words.every((w) => i.name.toLowerCase().includes(w) || i.id.includes(w))
     : gift.cat === "popular" ? i.popular : i.cat === gift.cat));
   const grid = $("#gift-items");
   if (!items.length) { grid.replaceChildren(el("p", { className: "empty", textContent: "Kein Item gefunden." })); return; }
-  grid.replaceChildren(...items.map((i) => {
+  const tiles = items.slice(0, giftShown).map((i) => {
     const b = el("button", { type: "button", className: `gift-item${gift.item === i.id ? " sel" : ""}`, title: i.name },
-      giftIcon(i), el("span", { textContent: giftTileName(i.name) }));
+      giftIcon(i), el("span", { textContent: i.name }));
     b.setAttribute("aria-pressed", gift.item === i.id);
     b.addEventListener("click", () => selectGiftItem(i.id));
     return b;
-  }));
+  });
+  if (items.length > giftShown) {
+    const more = el("button", { type: "button", className: "btn small gift-more",
+      textContent: `Mehr anzeigen (noch ${items.length - giftShown})` });
+    more.addEventListener("click", () => { giftShown += GIFT_PAGE * 3; renderGiftItems(); });
+    tiles.push(more);
+  }
+  grid.replaceChildren(...tiles);
 }
 
 function selectGiftItem(id) {
@@ -198,7 +202,8 @@ async function sendGift() {
   gift.sending = true; renderGiftSummary();
   try {
     const r = await api("POST", "/api/donate", { player: gift.player, item: item.id, count: gift.count });
-    toast(`🎁 ${r.count}× ${r.name} an ${r.player === "alle online" ? "alle" : r.player} geschickt`);
+    toast(`🎁 ${r.count}× ${r.name} an ${r.player === "alle online" ? "alle" : r.player} geschickt`
+      + (r.confirmed ? "" : " (ohne Rückmeldung vom Server)"));
   } catch (e) { toast(e.message, true); }
   gift.sending = false;
   await loadDonate();
@@ -206,7 +211,9 @@ async function sendGift() {
 
 // after app.js has run (it defines $)
 document.addEventListener("DOMContentLoaded", () => {
-  $("#gift-search").addEventListener("input", (e) => { gift.query = e.target.value; renderGiftCats(); renderGiftItems(); });
+  $("#gift-search").addEventListener("input", (e) => {
+    gift.query = e.target.value; giftShown = GIFT_PAGE; renderGiftCats(); renderGiftItems();
+  });
   $("#gift-minus").addEventListener("click", () => setGiftCount(gift.count - 1));
   $("#gift-plus").addEventListener("click", () => setGiftCount(gift.count + 1));
   $("#gift-count").addEventListener("change", (e) => setGiftCount(e.target.value));

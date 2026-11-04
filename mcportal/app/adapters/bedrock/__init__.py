@@ -53,10 +53,11 @@ class BedrockAdapter:
     def tell_operator_status_live(self, name: str, granted: bool) -> None:
         console.send(self.fifo, commands.tell_operator_status(name, granted))
 
-    def give_live(self, name: str, item_id: str, count: int, item_name: str) -> None:
-        give, tell = commands.give(name, item_id, count), commands.tell_gift(name, item_name, count)
-        console.send(self.fifo, give)
-        console.send(self.fifo, tell)
+    def give_live(self, name: str, item_id: str, count: int) -> None:
+        console.send(self.fifo, commands.give(name, item_id, count))
+
+    def tell_gift_live(self, name: str, item_name: str, count: int) -> None:
+        console.send(self.fifo, commands.tell_gift(name, item_name, count))
 
     def event_undo_live(self, undo_id: str) -> None:
         console.send(self.fifo, commands.event_undo(undo_id))

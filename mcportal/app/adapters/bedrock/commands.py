@@ -125,7 +125,7 @@ def give(name: str, item_id: str, count: int) -> str:
 
 def tell_gift(name: str, item_name: str, count: int) -> str:
     """Chat line for the receiver; item_name is the German catalog name (fixed text)."""
-    if not 1 <= count <= GIFT_MAX or not re.match(r"^[\w .äöüÄÖÜß-]{1,40}$", item_name):
+    if not 1 <= count <= GIFT_MAX or not re.match(r"^[\w .'()&+!-]{1,60}$", item_name):
         raise ValueError("invalid gift text")
     raw = json.dumps({"rawtext": [{"text": f"§6Geschenk vom Admin: §e{count}x {item_name}"}]}, ensure_ascii=False)
     return f"tellraw {_target(name)} {raw}"

@@ -81,16 +81,20 @@ Speicherbedarf: [`../docs/02-update-per-knopfdruck.md`](../docs/02-update-per-kn
 
 Tab „Spenden“ (nur Admin): Spieler wählen (nur wer online ist, oder „Alle online“), Item wählen
 (Suche oder Kategorien), Menge wählen, „Spenden“. Das Portal schickt `give <Spieler> <item> <Menge>`
-und eine Chat-Nachricht („Geschenk vom Admin: 16x Diamant“) über die Server-Konsole; jede Spende
-steht im Protokoll (`DONATE`).
+und eine Chat-Nachricht („Geschenk vom Admin: 16x Diamond“) über die Server-Konsole. Danach wartet es
+kurz auf die Antwort des Servers im Log: Lehnt Minecraft das Item ab, meldet der Tab einen Fehler (und
+es geht keine Chat-Nachricht raus). Jede Spende steht im Protokoll (`DONATE`).
 
-- Nur Items aus dem Katalog in `app/services/donate.py` sind möglich (ca. 100, mit deutschem Namen
-  und Stapelgröße); höchstens 999 Stück bzw. ein volles Inventar (36 Stapel).
-- Die Bilder sind Mojangs Original-Texturen aus dem offiziellen Repository
-  [`Mojang/bedrock-samples`](https://github.com/Mojang/bedrock-samples) (feste Version in `ICON_SOURCE`).
-  Sie liegen **nicht** in diesem öffentlichen Repository: Das Portal lädt beim Start fehlende Bilder
-  nach `/var/lib/mcportal/item-icons/`. Ohne Internet zeigt der Tab farbige Platzhalter.
-  Neu laden: Ordner löschen und `systemctl restart mcportal`.
+- **Katalog:** `app/services/items.json`, rund 1500 Items mit englischen Namen, Kategorie und
+  Stapelgröße, auch alle Spawn-Eier. Ohne technische Blöcke (Kommandoblock, Barriere, Strukturblock …)
+  und ohne experimentelle Items. Höchstens 999 Stück bzw. ein volles Inventar (36 Stapel).
+- **Nach einem Minecraft-Update:** in `app/services/donate.py` `SAMPLES_TAG` auf das neue Release von
+  [`Mojang/bedrock-samples`](https://github.com/Mojang/bedrock-samples) setzen und
+  `python tools/make_item_catalog.py` laufen lassen (holt Item-Liste, Namen und Texturzuordnung von dort).
+- **Bilder:** Mojangs Original-Texturen aus demselben Repository. Sie liegen **nicht** in diesem
+  öffentlichen Repository: Das Portal lädt jedes Bild beim ersten Anschauen nach
+  `/var/lib/mcportal/item-icons/<release>/`. Ohne Internet oder ohne passende Textur zeigt der Tab einen
+  Platzhalter. Laub und Gras sind grau, weil Minecraft sie erst im Spiel einfärbt.
 
 ## Wer was sieht (Admin-Anmeldung)
 

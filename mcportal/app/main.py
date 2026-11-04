@@ -299,7 +299,7 @@ def create_app(cfg: Config) -> FastAPI:
     @app.get("/api/donate/icons/{item_id}.png")
     async def donate_icon(item_id: str):
         # Mojang's item pictures; the same for every viewer, so the browser may keep them
-        return FileResponse(donate.icon_path(item_id), media_type="image/png",
+        return FileResponse(await asyncio.to_thread(donate.icon_path, item_id), media_type="image/png",
                             headers={"Cache-Control": "public, max-age=604800"})
 
     # ---------- map ----------

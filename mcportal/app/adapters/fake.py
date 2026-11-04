@@ -257,11 +257,19 @@ class FakeAdapter:
     def tell_operator_status_live(self, name: str, granted: bool) -> None:
         self._log(f"[tellraw {name}] {'Du bist jetzt Operator.' if granted else 'Du bist nicht mehr Operator.'}")
 
-    def give_live(self, name: str, item_id: str, count: int, item_name: str) -> None:
-        from .bedrock.commands import give, tell_gift
-        give(name, item_id, count), tell_gift(name, item_name, count)  # same validation as the real console
+    def give_live(self, name: str, item_id: str, count: int) -> None:
+        """Like the real server's answer; MCPORTAL_FAKE_GIVE_FAIL=<item id> makes it refuse that item."""
+        from .bedrock.commands import give
+        give(name, item_id, count)  # same validation as the real console
+        if os.environ.get("MCPORTAL_FAKE_GIVE_FAIL") == item_id:
+            self._log(f'Syntax error: Unexpected "{item_id}": at "give {name} >>{item_id}<< {count}"')
+            return
         who = ", ".join(self._online) if name == "@a" else name
         self._log(f"Gave {item_id} * {count} to {who}")
+
+    def tell_gift_live(self, name: str, item_name: str, count: int) -> None:
+        from .bedrock.commands import tell_gift
+        tell_gift(name, item_name, count)
 
     def _ev_log(self, payload: dict, ts: float | None = None) -> None:
         self._log("[Scripting] [mcportal-events] " + json.dumps({"v": 1, **payload}), ts=ts)
