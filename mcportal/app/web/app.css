@@ -320,8 +320,26 @@ body:not(.admin) .admin-only { display: none !important; }
 .pack-state.on { background: var(--ok-bg); color: var(--ok); }
 .pack-state.pending { background: var(--warn-bg); color: var(--warn); }
 .pack-state.failed { background: var(--bad-bg); color: var(--bad); }
-.packs-list .pack .btn { flex: none; }
-#packs-restart { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; }
+.packs-list .pack-title .btn { flex: none; margin-left: auto; }
+#packs-restart:not([hidden]) { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; }
 .packs-restart-text { margin: 0; }
-.events-card.pack-off #events-body, .events-card.pack-off #events-auto, .events-card.pack-off #events-missing { display: none; }
-.tabs button.off { opacity: .55; }
+/* tab of a feature that is switched off (Events) */
+.tabs button.pack-hidden { display: none !important; }
+body.admin .public-only { display: none !important; }
+
+/* recipes (tab Funktionen) */
+.recipes { display: grid; gap: 12px; margin-top: 8px; }
+.recipe { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.recipe-grid { display: grid; grid-template-columns: repeat(3, 40px); gap: 3px; padding: 6px;
+  background: var(--line); border-radius: 8px; }
+.recipe-cell { width: 40px; height: 40px; border-radius: 4px; background: var(--card); display: grid;
+  place-items: center; position: relative; }
+.recipe-cell img, .recipe-result img { width: 32px; height: 32px; image-rendering: pixelated; }
+.recipe-cell .ph, .recipe-result .ph { font-size: .65rem; line-height: 1; text-align: center; color: var(--muted);
+  overflow: hidden; padding: 2px; }
+.recipe-arrow { font-size: 1.4rem; color: var(--muted); }
+.recipe-result { width: 52px; height: 52px; border-radius: 8px; background: var(--ok-bg); display: grid;
+  place-items: center; position: relative; }
+.recipe-count { position: absolute; right: 3px; bottom: 1px; font-size: .8rem; font-weight: 700; }
+.recipe-legend { flex-basis: 100%; color: var(--muted); font-size: .85rem; margin: 0; }
+.recipe-legend strong { color: var(--text); }

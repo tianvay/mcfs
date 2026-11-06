@@ -1,13 +1,19 @@
 # Funktionen ein- und ausschalten (Änderung M17)
 
-Stand: 2026-11-06 · Portal: Tab „Server“ → „Funktionen“ · `app/services/packs.py`
+Stand: 2026-11-06 · Portal: Tab „Funktionen“ · `app/services/packs.py`
 
 Jede Erweiterung des Servers lässt sich im Portal einzeln abschalten. Wer alles abschaltet, spielt reines
 Minecraft (Vanilla). Statistik und Erfolge können dabei an bleiben, sie bringen keine eigenen Gegenstände mit.
 
 ## Bedienung
 
-Tab **Server** → Karte **Funktionen** (nur Admin):
+Tab **Funktionen**, für alle sichtbar:
+
+- **Ohne Anmeldung** (Kinder, Gäste): nur die Funktionen, die gerade laufen, mit Beschreibung. Bei eigenen
+  Gegenständen steht das **Rezept** dabei: Werkbank-Raster mit den Bildern der Zutaten, Ergebnis und eine Zeile wie
+  „Wegpunkt: 4× Lantern, 4× Stone Brick Wall, 1× Block of Diamond“. Keine Versionen, keine Schalter. Läuft nichts,
+  steht dort „Gerade läuft reines Minecraft“.
+- **Admin:** alle Funktionen, auch ausgeschaltete, mit Zustand, Version, Schalter und Rezepten:
 
 | Funktion | Packs | Eigene Inhalte | Beim Ausschalten |
 |---|---|---|---|
@@ -27,8 +33,17 @@ Tab **Server** → Karte **Funktionen** (nur Admin):
   Blaupausen), bleibt erhalten.
 - **Zustände:** „✓ an“, „aus“, „⏳ an/aus nach Neustart“, „✗ nicht gestartet“ (eingeschaltet, aber beim letzten
   Start nicht im „Pack Stack“ – Log ansehen). Läuft der Server nicht, zeigt das Portal nur an/aus.
-- Ist das Events-Pack aus, sind Events-Tab und „Blockänderungen rückgängig“ gesperrt (API: 409). Wetter und
-  Tageszeit gehen weiter, das sind normale Befehle.
+- Ist das Events-Pack aus, **verschwindet der Events-Tab** samt „Blockänderungen rückgängig“ (API: 409). Wetter
+  und Tageszeit haben einen eigenen Tab **Welt** (nur Admin), das sind normale Befehle ohne Pack.
+
+### Rezepte und Bilder
+
+- Die Rezepte liest das Portal aus `recipes/*.json` der Behavior Packs in der Welt (geformt und ungeformt), die
+  Namen und Bilder der eigenen Items aus `items/*.json` und `textures/item_texture.json` der Grafik-Packs. Neue
+  Rezepte erscheinen also von selbst.
+- Bilder der Minecraft-Zutaten und ihre (englischen) Namen kommen wie im Tab „Spenden“ aus Mojangs Repository
+  (`/api/donate/icons/…`). Bilder der eigenen Items liefert `/api/features/icons/<ns>.<item>.png`, aber nur für
+  Funktionen, die laufen, und nur Dateien innerhalb des Pack-Ordners. Fehlt ein Bild, steht der Name im Feld.
 
 ## Wie es funktioniert
 
@@ -72,13 +87,17 @@ nicht auf dem Laptop:
   kein Neustart.
 - Spawnfackel wieder eingeschaltet: „⏳ an nach Neustart“, nach dem Neustart „✓ an“. Das Protokoll zeigt alle
   `PACK_OFF`/`PACK_ON`.
-- Oberfläche lokal mit dem Fake-Server: Warndialog, Zustände, „Jetzt neu starten“, Events-Tab gesperrt, Handy-Breite.
-- Unit-Tests `tests/test_packs.py` (12), die ganze Suite (100) läuft durch.
+- Oberfläche lokal mit dem Fake-Server: Warndialog, Zustände, „Jetzt neu starten“, Handy-Breite. Ohne Anmeldung
+  nur Übersicht, Statistik, Karte, Funktionen. Admin-APIs antworten mit 401, die Funktionen-Liste zeigt nur
+  Laufendes mit Rezepten und allen Bildern. Nach Events aus + Neustart ist der Events-Tab weg, und das Bild eines
+  ausgeschalteten Items gibt 404.
+- Unit-Tests `tests/test_packs.py` (15), die ganze Suite läuft durch.
 
 ## Änderung M17
 
 1. **Was:** Neuer Portal-Dienst `app/services/packs.py` mit `GET /api/packs` und `PUT /api/packs/{funktion}`
-   (nur Admin), dazu die Karte „Funktionen“ (`app/web/packs.js`) und das Feld `packs` im öffentlichen Status
+   (nur Admin) sowie `GET /api/features` und `/api/features/icons/…` (für alle: was läuft, mit Rezepten), dazu
+   der Tab „Funktionen“ (`app/web/packs.js`) und der Tab „Welt“ für Wetter/Tageszeit und das Feld `packs` im öffentlichen Status
    (welche Funktionen aus sind, ob ein Neustart nötig ist). `ServerFiles` liest und schreibt die Pack-Listen der
    Welt. Events-Endpunkte geben 409 zurück, wenn das Events-Pack aus ist. `install.sh` vergibt die ACL,
    `verify.sh` und `world-pack.sh` beachten ausgeschaltete Packs.

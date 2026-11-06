@@ -1,5 +1,6 @@
 import asyncio
 import json
+import shutil
 import tempfile
 import time
 import unittest
@@ -9,7 +10,7 @@ from app.adapters.bedrock.files import ServerFiles
 from app.adapters.bedrock.logparse import LogLine
 from app.audit import AuditLog
 from app.services.minecraft import PortalError
-from app.services.packs import PacksService, group_features
+from app.services.packs import PacksService, custom_items, group_features, recipes
 
 REPO_PACKS = Path(__file__).resolve().parents[1] / "minecraft-pack"
 WAYPOINTS = "8c696d43-98da-4c6f-b1d2-1f5d6767d5de"
@@ -62,11 +63,7 @@ def make_world(root: Path) -> tuple[ServerFiles, dict]:
         m = json.loads((d / "manifest.json").read_text(encoding="utf-8"))
         kind = "resource" if any(x["type"] == "resources" for x in m["modules"]) else "behavior"
         dst = world / f"{kind}_packs" / d.name
-        dst.mkdir(parents=True)
-        (dst / "manifest.json").write_text(json.dumps(m), encoding="utf-8")
-        for marker in ("items", "entities"):
-            if (d / marker).is_dir():
-                (dst / marker).mkdir()
+        shutil.copytree(d, dst, ignore=shutil.ignore_patterns("tests", "tools"))
         lists[kind].append({"pack_id": m["header"]["uuid"], "version": m["header"]["version"]})
         packs[d.name] = m["header"]
     for kind, entries in lists.items():
@@ -103,8 +100,40 @@ class GroupTest(unittest.TestCase):
         self.assertTrue(features["mcportal_events"]["entities"])
         self.assertFalse(features["mcportal_achievements"]["items"] or features["mcportal_achievements"]["entities"])
 
+    def test_recipes_with_pictures(self):
+        with tempfile.TemporaryDirectory() as d:
+            files, _ = make_world(Path(d))
+            packs = files.installed_packs()
+            features = {f["id"]: f for f in group_features(packs)}
+            wp = features["mcportal_waypoints"]["packs"]
+            own = custom_items(wp)
+            self.assertEqual(own["mcfs:waypoint"]["name"], "Wegpunkt")
+            self.assertTrue(own["mcfs:waypoint"]["png"].is_file(), "picture from the resource pack")
+            (r,) = recipes(wp, own)
+            self.assertEqual(r["result"]["id"], "mcfs:waypoint")
+            self.assertEqual(r["result"]["icon"], "/api/features/icons/mcfs.waypoint.png")
+            self.assertEqual([[c["id"] for c in row] for row in r["grid"]], [
+                ["minecraft:lantern", "minecraft:stone_brick_wall", "minecraft:lantern"],
+                ["minecraft:stone_brick_wall", "minecraft:diamond_block", "minecraft:stone_brick_wall"],
+                ["minecraft:lantern", "minecraft:stone_brick_wall", "minecraft:lantern"]])
+            self.assertEqual(r["grid"][1][1]["name"], "Block of Diamond", "names like the Spenden tab")
+            self.assertEqual(r["grid"][1][1]["icon"], "/api/donate/icons/diamond_block.png")
+            bp = features["mcportal_blueprint"]["packs"]
+            rs = recipes(bp, custom_items(bp))
+            self.assertEqual({x["result"]["id"]: x["result"]["count"] for x in rs},
+                             {"mcfs:blueprint": 1, "mcfs:blueprint_copy": 2})
+            self.assertEqual(recipes(features["mcportal_stats"]["packs"], {}), [], "no own items, no recipes")
+
+    def test_picture_outside_the_pack_is_ignored(self):
+        with tempfile.TemporaryDirectory() as d:
+            files, _ = make_world(Path(d))
+            rp = files.world_dir() / "resource_packs" / "mcportal_waypoints_rp" / "textures" / "item_texture.json"
+            rp.write_text(json.dumps({"texture_data": {"mcfs_waypoint": {"textures": "../../../../../server.properties"}}}))
+            wp = {f["id"]: f for f in group_features(files.installed_packs())}["mcportal_waypoints"]["packs"]
+            self.assertIsNone(custom_items(wp)["mcfs:waypoint"]["png"])
+
     def test_resource_pack_without_behavior_pack_is_its_own_feature(self):
-        packs = [{"folder": "rp", "kind": "resource", "uuid": "u1", "version": [1, 0, 0], "name": "Bilder",
+        packs = [{"path": Path("rp"), "folder": "rp", "kind": "resource", "uuid": "u1", "version": [1, 0, 0], "name": "Bilder",
                   "description": "", "depends": [], "items": False, "entities": False}]
         self.assertEqual([f["id"] for f in group_features(packs)], ["rp"])
 
@@ -133,6 +162,21 @@ class SwitchTest(unittest.IsolatedAsyncioTestCase):
         self.mc.unit.started_at = ts
         for l in start_lines(ts, self.files):
             self.svc._on_line(l)
+
+    async def test_public_shows_only_running_features_with_recipes(self):
+        await self.svc.set_enabled("mcportal_blueprint", False, "admin")
+        self.restart()
+        pub = {f["id"]: f for f in self.svc.public()["features"]}
+        self.assertNotIn("mcportal_blueprint", pub)
+        self.assertIn("mcportal_stats", pub)
+        self.assertEqual(set(pub["mcportal_spawntorch"]), {"id", "name", "description", "items", "entities", "recipes"},
+                         "no versions, states or switches for everyone")
+        self.assertEqual(pub["mcportal_spawntorch"]["recipes"][0]["result"]["name"], "Spawnfackel")
+        self.assertTrue(self.svc.icon_path("mcfs.spawn_torch").is_file())
+        for bad in ("mcfs.blueprint", "mcfs.nope", "../x", "mcfs:waypoint"):
+            with self.assertRaises(PortalError, msg=bad):
+                self.svc.icon_path(bad)
+        json.dumps(self.svc.summary())   # admin view serialises (no paths left in it)
 
     async def test_all_on_after_install(self):
         s = self.svc.summary()

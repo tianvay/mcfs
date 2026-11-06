@@ -5,6 +5,7 @@ import asyncio
 import json
 import os
 import queue
+import shutil
 import threading
 import time
 from collections.abc import AsyncIterator
@@ -103,7 +104,7 @@ class FakeAdapter:
             self._q.put(line)
 
     def _fake_packs(self) -> None:
-        """The repo's packs (manifest + items/entities markers) in the fake world, all switched on."""
+        """The repo's packs in the fake world, all switched on."""
         world = self.files.world_dir()
         if (world / "world_behavior_packs.json").exists():
             return
@@ -113,11 +114,8 @@ class FakeAdapter:
             m = json.loads((d / "manifest.json").read_text(encoding="utf-8"))
             kind = "resource" if any(x.get("type") == "resources" for x in m.get("modules", [])) else "behavior"
             dst = world / f"{kind}_packs" / d.name
-            dst.mkdir(parents=True, exist_ok=True)
-            (dst / "manifest.json").write_text(json.dumps(m), encoding="utf-8")
-            for marker in ("items", "entities"):
-                if (d / marker).is_dir():
-                    (dst / marker).mkdir(exist_ok=True)
+            # like setup.sh: the whole pack without tests/ and tools/
+            shutil.copytree(d, dst, dirs_exist_ok=True, ignore=shutil.ignore_patterns("tests", "tools"))
             lists[kind].append({"pack_id": m["header"]["uuid"], "version": m["header"]["version"]})
         for kind, entries in lists.items():
             (world / f"world_{kind}_packs.json").write_text(json.dumps(entries, indent=2), encoding="utf-8")

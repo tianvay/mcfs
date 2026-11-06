@@ -277,7 +277,7 @@ def create_app(cfg: Config) -> FastAPI:
     def require_events_pack() -> None:
         # without the events pack the "scriptevent mcfs:event ..." commands would go nowhere
         if not packs.active(EVENTS_PACK):
-            raise PortalError("Die Events sind ausgeschaltet (Server → Funktionen).", 409)
+            raise PortalError("Die Events sind ausgeschaltet (Tab Funktionen).", 409)
 
     @app.get("/api/gameevents")
     async def game_events_summary(_: str = Depends(require_admin)):
@@ -302,6 +302,16 @@ def create_app(cfg: Config) -> FastAPI:
         return {"accepted": kind}
 
     # ---------- features = packs of the world (tab "Server") ----------
+
+    @app.get("/api/features")
+    async def features_public():
+        # for everyone: what runs, with the recipes of its own items (tab "Funktionen")
+        return await asyncio.to_thread(packs.public)
+
+    @app.get("/api/features/icons/{name}.png")
+    async def features_icon(name: str):
+        return FileResponse(await asyncio.to_thread(packs.icon_path, name), media_type="image/png",
+                            headers={"Cache-Control": "public, max-age=86400"})
 
     @app.get("/api/packs")
     async def packs_summary(_: str = Depends(require_admin)):

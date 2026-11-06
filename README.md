@@ -31,7 +31,7 @@ Friends“, „FAF“ und ein zufälliger Seed. Am Ende fragt es nach dem **Admi
 
 Danach läuft der neueste Bedrock-Server als Benutzer `minecraft` mit allen Packs (Statistik, Wegpunkte, Events,
 Erfolge, Spawnfackel, Blaupause), dazu das Portal unter `http://<IP des Servers>:8080`. Beide starten beim
-Hochfahren von selbst. Im Portal lassen sich die Erweiterungen einzeln abschalten (Server → Funktionen), bis hin
+Hochfahren von selbst. Im Portal lassen sich die Erweiterungen einzeln abschalten (Tab „Funktionen“), bis hin
 zu reinem Vanilla-Minecraft mit Statistik und Erfolgen.
 
 Details und Optionen: [Installation auf einem frischen Server](docs/15-installation.md).

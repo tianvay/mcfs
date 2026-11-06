@@ -99,8 +99,9 @@ es geht keine Chat-Nachricht raus). Jede Spende steht im Protokoll (`DONATE`).
 
 ## Funktionen ein- und ausschalten
 
-Tab „Server“ → „Funktionen“ (nur Admin): ein Schalter pro Erweiterung (Statistik, Erfolge, Wegpunkte, Events,
-Spawnfackel, Blaupause). Alles aus heißt reines Minecraft. Statistik und Erfolge allein bringen keine eigenen
+Tab „Funktionen“: Ohne Anmeldung sieht man, welche Erweiterungen laufen, bei eigenen Gegenständen mit dem Rezept
+(Werkbank-Raster mit Bildern). Der Admin sieht alle und hat einen Schalter pro Erweiterung (Statistik, Erfolge,
+Wegpunkte, Events, Spawnfackel, Blaupause). Alles aus heißt reines Minecraft. Statistik und Erfolge allein bringen keine eigenen
 Gegenstände mit. Das Portal ändert nur `world_behavior_packs.json`/`world_resource_packs.json` der Welt (vorher
 gesichert), die Pack-Ordner bleiben liegen. Wirksam wird das nach dem nächsten Neustart. Vor dem Ausschalten von
 Wegpunkten, Spawnfackel und Blaupause warnt das Portal: Minecraft löscht deren Gegenstände dauerhaft. Details:
@@ -115,8 +116,11 @@ Wegpunkten, Spawnfackel und Blaupause warnt das Portal: Minecraft löscht deren 
 | Karte mit Wegpunkten | ✅ | ✅ |
 | Seed, „Karte neu zeichnen“ | – | ✅ |
 | Whitelist und Operatoren | – | ✅ |
-| Events (ansehen, starten, Hinweis auf der Übersicht) | – | ✅ |
-| Server: Start/Stop/Neustart/Update, Funktionen ein/aus, Protokoll | – | ✅ |
+| Funktionen: was läuft, mit Rezepten | ✅ | ✅ |
+| Funktionen ein-/ausschalten (auch ausgeschaltete sehen) | – | ✅ |
+| Events (ansehen, starten, Hinweis auf der Übersicht; Tab fehlt, wenn das Events-Pack aus ist) | – | ✅ |
+| Welt: Wetter und Tageszeit | – | ✅ |
+| Server: Start/Stop/Neustart/Update, Protokoll | – | ✅ |
 
 Der Schutz sitzt im Server, nicht nur in der Oberfläche: Ohne Anmeldung liefert die API diese
 Daten gar nicht aus (401), und der Live-Status enthält nur die freigegebenen Felder

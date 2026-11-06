@@ -27,6 +27,7 @@ log = logging.getLogger("mcportal.packs")
 PACK_STACK_RE = re.compile(r"Pack Stack - \[\d+\] .*\(id: (?P<uuid>[0-9a-fA-F-]{36}), version: [\d.]+\)")
 BACKUPS_KEEP = 20
 FEATURE_RE = re.compile(r"[a-z0-9_]{1,64}")
+ITEM_ICON_RE = re.compile(r"[a-z0-9_]{1,32}\.[a-z0-9_]{1,64}")
 
 
 def _label(name: str) -> str:
@@ -54,6 +55,98 @@ def group_features(packs: list[dict]) -> list[dict]:
         "items": any(p["items"] for p in m),
         "entities": any(p["entities"] for p in m),
     } for m in features]
+
+
+def _json(path: Path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def custom_items(packs: list[dict]) -> dict[str, dict]:
+    """Own items of these packs: "mcfs:waypoint" -> {name, png} (picture from the resource packs, if any)."""
+    textures: dict[str, Path] = {}
+    for rp in (p for p in packs if p["kind"] == "resource"):
+        try:
+            data = _json(rp["path"] / "textures" / "item_texture.json").get("texture_data", {})
+        except (OSError, ValueError, AttributeError):
+            continue
+        root = rp["path"].resolve()
+        for key, entry in data.items():
+            tex = entry.get("textures") if isinstance(entry, dict) else None
+            tex = tex[0] if isinstance(tex, list) and tex else tex
+            if isinstance(tex, str):
+                png = (rp["path"] / f"{tex}.png").resolve()
+                if png.is_relative_to(root) and png.is_file():   # nothing outside the pack folder
+                    textures[key] = png
+    items: dict[str, dict] = {}
+    for bp in (p for p in packs if p["kind"] == "behavior"):
+        for f in sorted((bp["path"] / "items").glob("*.json")) if (bp["path"] / "items").is_dir() else []:
+            try:
+                item = _json(f)["minecraft:item"]
+                ident = str(item["description"]["identifier"])
+                comp = item.get("components", {})
+                name = comp.get("minecraft:display_name", {}).get("value") or ident
+                icon = comp.get("minecraft:icon")
+                icon = icon.get("texture") if isinstance(icon, dict) else icon
+            except (OSError, ValueError, KeyError, TypeError, AttributeError):
+                continue
+            items[ident] = {"name": str(name), "png": textures.get(str(icon)) if icon else None}
+    return items
+
+
+def _item(ident: str, own: dict[str, dict], count: int = 1) -> dict:
+    """An ingredient or result as the page shows it: name and picture URL (None = placeholder)."""
+    from .donate import CATALOG   # same item names and pictures as the "Spenden" tab
+    if ident in own:
+        icon = f"/api/features/icons/{ident.replace(':', '.')}.png" if own[ident]["png"] else None
+        return {"id": ident, "name": own[ident]["name"], "icon": icon, "count": count, "own": True}
+    short = ident.removeprefix("minecraft:")
+    known = CATALOG.get(short)
+    return {
+        "id": ident,
+        "name": known["name"] if known else short.replace("_", " ").capitalize(),
+        "icon": f"/api/donate/icons/{short}.png" if known and known.get("texture") else None,
+        "count": count,
+        "own": False,
+    }
+
+
+def _ingredient(entry, own: dict[str, dict]) -> dict | None:
+    if isinstance(entry, str):
+        return _item(entry, own)
+    if isinstance(entry, dict) and isinstance(entry.get("item"), str):
+        return _item(entry["item"], own, int(entry.get("count", 1)))
+    if isinstance(entry, dict) and isinstance(entry.get("tag"), str):
+        return {"id": entry["tag"], "name": entry["tag"], "icon": None, "count": 1, "own": False}
+    return None
+
+
+def recipes(packs: list[dict], own: dict[str, dict]) -> list[dict]:
+    """Crafting recipes of these packs: {result, grid (rows of ingredient|None), shapeless}."""
+    out = []
+    for bp in (p for p in packs if p["kind"] == "behavior"):
+        folder = bp["path"] / "recipes"
+        for f in sorted(folder.glob("*.json")) if folder.is_dir() else []:
+            try:
+                data = _json(f)
+                if "minecraft:recipe_shaped" in data:
+                    r = data["minecraft:recipe_shaped"]
+                    key = {k: _ingredient(v, own) for k, v in r["key"].items()}
+                    grid = [[key.get(ch) if ch != " " else None for ch in row] for row in r["pattern"]]
+                    shapeless = False
+                elif "minecraft:recipe_shapeless" in data:
+                    r = data["minecraft:recipe_shapeless"]
+                    cells = [_ingredient(v, own) for v in r["ingredients"]]
+                    grid = [cells[i:i + 3] for i in range(0, len(cells), 3)]
+                    shapeless = True
+                else:
+                    continue
+                res = r["result"]
+                res = res[0] if isinstance(res, list) else res
+                result = _item(res["item"], own, int(res.get("count", 1))) if isinstance(res, dict) else _item(res, own)
+            except (OSError, ValueError, KeyError, TypeError, AttributeError):
+                continue
+            out.append({"result": result, "grid": grid, "shapeless": shapeless})
+    return out
 
 
 class PacksService:
@@ -145,8 +238,38 @@ class PacksService:
                 "entities": f["entities"],
                 "packs": [{"folder": p["folder"], "kind": p["kind"], "name": p["name"],
                            "version": ".".join(map(str, p["version"]))} for p in f["packs"]],
+                "_packs": f["packs"],
             })
         return out
+
+    @staticmethod
+    def _with_recipes(f: dict) -> dict:
+        own = custom_items(f["_packs"])
+        out = {k: v for k, v in f.items() if k != "_packs"}
+        out["recipes"] = recipes(f["_packs"], own)
+        return out
+
+    def public(self) -> dict:
+        """For everyone (tab "Funktionen"): only what runs, with the recipes of its own items."""
+        try:
+            features = self._features()
+        except (OSError, ValueError) as e:
+            raise PortalError(f"Pack-Listen der Welt nicht lesbar: {e}", 500)
+        keep = ("id", "name", "description", "items", "entities", "recipes")
+        return {"features": [{k: v for k, v in self._with_recipes(f).items() if k in keep}
+                             for f in features if f["state"] in ("on", "pending_off")]}
+
+    def icon_path(self, name: str) -> Path:
+        """Picture of an own item of a running feature ("mcfs.waypoint" = mcfs:waypoint)."""
+        if not ITEM_ICON_RE.fullmatch(name):
+            raise PortalError("Unbekanntes Item", 404)
+        ident = name.replace(".", ":", 1)
+        for f in self._features():
+            if f["state"] in ("on", "pending_off"):
+                item = custom_items(f["_packs"]).get(ident)
+                if item and item["png"]:
+                    return item["png"]
+        raise PortalError("Kein Bild für dieses Item", 404)
 
     def summary(self) -> dict:
         try:
@@ -154,7 +277,7 @@ class PacksService:
         except (OSError, ValueError) as e:
             raise PortalError(f"Pack-Listen der Welt nicht lesbar: {e}", 500)
         return {
-            "features": features,
+            "features": [self._with_recipes(f) for f in features],
             "writable": self.a.files.world_packs_writable(),
             "running_known": self._running_known(),
             "restart_needed": any(f["state"] in ("pending_on", "pending_off") for f in features),

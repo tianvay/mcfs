@@ -117,6 +117,7 @@ class ServerFiles:
                     m = json.loads((d / "manifest.json").read_text(encoding="utf-8"))
                     h = m["header"]
                     out.append({
+                        "path": d,
                         "folder": d.name,
                         "kind": kind,
                         "uuid": str(h["uuid"]),

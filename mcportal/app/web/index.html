@@ -24,8 +24,10 @@
     <button role="tab" class="admin-only" data-tab="allow" aria-selected="false">Whitelist</button>
     <button role="tab" data-tab="stats" aria-selected="false">Statistik</button>
     <button role="tab" class="admin-only" data-tab="events" aria-selected="false">Events</button>
+    <button role="tab" class="admin-only" data-tab="world" aria-selected="false">Welt</button>
     <button role="tab" class="admin-only" data-tab="donate" aria-selected="false">Spenden</button>
     <button role="tab" data-tab="map" aria-selected="false">Karte</button>
+    <button role="tab" data-tab="features" aria-selected="false">Funktionen</button>
     <button role="tab" class="admin-only" data-tab="server" aria-selected="false">Server</button>
   </nav>
 
@@ -92,7 +94,6 @@
           <button id="events-auto" class="btn small" type="button">Automatik</button>
         </div>
         <p id="events-missing" class="note small">Das Events-Pack ist noch nicht installiert.</p>
-        <p id="events-off" class="note" hidden>Die Events sind ausgeschaltet. Einschalten: Server → Funktionen.</p>
         <div id="events-body" hidden>
           <ul id="events-running" class="events-list"></ul>
           <h3 class="events-sub">Event starten</h3>
@@ -105,15 +106,41 @@
         </div>
       </div>
       <div class="card">
+        <h2>🧱 Blockänderungen</h2>
+        <ul id="events-undo" class="events-list"></ul>
+        <p class="note small">Was Events in der Welt verändert haben (z. B. Meteoritenkrater), lässt sich hier
+          rückgängig machen.</p>
+      </div>
+    </section>
+
+    <!-- Welt: weather and time of day (plain commands, no pack needed) -->
+    <section id="tab-world" class="tab" hidden>
+      <div class="card">
         <h2>🌍 Welt</h2>
         <h3 class="events-sub">Wetter</h3>
         <div id="world-weather" class="events-start"></div>
         <h3 class="events-sub">Tageszeit</h3>
         <div id="world-time" class="events-start"></div>
-        <h3 class="events-sub">Blockänderungen</h3>
-        <ul id="events-undo" class="events-list"></ul>
         <p class="note small">Wirkt sofort für alle Spieler. Während eines Unwetters stellt das Event das Gewitter
           nach spätestens einer Minute wieder her; Tageszeit „Morgen“ beendet ein laufendes Nacht-Event.</p>
+      </div>
+    </section>
+
+    <!-- Funktionen: everyone sees what runs (with recipes), the admin switches (M17) -->
+    <section id="tab-features" class="tab" hidden>
+      <div class="card">
+        <h2>🧩 Funktionen</h2>
+        <p class="note small public-only">Diese Erweiterungen laufen gerade auf dem Server. Für eigene Gegenstände
+          steht das Rezept dabei – gebaut wird an der Werkbank.</p>
+        <p class="note small admin-only">Die Erweiterungen dieses Servers. Alles aus = reines Minecraft (Vanilla).
+          Statistik und Erfolge bringen keine eigenen Gegenstände mit. Änderungen wirken nach dem nächsten Neustart.
+          Ohne Anmeldung sieht man hier nur, was läuft, samt Rezepten.</p>
+        <div id="packs-restart" class="note admin-only" hidden>
+          <p class="packs-restart-text">Neustart nötig, damit die Änderungen wirken.</p>
+          <button id="packs-restart-btn" class="btn small" type="button">🔄 Jetzt neu starten</button>
+        </div>
+        <p id="packs-error" class="note error" hidden></p>
+        <ul id="packs-list" class="packs-list"></ul>
       </div>
     </section>
 
@@ -220,17 +247,6 @@
           <ol id="up-steps" class="steps"></ol>
         </div>
         <p id="up-backup" class="note small"></p>
-      </div>
-      <div class="card">
-        <h2>🧩 Funktionen</h2>
-        <p class="note small">Die Erweiterungen dieses Servers. Alles aus = reines Minecraft (Vanilla). Statistik und
-          Erfolge bringen keine eigenen Gegenstände mit. Änderungen wirken nach dem nächsten Neustart.</p>
-        <div id="packs-restart" class="note" hidden>
-          <p class="packs-restart-text">Neustart nötig, damit die Änderungen wirken.</p>
-          <button id="packs-restart-btn" class="btn small" type="button">🔄 Jetzt neu starten</button>
-        </div>
-        <p id="packs-error" class="note error" hidden></p>
-        <ul id="packs-list" class="packs-list"></ul>
       </div>
       <div class="card">
         <h2>Protokoll</h2>

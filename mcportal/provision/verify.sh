@@ -99,8 +99,8 @@ while read -r kind pack; do
   have="$(manifest "$dst" version)"
   if [[ "$have" != "$want" ]]; then bad "$pack: Welt $have, Repo $want"; continue; fi
   if ! grep -q "$(manifest "$src" uuid)" "$WORLD/world_${kind}_packs.json" 2>/dev/null; then
-    # switched off on purpose in the portal (Server -> Funktionen, M17): the folder is there, the entry is not
-    note "$pack $have ausgeschaltet (Portal: Server → Funktionen)"; continue
+    # switched off on purpose in the portal (tab Funktionen, M17): the folder is there, the entry is not
+    note "$pack $have ausgeschaltet (Portal: Funktionen)"; continue
   fi
   if [[ "$kind" == behavior ]]; then
     missing=""

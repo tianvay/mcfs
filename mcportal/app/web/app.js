@@ -128,7 +128,7 @@ $("#login-btn").addEventListener("click", async () => {
 
 function showTab(name) {
   const btn = document.querySelector(`.tabs button[data-tab="${name}"]`);
-  if (!btn || (!admin && btn.classList.contains("admin-only"))) name = "home";
+  if (!btn || (!admin && btn.classList.contains("admin-only")) || btn.classList.contains("pack-hidden")) name = "home";
   document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach((s) => (s.hidden = s.id !== `tab-${name}`));
   try { sessionStorage.setItem("tab", name); } catch {}
@@ -137,7 +137,8 @@ function showTab(name) {
   if (name === "stats") loadStats();
   if (name === "map") loadMap();
   if (name === "donate" && admin) loadDonate();
-  if (name === "server" && admin) { loadAudit(); loadPacks(); }
+  if (name === "server" && admin) loadAudit();
+  if (name === "features") loadPacks();
 }
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
 document.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.goto)));
