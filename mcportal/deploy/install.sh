@@ -228,4 +228,7 @@ info "Minecraft: $(systemctl is-active "$UNIT") (unverändert, kein Neustart)"
 
 IP="$(hostname -I | awk '{print $1}')"
 printf '\n\033[1;32mFertig.\033[0m  Portal: http://%s:%s\n' "$IP" "$PORT"
-printf 'Nächster Schritt (wenn niemand spielt): sudo bash %s/deploy/m2-console.sh apply\n' "$SRC"
+# the console (M2) only has to be set up once; on a server that has it (and after setup.sh) nothing is left to do
+if [[ ! -f /etc/systemd/system/minecraft-bedrock.socket || ! -f "/etc/systemd/system/$UNIT.d/10-portal.conf" ]]; then
+  printf 'Nächster Schritt (wenn niemand spielt): sudo bash %s/deploy/m2-console.sh apply\n' "$SRC"
+fi
