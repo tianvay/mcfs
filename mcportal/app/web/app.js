@@ -15,7 +15,7 @@ const AUDIT_TEXT = {
   WHITELIST_ADD: "Whitelist: hinzugefügt", WHITELIST_REMOVE: "Whitelist: entfernt", LOGIN: "Admin-Anmeldung",
   OPERATOR_GRANT: "Operator-Rechte vergeben", OPERATOR_REVOKE: "Operator-Rechte entzogen",
   UPDATE: "Server-Update", GAMEMODE_SURVIVAL: "Spielmodus auf Überleben gesetzt", MAP: "Karte gezeichnet", EVENT: "Event", WORLD_WEATHER: "Wetter", WORLD_TIME: "Tageszeit", EVENT_UNDO: "Event rückgängig",
-  DONATE: "Gespendet",
+  DONATE: "Gespendet", PACK_ON: "Funktion eingeschaltet", PACK_OFF: "Funktion ausgeschaltet",
 };
 
 let state = null;
@@ -137,7 +137,7 @@ function showTab(name) {
   if (name === "stats") loadStats();
   if (name === "map") loadMap();
   if (name === "donate" && admin) loadDonate();
-  if (name === "server" && admin) loadAudit();
+  if (name === "server" && admin) { loadAudit(); loadPacks(); }
 }
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
 document.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.goto)));
@@ -186,6 +186,7 @@ function render(s) {
   mapOnState(s);
   eventsOnState(s);
   donateOnState(s);
+  packsOnState(s);
   const statsKey = `${s.stats && s.stats.updated}|${s.achievements && s.achievements.updated}`
     + `|${s.waypoints && s.waypoints.updated}`;
   if (statsKey !== lastStatsUpdate && lastStatsUpdate !== null && !$("#tab-stats").hidden) loadStats();
@@ -600,7 +601,7 @@ async function loadAudit() {
     const ul = $("#audit-list");
     if (!items.length) { ul.replaceChildren(el("li", { className: "empty", textContent: "Noch keine Aktionen." })); return; }
     ul.replaceChildren(...items.map((a) => el("li", {},
-      el("div", {}, `${AUDIT_TEXT[a.action] || a.action}${a.count ? `: ${a.count}× ${a.item}` : ""}${a.player ? `${a.count ? " →" : ":"} ${a.player}` : ""}${a.from ? `: ${a.from} → ${a.to}` : ""}${a.command ? `: ${a.command}${a.type ? ` ${a.type}` : ""}` : ""}${a.value ? `: ${a.value}` : ""} `,
+      el("div", {}, `${AUDIT_TEXT[a.action] || a.action}${a.count ? `: ${a.count}× ${a.item}` : ""}${a.player ? `${a.count ? " →" : ":"} ${a.player}` : ""}${a.from ? `: ${a.from} → ${a.to}` : ""}${a.command ? `: ${a.command}${a.type ? ` ${a.type}` : ""}` : ""}${a.value ? `: ${a.value}` : ""}${a.feature ? `: ${a.feature}` : ""} `,
         el("span", { className: a.result, textContent: a.result === "SUCCESS" ? "✓" : a.result === "PENDING" ? "⏳ vorgemerkt" : "✗ fehlgeschlagen" })),
       el("div", { className: "meta", textContent: `${a.time} · ${a.user}${a.error ? ` · ${a.error}` : ""}` }))));
   } catch (e) { /* not critical */ }

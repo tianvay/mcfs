@@ -47,6 +47,7 @@ sudo bash ~/mcportal-src/deploy/m2-console.sh apply
 | `/var/lib/mcportal/audit.jsonl` | Aktionsprotokoll |
 | `/var/lib/mcportal/backups/` | Sicherungen (`*_pre_portal_install`, `*_pre_m2_console`, `*_pre_allowlist_*`) |
 | `/var/lib/mcportal/item-icons/` | Item-Bilder für den Tab „Spenden“ (vom Portal einmalig geladen) |
+| `/var/lib/mcportal/backups/packs/` | Pack-Listen der Welt vor jedem Ein-/Ausschalten (die letzten 20) |
 
 Logs des Portals: `journalctl -u mcportal -f`
 
@@ -96,6 +97,15 @@ es geht keine Chat-Nachricht raus). Jede Spende steht im Protokoll (`DONATE`).
   `/var/lib/mcportal/item-icons/<release>/`. Ohne Internet oder ohne passende Textur zeigt der Tab einen
   Platzhalter. Laub und Gras sind grau, weil Minecraft sie erst im Spiel einfärbt.
 
+## Funktionen ein- und ausschalten
+
+Tab „Server“ → „Funktionen“ (nur Admin): ein Schalter pro Erweiterung (Statistik, Erfolge, Wegpunkte, Events,
+Spawnfackel, Blaupause). Alles aus heißt reines Minecraft. Statistik und Erfolge allein bringen keine eigenen
+Gegenstände mit. Das Portal ändert nur `world_behavior_packs.json`/`world_resource_packs.json` der Welt (vorher
+gesichert), die Pack-Ordner bleiben liegen. Wirksam wird das nach dem nächsten Neustart. Vor dem Ausschalten von
+Wegpunkten, Spawnfackel und Blaupause warnt das Portal: Minecraft löscht deren Gegenstände dauerhaft. Details:
+[docs/16-funktionen-schalten.md](../docs/16-funktionen-schalten.md).
+
 ## Wer was sieht (Admin-Anmeldung)
 
 | Bereich | Ohne Anmeldung (Kinder, Gäste im WLAN) | Admin (angemeldet) |
@@ -106,7 +116,7 @@ es geht keine Chat-Nachricht raus). Jede Spende steht im Protokoll (`DONATE`).
 | Seed, „Karte neu zeichnen“ | – | ✅ |
 | Whitelist und Operatoren | – | ✅ |
 | Events (ansehen, starten, Hinweis auf der Übersicht) | – | ✅ |
-| Server: Start/Stop/Neustart/Update, Protokoll | – | ✅ |
+| Server: Start/Stop/Neustart/Update, Funktionen ein/aus, Protokoll | – | ✅ |
 
 Der Schutz sitzt im Server, nicht nur in der Oberfläche: Ohne Anmeldung liefert die API diese
 Daten gar nicht aus (401), und der Live-Status enthält nur die freigegebenen Felder

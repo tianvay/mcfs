@@ -62,7 +62,7 @@ Danach ist das Portal unter `http://<IP des Servers>:8080` erreichbar, nur aus d
 | 2 | `/etc/mcportal/server.conf` aus der Vorlage, Servername, Weltname und Seed abfragen und eintragen | neu |
 | 3–7 | Prüfungen, Benutzer `minecraft`, neuester Bedrock-Server nach `/opt/minecraft/bedrock`, `server.properties`, alle Packs aus `provision/packs.list` in die Welt (vor dem ersten Start) | wie `--prepare` |
 | 8 | `minecraft-bedrock.service` (Sandbox), Konsole (`.socket`, `10-portal.conf`), Router für die öffentliche IP (`31-router.conf`) | wie `--switch` |
-| 9 | `deploy/install.sh`: Portal, Startprüfung, öffentliche IP, Update-Knopf, polkit, Firewall fürs Portal | unverändert |
+| 9 | `deploy/install.sh`: Portal, Startprüfung, öffentliche IP, Update-Knopf, polkit, Firewall fürs Portal, Schreibrecht auf die Pack-Listen (Funktionen ein/aus, M17) | unverändert |
 | 10 | Firewall (nur wenn `ufw` aktiv ist): 19132, 19133 und 19140–19149/udp; kein Ruhezustand (`no-suspend.sh`) | neu / unverändert |
 | 11 | Erster Start, die Welt entsteht. Danach Seed anzeigen, Spielregeln aus `gamerules.list` setzen | wie `--switch` |
 | 12 | Rechte prüfen, dann `verify.sh`: Dienste, Port, jedes Pack mit Version und Startzeile, keine Script-Fehler, Portal, Update-Prüfung | unverändert |

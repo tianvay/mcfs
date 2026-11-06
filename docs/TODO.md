@@ -7,6 +7,8 @@ Stand: 2026-11-03 (mit dem Server abgeglichen: Log, sudo-Verlauf, Prüfsummen vo
 
 ### Im Spiel ansehen
 
+- [ ] **Funktionen ein/aus (M17)** (`docs/16-funktionen-schalten.md`): auf dem Laptop `sudo bash ~/mcportal-src/deploy/install.sh`,
+      dann im Portal z. B. die Spawnfackel aus- und wieder einschalten (Neustart) und im Spiel prüfen.
 - [ ] **Blaupause (M15)** (installiert 02.11. 18:29, Pack startet ohne Fehler; `docs/14-blaupause.md`): Craften,
       Markieren mit Umriss, Namensfenster, Einsetzen in alle Richtungen, Kopieren über die Werkbank (wird der
       Platzhalter zu zwei Blaupausen?), Schleichen + Benutzen.

@@ -1,4 +1,4 @@
-"""Server files: allowlist.json, permissions.json, server.properties, the world seed."""
+"""Server files: allowlist.json, permissions.json, server.properties, the world seed, the world's pack lists."""
 from __future__ import annotations
 
 import json
@@ -81,6 +81,55 @@ class ServerFiles:
 
     def world_dir(self) -> Path:
         return self.dir / "worlds" / self.read_properties().get("level-name", "Bedrock level")
+
+    # ---------- packs of the world (behavior_packs/, resource_packs/, world_*_packs.json) ----------
+
+    def world_packs_file(self, kind: str) -> Path:
+        return self.world_dir() / f"world_{kind}_packs.json"
+
+    def read_world_packs(self, kind: str) -> list[dict]:
+        """Entries {pack_id, version} of world_<kind>_packs.json; a missing or empty file is an empty list."""
+        try:
+            text = self.world_packs_file(kind).read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return []
+        data = json.loads(text or "[]")
+        if not isinstance(data, list):
+            raise ValueError(f"world_{kind}_packs.json ist keine Liste")
+        return data
+
+    def world_packs_writable(self) -> bool:
+        return all(os.access(self.world_packs_file(k), os.W_OK) for k in ("behavior", "resource"))
+
+    def write_world_packs(self, kind: str, entries: list[dict]) -> None:
+        # same layout as provision/setup.sh and deploy/world-pack.sh
+        _write_in_place(self.world_packs_file(kind), entries, indent=2)
+
+    def installed_packs(self) -> list[dict]:
+        """Every pack folder in the world (whether switched on or not), from its manifest.json."""
+        out = []
+        for kind in ("behavior", "resource"):
+            base = self.world_dir() / f"{kind}_packs"
+            if not base.is_dir():
+                continue
+            for d in sorted(p for p in base.iterdir() if p.is_dir()):
+                try:
+                    m = json.loads((d / "manifest.json").read_text(encoding="utf-8"))
+                    h = m["header"]
+                    out.append({
+                        "folder": d.name,
+                        "kind": kind,
+                        "uuid": str(h["uuid"]),
+                        "version": [int(x) for x in h["version"]],
+                        "name": str(h.get("name", d.name)),
+                        "description": str(h.get("description", "")),
+                        "depends": [str(x["uuid"]) for x in m.get("dependencies", []) if "uuid" in x],
+                        "items": (d / "items").is_dir(),
+                        "entities": (d / "entities").is_dir(),
+                    })
+                except (OSError, ValueError, KeyError, TypeError):
+                    continue  # not a valid pack - Bedrock ignores it as well
+        return out
 
     def seed(self) -> int | None:
         """RandomSeed from level.dat; re-read only when the file changed."""

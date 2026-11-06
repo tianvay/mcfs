@@ -83,6 +83,7 @@ class FakeAdapter:
             (d / "permissions.json").write_text('[{"permission":"operator","xuid":"2535400000000001"}]')
             (d / "server.properties").write_text("server-name=Dedicated Server\nmax-players=10\n")
         self.files = ServerFiles(server_dir)
+        self._fake_packs()
         self.updater = FakeUpdater(self)
         self._q: queue.Queue[LogLine] = queue.Queue()
         self._history: list[LogLine] = []
@@ -101,11 +102,42 @@ class FakeAdapter:
         if ts is None:
             self._q.put(line)
 
+    def _fake_packs(self) -> None:
+        """The repo's packs (manifest + items/entities markers) in the fake world, all switched on."""
+        world = self.files.world_dir()
+        if (world / "world_behavior_packs.json").exists():
+            return
+        src = Path(__file__).resolve().parents[2] / "minecraft-pack"
+        lists: dict[str, list] = {"behavior": [], "resource": []}
+        for d in sorted(p for p in src.iterdir() if (p / "manifest.json").is_file()):
+            m = json.loads((d / "manifest.json").read_text(encoding="utf-8"))
+            kind = "resource" if any(x.get("type") == "resources" for x in m.get("modules", [])) else "behavior"
+            dst = world / f"{kind}_packs" / d.name
+            dst.mkdir(parents=True, exist_ok=True)
+            (dst / "manifest.json").write_text(json.dumps(m), encoding="utf-8")
+            for marker in ("items", "entities"):
+                if (d / marker).is_dir():
+                    (dst / marker).mkdir(exist_ok=True)
+            lists[kind].append({"pack_id": m["header"]["uuid"], "version": m["header"]["version"]})
+        for kind, entries in lists.items():
+            (world / f"world_{kind}_packs.json").write_text(json.dumps(entries, indent=2), encoding="utf-8")
+
+    def _pack_stack(self, ts: float | None = None) -> None:
+        """Like Bedrock at every start: one "Pack Stack" line per switched-on behavior pack."""
+        names = {p["uuid"]: p for p in self.files.installed_packs()}
+        for i, e in enumerate(self.files.read_world_packs("behavior")):
+            p = names.get(e["pack_id"])
+            if p:
+                v = ".".join(map(str, p["version"]))
+                self._log(f"Pack Stack - [{i:02d}] {p['name']} (id: {p['uuid']}, version: {v}) "
+                          f"@ worlds/Bedrock level/behavior_packs/{p['folder']}", ts=ts)
+
     def _boot(self, ts: float) -> None:
         self._state, self._started_at = "active", ts
         self._log("Started minecraft-bedrock.service", "systemd", ts)
         self._log("Starting Server", ts=ts)
         self._log(f"Version: {self.VERSION}", ts=ts)
+        self._pack_stack(ts=ts + 3)
         self._log("Server started.", ts=ts + 4)
         self._log("Player connected: Steve, xuid: 2535400000000001", ts=ts + 60)
         self._online = ["Steve"]
@@ -138,6 +170,7 @@ class FakeAdapter:
             self._log(f"Version: {self.VERSION}")
             time.sleep(2)
             self._state = "active"
+            self._pack_stack()
             if not self.broken:
                 self._log("Server started.")
                 self._log("[Scripting] [mcportal-stats] {\"v\":2,\"started\":true}")

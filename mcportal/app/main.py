@@ -22,17 +22,19 @@ from .services.allowlist import AllowlistService
 from .services.donate import DonateService
 from .services.events import EventsService
 from .services.minecraft import MinecraftService, PortalError
+from .services.packs import PacksService
 from .services.stats import StatsService
 from .services.update import UpdateService
 from .services.waypoints import WaypointsService
 
 WEB_DIR = Path(__file__).parent / "web"
 SESSION_COOKIE = "mcportal_session"
+EVENTS_PACK = "mcportal_events"
 SSE_PING_SECONDS = 15
 # Status fields everyone may see; everything else (seed, whitelist, update, events, errors ...) is admin only.
 # A list of what is allowed, so a new field stays hidden until it is added here.
 PUBLIC_STATUS = {"server_name", "status", "active_state", "started_at", "last_start", "version", "last_update",
-                 "players", "max_players", "busy", "map", "stats", "achievements", "waypoints", "now"}
+                 "players", "max_players", "busy", "map", "stats", "achievements", "waypoints", "packs", "now"}
 # Set by the server on SIGTERM/SIGINT so open live streams end by themselves
 SHUTTING_DOWN = threading.Event()
 
@@ -61,6 +63,10 @@ class GiftIn(BaseModel):
 
 class WorldIn(BaseModel):
     value: str
+
+
+class PackIn(BaseModel):
+    enabled: bool
 
 
 class SecurityHeaders:
@@ -106,6 +112,7 @@ def create_app(cfg: Config) -> FastAPI:
     world_map = MapService(adapter, mc, audit, cfg.data_dir)
     game_events = EventsService(adapter, mc, audit, cfg.data_dir)
     donate = DonateService(adapter, mc, audit, cfg.data_dir)
+    packs = PacksService(adapter, mc, audit, cfg.data_dir, cfg.backup_dir)
     world_map.after_render.append(game_events.sync_register)  # builds found on the map -> build register
     sessions = Sessions(cfg.data_dir / "sessions.json", cfg.password_hash)
     lockout = Lockout()
@@ -113,6 +120,7 @@ def create_app(cfg: Config) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         await mc.startup()
+        await packs.startup()
         await stats.startup()
         await achievements.startup()
         await waypoints.startup()
@@ -266,6 +274,11 @@ def create_app(cfg: Config) -> FastAPI:
 
     # ---------- timed events (not /api/events - that is the live stream) ----------
 
+    def require_events_pack() -> None:
+        # without the events pack the "scriptevent mcfs:event ..." commands would go nowhere
+        if not packs.active(EVENTS_PACK):
+            raise PortalError("Die Events sind ausgeschaltet (Server → Funktionen).", 409)
+
     @app.get("/api/gameevents")
     async def game_events_summary(_: str = Depends(require_admin)):
         return game_events.summary()
@@ -273,11 +286,13 @@ def create_app(cfg: Config) -> FastAPI:
     # before /api/gameevents/{action}, which would take "undo" as an action
     @app.post("/api/gameevents/undo", status_code=202)
     async def game_events_undo(body: WorldIn, user: str = Depends(require_admin)):
+        require_events_pack()
         await game_events.undo(body.value, user)
         return {"accepted": body.value}
 
     @app.post("/api/gameevents/{action}", status_code=202)
     async def game_events_control(action: str, body: EventControlIn, user: str = Depends(require_admin)):
+        require_events_pack()
         await game_events.control(action, body.type, user)
         return {"accepted": action}
 
@@ -285,6 +300,16 @@ def create_app(cfg: Config) -> FastAPI:
     async def world_control(kind: str, body: WorldIn, user: str = Depends(require_admin)):
         await game_events.world(kind, body.value, user)
         return {"accepted": kind}
+
+    # ---------- features = packs of the world (tab "Server") ----------
+
+    @app.get("/api/packs")
+    async def packs_summary(_: str = Depends(require_admin)):
+        return await asyncio.to_thread(packs.summary)
+
+    @app.put("/api/packs/{feature}")
+    async def packs_switch(feature: str, body: PackIn, user: str = Depends(require_admin)):
+        return await packs.set_enabled(feature, body.enabled, user)
 
     # ---------- donations (tab "Spenden") ----------
 

@@ -31,7 +31,8 @@ Friends“, „FAF“ und ein zufälliger Seed. Am Ende fragt es nach dem **Admi
 
 Danach läuft der neueste Bedrock-Server als Benutzer `minecraft` mit allen Packs (Statistik, Wegpunkte, Events,
 Erfolge, Spawnfackel, Blaupause), dazu das Portal unter `http://<IP des Servers>:8080`. Beide starten beim
-Hochfahren von selbst.
+Hochfahren von selbst. Im Portal lassen sich die Erweiterungen einzeln abschalten (Server → Funktionen), bis hin
+zu reinem Vanilla-Minecraft mit Statistik und Erfolgen.
 
 Details und Optionen: [Installation auf einem frischen Server](docs/15-installation.md).
 
@@ -52,7 +53,8 @@ Details und Optionen: [Installation auf einem frischen Server](docs/15-installat
 13. [Spawnfackel](docs/13-spawnfackel.md) – roter Schleier, wo nachts Monster spawnen können, M14
 14. [Blaupause](docs/14-blaupause.md) – Bereiche speichern und einmal einsetzen, M15
 15. [Installation auf einem frischen Server](docs/15-installation.md) – ein Befehl, eigener Seed, M16
-16. [To-dos](docs/TODO.md)
+16. [Funktionen ein- und ausschalten](docs/16-funktionen-schalten.md) – Packs im Portal, auch reines Vanilla, M17
+17. [To-dos](docs/TODO.md)
 
 ## Grundsätze
 

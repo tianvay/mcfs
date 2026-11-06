@@ -92,6 +92,7 @@
           <button id="events-auto" class="btn small" type="button">Automatik</button>
         </div>
         <p id="events-missing" class="note small">Das Events-Pack ist noch nicht installiert.</p>
+        <p id="events-off" class="note" hidden>Die Events sind ausgeschaltet. Einschalten: Server → Funktionen.</p>
         <div id="events-body" hidden>
           <ul id="events-running" class="events-list"></ul>
           <h3 class="events-sub">Event starten</h3>
@@ -221,6 +222,17 @@
         <p id="up-backup" class="note small"></p>
       </div>
       <div class="card">
+        <h2>🧩 Funktionen</h2>
+        <p class="note small">Die Erweiterungen dieses Servers. Alles aus = reines Minecraft (Vanilla). Statistik und
+          Erfolge bringen keine eigenen Gegenstände mit. Änderungen wirken nach dem nächsten Neustart.</p>
+        <div id="packs-restart" class="note" hidden>
+          <p class="packs-restart-text">Neustart nötig, damit die Änderungen wirken.</p>
+          <button id="packs-restart-btn" class="btn small" type="button">🔄 Jetzt neu starten</button>
+        </div>
+        <p id="packs-error" class="note error" hidden></p>
+        <ul id="packs-list" class="packs-list"></ul>
+      </div>
+      <div class="card">
         <h2>Protokoll</h2>
         <ul id="audit-list" class="audit-list"></ul>
       </div>
@@ -246,6 +258,7 @@
   <script src="/static/map.js"></script>
   <script src="/static/events.js"></script>
   <script src="/static/donate.js"></script>
+  <script src="/static/packs.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

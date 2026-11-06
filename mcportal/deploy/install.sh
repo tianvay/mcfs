@@ -122,6 +122,26 @@ for f in allowlist.json permissions.json; do
   grep -qxF "$MC_DIR/$f" "$ACL_LOG" || echo "$MC_DIR/$f" >> "$ACL_LOG"
   info "Lesen/Schreiben auf $f"
 done
+# M17: the portal switches features on/off = edits the pack lists of the world (in place, owner stays $MC_USER).
+# Missing lists are created empty for $MC_USER; a world that does not exist yet gets them from setup.sh/Bedrock -
+# then simply run install.sh again.
+LEVEL="$(sed -n 's/^level-name=//p' "$MC_DIR/server.properties")"
+WORLD_DIR="$MC_DIR/worlds/$LEVEL"
+if [[ -n "$LEVEL" && -d "$WORLD_DIR" ]]; then
+  for kind in behavior resource; do
+    f="$WORLD_DIR/world_${kind}_packs.json"
+    if [[ ! -f "$f" ]]; then
+      printf '[]\n' > "$f"; chown "$MC_USER:$MC_USER" "$f"; chmod 644 "$f"
+      info "$(basename "$f") angelegt (leer)"
+    fi
+    setfacl -m u:mcportal:rw "$f"
+    grep -qxF "$f" "$ACL_LOG" || echo "$f" >> "$ACL_LOG"
+    info "Lesen/Schreiben auf $(basename "$f") (Funktionen ein/aus)"
+  done
+  runuser -u mcportal -- test -w "$WORLD_DIR/world_behavior_packs.json" || fail "mcportal kann world_behavior_packs.json nicht schreiben"
+else
+  info "Welt $LEVEL gibt es noch nicht – Rechte für die Pack-Listen beim nächsten install.sh"
+fi
 runuser -u mcportal -- test -r "$MC_DIR/server.properties" || fail "mcportal kann server.properties nicht lesen"
 runuser -u mcportal -- test -w "$MC_DIR/allowlist.json" || fail "mcportal kann allowlist.json nicht schreiben"
 runuser -u mcportal -- test -w "$MC_DIR/permissions.json" || fail "mcportal kann permissions.json nicht schreiben"

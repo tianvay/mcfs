@@ -99,7 +99,8 @@ while read -r kind pack; do
   have="$(manifest "$dst" version)"
   if [[ "$have" != "$want" ]]; then bad "$pack: Welt $have, Repo $want"; continue; fi
   if ! grep -q "$(manifest "$src" uuid)" "$WORLD/world_${kind}_packs.json" 2>/dev/null; then
-    bad "$pack $have nicht in world_${kind}_packs.json"; continue
+    # switched off on purpose in the portal (Server -> Funktionen, M17): the folder is there, the entry is not
+    note "$pack $have ausgeschaltet (Portal: Server → Funktionen)"; continue
   fi
   if [[ "$kind" == behavior ]]; then
     missing=""
@@ -155,6 +156,8 @@ if [[ $ROOT == 1 ]]; then
   check "Portal liest server.properties" runuser -u mcportal -- test -r "$U_DIR/server.properties"
   check "Portal schreibt allowlist.json" runuser -u mcportal -- test -w "$U_DIR/allowlist.json"
   check "Portal schreibt permissions.json" runuser -u mcportal -- test -w "$U_DIR/permissions.json"
+  check "Portal schaltet Funktionen (world_behavior_packs.json)" runuser -u mcportal -- test -w "$WORLD/world_behavior_packs.json"
+  check "Portal schaltet Funktionen (world_resource_packs.json)" runuser -u mcportal -- test -w "$WORLD/world_resource_packs.json"
   check "Portal liest die Welt (Karte, Seed)" runuser -u mcportal -- test -r "$WORLD/level.dat" -a -r "$WORLD/db/CURRENT"
 else
   note "Zugriff des Portals auf die Serverdateien nur mit sudo prüfbar"

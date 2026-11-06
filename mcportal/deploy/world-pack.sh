@@ -122,6 +122,10 @@ apply)
   [[ "$n" == 0 ]] || fail "$n Spieler online – bitte warten, bis niemand spielt"
   OLD="$( [[ -f "$DST/manifest.json" ]] && manifest "$DST/manifest.json" version || echo "-" )"
   info "$PACK_NAME ($KIND pack): installiert $OLD -> neu $PACK_VERSION, niemand online"
+  # installed but switched off in the portal (Server -> Funktionen, M17): new files, but it stays off
+  SWITCHED_OFF=0
+  [[ -d "$DST" ]] && ! grep -qs "$PACK_UUID" "$WBP" && SWITCHED_OFF=1
+  [[ $SWITCHED_OFF == 1 ]] && info "im Portal ausgeschaltet – wird nur aktualisiert und bleibt aus"
 
   step "2/4 Sicherung"
   BK="$BACKUPS/$(date +%Y-%m-%d_%H-%M-%S)_pre_$PACK"
@@ -137,6 +141,10 @@ apply)
   (cd "$PACK_SRC" && tar --exclude=./tests --exclude=./tools -cf - .) | tar -xf - -C "$DST"
   sed -i "s/@SERVER_API@/$SERVER_API/" "$DST/manifest.json"
   own "$DST"
+  if [[ $SWITCHED_OFF == 1 ]]; then
+    printf '\n\033[1;32mAktualisiert, bleibt ausgeschaltet.\033[0m Einschalten: Portal → Server → Funktionen (dann neu starten).\n'
+    exit 0
+  fi
   set_world_entry "$PACK_VERSION"
   info "$(basename "$WBP"): $(tr -d ' \n' < "$WBP")"
 

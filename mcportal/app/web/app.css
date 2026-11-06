@@ -304,3 +304,24 @@ dialog input { width: 100%; margin-bottom: 12px; }
 /* admin areas: only after logging in (the server refuses their data anyway) */
 body:not(.admin) .admin-only { display: none !important; }
 .foot { display: flex; justify-content: center; padding: 8px 16px 24px; }
+
+/* dialog: keep the paragraphs of longer questions */
+#dlg-text { white-space: pre-line; }
+
+/* Server -> Funktionen (M17) */
+.packs-list { list-style: none; margin: 0; padding: 0; }
+.packs-list .pack { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.packs-list .pack:last-child { border-bottom: 0; }
+.pack-main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.pack-main small { color: var(--muted); }
+.pack-title { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.pack-state { font-size: .75rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap;
+  background: var(--line); color: var(--muted); }
+.pack-state.on { background: var(--ok-bg); color: var(--ok); }
+.pack-state.pending { background: var(--warn-bg); color: var(--warn); }
+.pack-state.failed { background: var(--bad-bg); color: var(--bad); }
+.packs-list .pack .btn { flex: none; }
+#packs-restart { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; }
+.packs-restart-text { margin: 0; }
+.events-card.pack-off #events-body, .events-card.pack-off #events-auto, .events-card.pack-off #events-missing { display: none; }
+.tabs button.off { opacity: .55; }
