@@ -51,10 +51,12 @@ class ConfTest(unittest.TestCase):
 
     def test_check_single_value(self):
         for key, good in [("SERVER_NAME", "Family and Friends"), ("WORLD_NAME", "Welt 2"), ("LEVEL_SEED", ""),
-                          ("LEVEL_SEED", "-278472841329850337"), ("LEVEL_SEED", "Mein_Seed")]:
+                          ("LEVEL_SEED", "-278472841329850337"), ("LEVEL_SEED", "Mein_Seed"),
+                          ("MAX_PLAYERS", "1"), ("MAX_PLAYERS", "20"), ("MAX_PLAYERS", "99")]:
             P.check(key, good)
         for key, bad in [("SERVER_NAME", ""), ("SERVER_NAME", "a;b"), ("WORLD_NAME", "../x"), ("WORLD_NAME", " FAF"),
-                         ("LEVEL_SEED", "zwei Worte"), ("LEVEL_SEED", "1" * 31), ("NOPE", "x")]:
+                         ("LEVEL_SEED", "zwei Worte"), ("LEVEL_SEED", "1" * 31), ("NOPE", "x"),
+                         ("MAX_PLAYERS", "0"), ("MAX_PLAYERS", "100"), ("MAX_PLAYERS", "zehn"), ("MAX_PLAYERS", "")]:
             with self.assertRaises(P.ConfError, msg=f"{key}={bad!r}"):
                 P.check(key, bad)
 

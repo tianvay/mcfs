@@ -5,11 +5,12 @@
 #   sudo bash provision/setup.sh --switch      [--conf FILE] [--import-players | --import-allowlist]
 #   sudo bash provision/setup.sh --switch-back
 #   sudo bash provision/setup.sh --install     [--conf FILE] [--seed SEED] [--name SERVERNAME] [--world WORLDNAME]
+#                                              [--players MAXPLAYERS]
 #
 # --install sets up a FRESH Ubuntu server (24.04+, or Linux Mint 22+; no test installation to replace,
 #   docs/15-installation.md): packages (python3-venv, acl, curl, polkit, libcurl), /etc/mcportal/server.conf from
-#   the example; server name, world name and seed are asked on a terminal unless given (Enter = "Family and
-#   Friends", "FAF", random seed; without a terminal these defaults apply), steps 1-5 as --prepare, main unit +
+#   the example; server name, world name, seed and max. players are asked on a terminal unless given (Enter =
+#   "Family and Friends", "FAF", random seed, 10; without a terminal these defaults apply), steps 1-5 as --prepare, main unit +
 #   console socket, deploy/install.sh (portal, start check, public IP, update helpers), firewall ports, no suspend,
 #   first start (the world is created now), game rules, verify.sh. No probe copy: the real start is checked the
 #   same way (start check, every pack reports, no script errors). Laptop-only tweaks of the family server
@@ -70,7 +71,7 @@ GAME_DATA=(stats.json achievements.json events.json waypoints.json map)
 # pending operator assignments of the portal (current and first file name)
 PENDING_OPS=(pending_operator.json pending_survival.json)
 
-MODE="" CONF="" IMPORT="" SEED="" SEED_SET=0 NAME="" WORLD_ARG=""
+MODE="" CONF="" IMPORT="" SEED="" SEED_SET=0 NAME="" WORLD_ARG="" PLAYERS=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --prepare) MODE=prepare ;;
@@ -83,11 +84,12 @@ while [[ $# -gt 0 ]]; do
     --seed) SEED="${2:-}"; SEED_SET=1; shift ;;
     --name) NAME="${2:-}"; shift ;;
     --world) WORLD_ARG="${2:-}"; shift ;;
+    --players) PLAYERS="${2:-}"; shift ;;
     *) MODE=""; break ;;
   esac
   shift
 done
-[[ -n "$MODE" ]] || { echo "Aufruf: sudo bash $0 --prepare|--switch|--switch-back|--install [--conf DATEI] [--seed SEED] [--name SERVERNAME] [--world WELTNAME] [--import-players|--import-allowlist]"; exit 2; }
+[[ -n "$MODE" ]] || { echo "Aufruf: sudo bash $0 --prepare|--switch|--switch-back|--install [--conf DATEI] [--seed SEED] [--name SERVERNAME] [--world WELTNAME] [--players MAXSPIELER] [--import-players|--import-allowlist]"; exit 2; }
 [[ "$(id -u)" == 0 ]] || fail "Bitte mit sudo ausführen"
 
 laravel_code() { curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1/ || true; }
@@ -490,6 +492,7 @@ ask() {
     python3 -I "$HERE/properties.py" check "$key" "$value" 2>/dev/null && break
     case "$key" in
       LEVEL_SEED) warn "Seed: Zahl (z. B. -1234567890) oder ein Wort aus Buchstaben, Ziffern und _ (bis 30 Zeichen)" ;;
+      MAX_PLAYERS) warn "Spielerzahl: eine Zahl von 1 bis 99" ;;
       *) warn "Erlaubt: Buchstaben, Ziffern, Leerzeichen, _ ' - (bis 40 Zeichen)" ;;
     esac
   done
@@ -517,26 +520,31 @@ install_conf() {
       || fail "Die Welt $WORLD_NAME gibt es schon – ein anderer Weltname ($WORLD_ARG) würde eine zweite Welt anlegen"
   else
     # new world: everything not given on the command line is asked (Enter = value from server.conf, i.e.
-    # "Family and Friends", "FAF" and a random seed on a fresh server); without a terminal those values apply
+    # "Family and Friends", "FAF", a random seed and 10 players on a fresh server); without a terminal those apply
     local name="${NAME:-$(conf_value SERVER_NAME)}" world="${WORLD_ARG:-$WORLD_NAME}" seed
+    local players="${PLAYERS:-$(conf_value MAX_PLAYERS)}"
     seed="$( (( SEED_SET )) && printf '%s' "$SEED" || conf_value LEVEL_SEED)"
-    if [[ -t 0 ]] && { [[ -z "$NAME" ]] || [[ -z "$WORLD_ARG" ]] || (( ! SEED_SET )); }; then
+    if [[ -t 0 ]] && { [[ -z "$NAME" ]] || [[ -z "$WORLD_ARG" ]] || (( ! SEED_SET )) || [[ -z "$PLAYERS" ]]; }; then
       info "Neue Welt – bitte angeben (Enter = Vorschlag in Klammern):"
       [[ -n "$NAME" ]] || ask SERVER_NAME "Servername (Anzeige in der Serverliste)" "$name" "$name" name
       [[ -n "$WORLD_ARG" ]] || ask WORLD_NAME "Weltname (Ordner der Welt)" "$world" "$world" world
       (( SEED_SET )) || ask LEVEL_SEED "Seed" "$seed" "${seed:-zufällig}" seed
+      [[ -n "$PLAYERS" ]] || ask MAX_PLAYERS "Höchstzahl Spieler gleichzeitig" "$players" "$players" players
     elif [[ ! -t 0 ]]; then
       info "kein Terminal – keine Abfrage, es gelten die Angaben bzw. die Werte aus $CONF"
     fi
     set_conf SERVER_NAME "$name"
     set_conf WORLD_NAME "$world"
     set_conf LEVEL_SEED "$seed"
-    NAME=""   # applied
+    set_conf MAX_PLAYERS "$players"
+    NAME="" PLAYERS=""   # applied
   fi
+  # name and player count may change on a re-run too (server.properties is rebuilt; wirksam beim nächsten Start)
   [[ -n "$NAME" ]] && set_conf SERVER_NAME "$NAME"
+  [[ -n "$PLAYERS" ]] && set_conf MAX_PLAYERS "$PLAYERS"
   load_conf "$CONF"
   local seed; seed="$(sed -n 's/^LEVEL_SEED=//p' "$CONF")"
-  info "Server: $(sed -n 's/^SERVER_NAME=//p' "$CONF"), Welt: $WORLD_NAME, Seed: ${seed:-zufällig}"
+  info "Server: $(sed -n 's/^SERVER_NAME=//p' "$CONF"), Welt: $WORLD_NAME, Seed: ${seed:-zufällig}, max. $(sed -n 's/^MAX_PLAYERS=//p' "$CONF") Spieler"
 
   if [[ -f "$UNIT_FILE" ]]; then
     local dir; dir="$(systemctl show -p WorkingDirectory --value "$UNIT")"

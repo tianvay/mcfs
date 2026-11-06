@@ -26,8 +26,8 @@ ausführen:
 sudo apt-get update && sudo apt-get install -y git && { git clone https://github.com/tianvay/mcfs.git ~/mcfs || git -C ~/mcfs pull; } && sudo bash ~/mcfs/mcportal/provision/setup.sh --install
 ```
 
-Das Script fragt nach **Servername**, **Weltname** und **Seed**. Mit Enter gilt der Vorschlag: „Family and
-Friends“, „FAF“ und ein zufälliger Seed. Am Ende fragt es nach dem **Admin-Passwort** fürs Portal.
+Das Script fragt nach **Servername**, **Weltname**, **Seed** und der **Höchstzahl Spieler**. Mit Enter gilt der
+Vorschlag: „Family and Friends“, „FAF“, ein zufälliger Seed und 10 Spieler. Am Ende fragt es nach dem **Admin-Passwort** fürs Portal.
 
 Danach läuft der neueste Bedrock-Server als Benutzer `minecraft` mit allen Packs (Statistik, Wegpunkte, Events,
 Erfolge, Spawnfackel, Blaupause), dazu das Portal unter `http://<IP des Servers>:8080`. Beide starten beim

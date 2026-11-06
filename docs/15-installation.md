@@ -27,9 +27,10 @@ Gibt es `~/mcfs` schon (zweiter Versuch), holt die Zeile nur den neuesten Stand.
     Servername (Anzeige in der Serverliste) [Family and Friends]:
     Weltname (Ordner der Welt) [FAF]:
     Seed [zufällig]:
+    Höchstzahl Spieler gleichzeitig [10]:
 ```
 
-Mit Enter gilt der Vorschlag in Klammern. Ungültige Eingaben (z. B. `;` im Namen oder zwei Wörter als Seed) werden
+Mit Enter gilt der Vorschlag in Klammern. Ungültige Eingaben (z. B. `;` im Namen, zwei Wörter als Seed, 0 Spieler) werden
 noch einmal abgefragt. Ohne Terminal (z. B. über ein Script) gibt es keine Fragen, dann gelten die Vorschläge.
 
 Die Antworten kann man auch gleich mitgeben, dann entfällt die jeweilige Frage:
@@ -39,10 +40,11 @@ Die Antworten kann man auch gleich mitgeben, dann entfällt die jeweilige Frage:
 | `--name "<Name>"` | Servername in der Serverliste (Vorschlag `Family and Friends`, bis 40 Zeichen) |
 | `--world "<Name>"` | Weltname = Ordner `worlds/<Name>` (Vorschlag `FAF`, bis 40 Zeichen) |
 | `--seed <seed>` | Seed der neuen Welt: Zahl (z. B. `-1234567890`) oder Wort (Buchstaben, Ziffern, `_`, bis 30 Zeichen). `--seed ""` = zufällig |
+| `--players <Zahl>` | Höchstzahl Spieler gleichzeitig, 1–99 (Vorschlag 10). Geht auch beim erneuten Ausführen, wirksam beim nächsten Minecraft-Start |
 | `--conf <Datei>` | eigene Einstellungen statt `/etc/mcportal/server.conf` (Vorlage: `mcportal/provision/server.conf.example`) |
 
-Die übrigen Einstellungen kommen aus der Vorlage, so wie auf dem Laptop: Überleben, Schwierigkeit Normal, 10
-Spieler, Sichtweite 32, Ports 19132/19133.
+Die übrigen Einstellungen kommen aus der Vorlage, so wie auf dem Laptop: Überleben, Schwierigkeit Normal,
+Sichtweite 32, Ports 19132/19133.
 
 Am Ende fragt das Script nach dem **Admin-Passwort fürs Portal**. Ohne Passwort sind Whitelist, Events und die
 Server-Seite gesperrt. Später setzen:
@@ -59,7 +61,7 @@ Danach ist das Portal unter `http://<IP des Servers>:8080` erreichbar, nur aus d
 | Schritt | Was | Baustein |
 |---|---|---|
 | 1 | System prüfen (Ubuntu 24.04+/Mint 22+, x86_64), Pakete: `python3-venv`, `acl`, `curl`, `polkitd`, `libcurl` (nur fehlende) | neu |
-| 2 | `/etc/mcportal/server.conf` aus der Vorlage, Servername, Weltname und Seed abfragen und eintragen | neu |
+| 2 | `/etc/mcportal/server.conf` aus der Vorlage, Servername, Weltname, Seed und Höchstzahl Spieler abfragen und eintragen | neu |
 | 3–7 | Prüfungen, Benutzer `minecraft`, neuester Bedrock-Server nach `/opt/minecraft/bedrock`, `server.properties`, alle Packs aus `provision/packs.list` in die Welt (vor dem ersten Start) | wie `--prepare` |
 | 8 | `minecraft-bedrock.service` (Sandbox), Konsole (`.socket`, `10-portal.conf`), Router für die öffentliche IP (`31-router.conf`) | wie `--switch` |
 | 9 | `deploy/install.sh`: Portal, Startprüfung, öffentliche IP, Update-Knopf, polkit, Firewall fürs Portal, Schreibrecht auf die Pack-Listen (Funktionen ein/aus, M17) | unverändert |
