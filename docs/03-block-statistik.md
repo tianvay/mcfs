@@ -1,6 +1,30 @@
 # Statistik (Änderungen M5 und M6)
 
-Stand: 2026-10-26
+Stand: 2026-11-06
+
+## Pack 2.0.1: Essen wird vollständig gezählt
+
+**Fehler:** Pack 2.0.0 zählte als Essen nur Items, die über die Script-API eine `minecraft:food`-Komponente melden.
+Das tun aber nur manche Vanilla-Items. Auf dem Laptop stand bis 06.11. bei allen Spielern nur `minecraft:apple`
+(6 bzw. 7), obwohl Steak und Schweinefleisch gegessen wurden.
+
+**Behebung:** Das Pack hat jetzt eine feste Liste aller Vanilla-Lebensmittel (40 Items, von Apfel bis
+Verrottetes Fleisch). Die `food`-Komponente zählt nur noch zusätzlich, für Items aus anderen Packs. Tränke, Milch
+und eine geladene Armbrust (lösen dasselbe Ereignis aus) zählen weiter nicht. Im Portal hat „Giftige Kartoffel“
+einen deutschen Namen bekommen.
+
+**Folgen:** Was vor dem Update gegessen wurde, lässt sich nicht nachzählen. Die Zahlen wachsen ab dem Update. Am
+Portal ändert sich nichts, das Format der Meldungen bleibt gleich (`"v":2`).
+
+**Installieren auf dem Laptop** (wenn niemand spielt; Minecraft startet einmal neu, `world-pack.sh` wartet auf die
+Startzeile 2.0.1 und stellt sonst den alten Stand wieder her):
+
+```bash
+git -C ~/mcfs pull && rsync -a ~/mcfs/mcportal/ ~/mcportal-src/ && sudo bash ~/mcportal-src/deploy/world-pack.sh mcportal_stats apply && sudo bash ~/mcportal-src/deploy/install.sh
+```
+
+**Geprüft:** JavaScript-Syntax, Abgleich der Liste mit den deutschen Namen im Portal. Nicht geprüft: ein echter
+Serverstart mit 2.0.1 (macht `world-pack.sh` beim Installieren) und Essen im Spiel.
 
 ## Pack 2.0 (M6): alles in einem Statistik-Pack
 

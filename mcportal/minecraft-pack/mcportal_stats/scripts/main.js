@@ -75,9 +75,30 @@ world.afterEvents.entityDie.subscribe((ev) => {
 
 // ---------- food ----------
 
+// Vanilla food. The Script API reports a "minecraft:food" component only for some vanilla items (2.0.0 counted
+// apples, but never steak or cooked porkchop), so the list decides; the component still covers items from packs.
+const FOODS = new Set([
+  "apple", "golden_apple", "enchanted_golden_apple", "bread", "cookie", "pumpkin_pie",
+  "carrot", "golden_carrot", "potato", "baked_potato", "poisonous_potato", "beetroot", "melon_slice",
+  "sweet_berries", "glow_berries", "chorus_fruit", "dried_kelp", "honey_bottle",
+  "beef", "cooked_beef", "porkchop", "cooked_porkchop", "chicken", "cooked_chicken", "mutton", "cooked_mutton",
+  "rabbit", "cooked_rabbit", "cod", "cooked_cod", "salmon", "cooked_salmon", "tropical_fish", "pufferfish",
+  "rotten_flesh", "spider_eye", "mushroom_stew", "rabbit_stew", "beetroot_soup", "suspicious_stew",
+].map((id) => `minecraft:${id}`));
+
+function isFood(item) {
+  if (FOODS.has(item.typeId)) return true;
+  try {
+    return !!item.getComponent("minecraft:food");
+  } catch {
+    return false;
+  }
+}
+
+// itemCompleteUse = eating/drinking finished (also potions, milk, a loaded crossbow - those are not food)
 world.afterEvents.itemCompleteUse.subscribe((ev) => {
   const item = ev.itemStack;
-  if (item && item.getComponent("minecraft:food")) {
+  if (item && ev.source?.name && isFood(item)) {
     bump(ev.source.name, "food", item.typeId);
   }
 });

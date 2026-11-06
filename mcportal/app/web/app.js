@@ -325,7 +325,7 @@ const NAMES = {
   beetroot: "Rote Bete", beetroot_soup: "Rote-Bete-Suppe", sweet_berries: "Süßbeeren", glow_berries: "Leuchtbeeren",
   dried_kelp: "Getrockneter Seetang", rotten_flesh: "Verrottetes Fleisch", spider_eye: "Spinnenauge",
   honey_bottle: "Honigflasche", suspicious_stew: "Seltsame Suppe", chorus_fruit: "Chorusfrucht", tropical_fish: "Tropenfisch",
-  pufferfish: "Kugelfisch",
+  pufferfish: "Kugelfisch", poisonous_potato: "Giftige Kartoffel",
   // mobs and animals
   zombie: "Zombie", husk: "Wüstenzombie", drowned: "Ertrunkener", zombie_villager: "Zombiedorfbewohner",
   zombie_villager_v2: "Zombiedorfbewohner", skeleton: "Skelett", stray: "Eiswanderer", bogged: "Sumpfskelett",
