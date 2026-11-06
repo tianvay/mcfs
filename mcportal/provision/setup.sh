@@ -4,14 +4,20 @@
 #   sudo bash provision/setup.sh --prepare     [--conf FILE]
 #   sudo bash provision/setup.sh --switch      [--conf FILE] [--import-players | --import-allowlist]
 #   sudo bash provision/setup.sh --switch-back
-#   sudo bash provision/setup.sh --install     [--conf FILE] [--seed SEED] [--name SERVERNAME]
+#   sudo bash provision/setup.sh --install     [--conf FILE] [--seed SEED] [--name SERVERNAME] [--world WORLDNAME]
 #
-# --install sets up a FRESH Ubuntu server (no test installation to replace, docs/15-installation.md):
-#   packages (python3-venv, acl, curl, polkit, libcurl), /etc/mcportal/server.conf from the example (seed: --seed,
-#   else asked on a terminal, empty = random), steps 1-5 as --prepare, main unit + console socket, deploy/install.sh
-#   (portal, start check, public IP, update helpers), firewall ports, no suspend, first start (the world is created
-#   now), game rules, verify.sh. No probe copy: the real start is checked the same way (start check, every pack
-#   reports, no script errors). Re-running is safe; an existing world is kept (the seed then changes nothing).
+# --install sets up a FRESH Ubuntu server (24.04+, or Linux Mint 22+; no test installation to replace,
+#   docs/15-installation.md): packages (python3-venv, acl, curl, polkit, libcurl), /etc/mcportal/server.conf from
+#   the example; server name, world name and seed are asked on a terminal unless given (Enter = "Family and
+#   Friends", "FAF", random seed; without a terminal these defaults apply), steps 1-5 as --prepare, main unit +
+#   console socket, deploy/install.sh (portal, start check, public IP, update helpers), firewall ports, no suspend,
+#   first start (the world is created now), game rules, verify.sh. No probe copy: the real start is checked the
+#   same way (start check, every pack reports, no script errors). Laptop-only tweaks of the family server
+#   (WLAN power saving, fixed IP, router port forwarding) are NOT part of it.
+#   Re-running is safe; an existing world is kept (seed and world name are then not asked again).
+#
+# KEEP THIS CURRENT: every new pack (packs.list), deploy script, unit, drop-in or system package that the family
+#   server gets must also be set up by --install - a fresh server has to end up exactly like the running one.
 #
 # --prepare runs alongside the test server, without downtime:
 #   1. checks (root, tools, disk space, probe ports free, Laravel answer as reference)
@@ -64,7 +70,7 @@ GAME_DATA=(stats.json achievements.json events.json waypoints.json map)
 # pending operator assignments of the portal (current and first file name)
 PENDING_OPS=(pending_operator.json pending_survival.json)
 
-MODE="" CONF="" IMPORT="" SEED="" SEED_SET=0 NAME=""
+MODE="" CONF="" IMPORT="" SEED="" SEED_SET=0 NAME="" WORLD_ARG=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --prepare) MODE=prepare ;;
@@ -76,11 +82,12 @@ while [[ $# -gt 0 ]]; do
     --conf) CONF="${2:-}"; shift ;;
     --seed) SEED="${2:-}"; SEED_SET=1; shift ;;
     --name) NAME="${2:-}"; shift ;;
+    --world) WORLD_ARG="${2:-}"; shift ;;
     *) MODE=""; break ;;
   esac
   shift
 done
-[[ -n "$MODE" ]] || { echo "Aufruf: sudo bash $0 --prepare|--switch|--switch-back|--install [--conf DATEI] [--seed SEED] [--name SERVERNAME] [--import-players|--import-allowlist]"; exit 2; }
+[[ -n "$MODE" ]] || { echo "Aufruf: sudo bash $0 --prepare|--switch|--switch-back|--install [--conf DATEI] [--seed SEED] [--name SERVERNAME] [--world WELTNAME] [--import-players|--import-allowlist]"; exit 2; }
 [[ "$(id -u)" == 0 ]] || fail "Bitte mit sudo ausführen"
 
 laravel_code() { curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1/ || true; }
@@ -421,8 +428,33 @@ do_switch_back() {
 # ===========================================================================
 # fresh installation (--install)
 # ===========================================================================
+# Ubuntu 24.04+ or a derivative on that base (Linux Mint 22+); others get a warning, polkit is checked below
+check_os() {
+  local id="" version="" name=""
+  if [[ -r /etc/os-release ]]; then
+    # shellcheck disable=SC1091
+    id="$(. /etc/os-release; echo "${ID:-}")"; version="$(. /etc/os-release; echo "${VERSION_ID:-}")"
+    name="$(. /etc/os-release; echo "${PRETTY_NAME:-$id}")"
+  fi
+  local min=""
+  case "$id" in
+    ubuntu) min=24.04 ;;
+    linuxmint) min=22 ;;
+  esac
+  if [[ -z "$min" ]]; then
+    warn "${name:-unbekanntes System} – getestet nur mit Ubuntu 24.04+ (bzw. Linux Mint 22+), es geht trotzdem weiter"
+  elif [[ "$(printf '%s\n%s\n' "$min" "$version" | sort -V | head -n1)" != "$min" ]]; then
+    fail "$name ist zu alt – nötig: Ubuntu 24.04 oder neuer (polkit mit JavaScript-Regeln für die Knöpfe im Portal)"
+  else
+    info "$name"
+  fi
+  command -v apt-get >/dev/null || fail "apt-get fehlt – nur Ubuntu/Debian-Systeme werden unterstützt"
+  [[ "$(uname -m)" == x86_64 ]] || fail "Bedrock-Server gibt es nur für 64-Bit x86 (hier: $(uname -m))"
+}
+
 install_packages() {
-  step "1/12 Pakete"
+  step "1/12 System und Pakete"
+  check_os
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -q >/dev/null || fail "apt-get update fehlgeschlagen"
   local pkgs=(python3 python3-venv curl acl ca-certificates iproute2 tar util-linux) missing=() p
@@ -448,6 +480,24 @@ set_conf() {
   mv "$tmp" "$CONF"
 }
 
+# ask <KEY> <question> <default> <shown default> <variable>: read a value on the terminal until it is allowed
+# (same rules as server.conf); Enter takes the default
+ask() {
+  local key="$1" question="$2" def="$3" shown="$4" value
+  while true; do
+    read -r -p "    $question [$shown]: " value || value=""
+    [[ -z "$value" ]] && value="$def"
+    python3 -I "$HERE/properties.py" check "$key" "$value" 2>/dev/null && break
+    case "$key" in
+      LEVEL_SEED) warn "Seed: Zahl (z. B. -1234567890) oder ein Wort aus Buchstaben, Ziffern und _ (bis 30 Zeichen)" ;;
+      *) warn "Erlaubt: Buchstaben, Ziffern, Leerzeichen, _ ' - (bis 40 Zeichen)" ;;
+    esac
+  done
+  printf -v "$5" '%s' "$value"
+}
+
+conf_value() { sed -n "s/^$1=//p" "$CONF"; }
+
 install_conf() {
   step "2/12 Einstellungen"
   if [[ -z "$CONF" ]]; then
@@ -455,19 +505,33 @@ install_conf() {
     if [[ ! -f "$CONF" ]]; then
       install -d -m 755 /etc/mcportal
       install -m 644 "$HERE/server.conf.example" "$CONF"
-      info "$CONF angelegt (aus server.conf.example – später anpassen, dann erneut --install)"
+      info "$CONF angelegt (aus server.conf.example)"
     fi
   fi
   load_conf "$CONF"
   info "Einstellungen: $CONF"
   if [[ -d "$MC_DIR/worlds/$WORLD_NAME/db" ]]; then
+    # re-run: the world exists - seed and world name belong to it
     (( SEED_SET )) && warn "Die Welt $WORLD_NAME gibt es schon – der Seed ändert nichts mehr"
+    [[ -z "$WORLD_ARG" || "$WORLD_ARG" == "$WORLD_NAME" ]] \
+      || fail "Die Welt $WORLD_NAME gibt es schon – ein anderer Weltname ($WORLD_ARG) würde eine zweite Welt anlegen"
   else
-    if (( ! SEED_SET )) && [[ -t 0 ]]; then
-      read -r -p "    Seed für die neue Welt (Enter = zufällig): " SEED
-      SEED_SET=1
+    # new world: everything not given on the command line is asked (Enter = value from server.conf, i.e.
+    # "Family and Friends", "FAF" and a random seed on a fresh server); without a terminal those values apply
+    local name="${NAME:-$(conf_value SERVER_NAME)}" world="${WORLD_ARG:-$WORLD_NAME}" seed
+    seed="$( (( SEED_SET )) && printf '%s' "$SEED" || conf_value LEVEL_SEED)"
+    if [[ -t 0 ]] && { [[ -z "$NAME" ]] || [[ -z "$WORLD_ARG" ]] || (( ! SEED_SET )); }; then
+      info "Neue Welt – bitte angeben (Enter = Vorschlag in Klammern):"
+      [[ -n "$NAME" ]] || ask SERVER_NAME "Servername (Anzeige in der Serverliste)" "$name" "$name" name
+      [[ -n "$WORLD_ARG" ]] || ask WORLD_NAME "Weltname (Ordner der Welt)" "$world" "$world" world
+      (( SEED_SET )) || ask LEVEL_SEED "Seed" "$seed" "${seed:-zufällig}" seed
+    elif [[ ! -t 0 ]]; then
+      info "kein Terminal – keine Abfrage, es gelten die Angaben bzw. die Werte aus $CONF"
     fi
-    (( SEED_SET )) && set_conf LEVEL_SEED "$SEED"
+    set_conf SERVER_NAME "$name"
+    set_conf WORLD_NAME "$world"
+    set_conf LEVEL_SEED "$seed"
+    NAME=""   # applied
   fi
   [[ -n "$NAME" ]] && set_conf SERVER_NAME "$NAME"
   load_conf "$CONF"
@@ -518,6 +582,7 @@ install_portal() {
 }
 
 install_system() {
+  # no deploy/wifi-no-powersave.sh here: that is a fix for the WLAN chip of the family server's laptop
   step "10/12 Firewall und Ruhezustand"
   if ufw status 2>/dev/null | grep -q '^Status: active'; then
     local udp; udp="$(sed -n 's/^Environment=MC_UDP_PORTS=//p' "$REPO/deploy/30-public-ip.conf")"
@@ -529,7 +594,6 @@ install_system() {
     info "ufw nicht aktiv – nichts zu tun"
   fi
   bash "$REPO/deploy/no-suspend.sh" apply 2>&1 | sed 's/^/    /' || warn "no-suspend.sh fehlgeschlagen"
-  bash "$REPO/deploy/wifi-no-powersave.sh" apply 2>&1 | sed 's/^/    /' || warn "wifi-no-powersave.sh fehlgeschlagen"
 }
 
 install_start() {

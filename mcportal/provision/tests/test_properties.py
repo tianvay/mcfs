@@ -44,9 +44,24 @@ class ConfTest(unittest.TestCase):
             P.read_conf(EXAMPLE.replace("MAX_PLAYERS=10\n", ""))
 
 
+    def test_example_defaults(self):
+        conf = P.read_conf(EXAMPLE)
+        self.assertEqual(conf["SERVER_NAME"], "Family and Friends")
+        self.assertEqual(conf["WORLD_NAME"], "FAF")
+
+    def test_check_single_value(self):
+        for key, good in [("SERVER_NAME", "Family and Friends"), ("WORLD_NAME", "Welt 2"), ("LEVEL_SEED", ""),
+                          ("LEVEL_SEED", "-278472841329850337"), ("LEVEL_SEED", "Mein_Seed")]:
+            P.check(key, good)
+        for key, bad in [("SERVER_NAME", ""), ("SERVER_NAME", "a;b"), ("WORLD_NAME", "../x"), ("WORLD_NAME", " FAF"),
+                         ("LEVEL_SEED", "zwei Worte"), ("LEVEL_SEED", "1" * 31), ("NOPE", "x")]:
+            with self.assertRaises(P.ConfError, msg=f"{key}={bad!r}"):
+                P.check(key, bad)
+
+
 class MergeTest(unittest.TestCase):
     def test_overrides_go_into_mojangs_file(self):
-        conf = P.read_conf(EXAMPLE.replace("SERVER_NAME=Family Server", "SERVER_NAME=Familie Muster"))
+        conf = P.read_conf(EXAMPLE.replace("SERVER_NAME=Family and Friends", "SERVER_NAME=Familie Muster"))
         out = P.merge(MOJANG, P.parse_overrides(P.render(OVERRIDES, conf)))
         self.assertIn("server-name=Familie Muster\n", out)
         self.assertIn("allow-cheats=true\n", out)
@@ -55,7 +70,7 @@ class MergeTest(unittest.TestCase):
         self.assertIn('# Allowed values: "survival"', out, "Mojang's comments stay")
         self.assertEqual(out.count("allow-cheats="), 1, "replaced, not duplicated")
         self.assertLess(out.index("server-name="), out.index("gamemode="), "order stays")
-        self.assertIn("# added by provision/setup.sh\ndifficulty=easy\nmax-players=10", out,
+        self.assertIn("# added by provision/setup.sh\ndifficulty=normal\nmax-players=10", out,
                       "keys Mojang's file doesn't have are appended")
         self.assertNotIn("server-udp-ports", out, "written by deploy/mc-public-ip at every start, not here")
 

@@ -4,7 +4,8 @@ Self-hosted Minecraft-Bedrock-Server fürs Heimnetz mit einem kleinen Webportal
 (`http://<server>:8080`): Status, Spieler online, Start/Stop, Whitelist mit Operator-Status,
 Update per Knopfdruck mit Backup und Rollback, Block-Statistik pro Spieler, Weltkarte.
 
-> Stand: Testphase auf einem Linux-Mint-Laptop. Der eigentliche Server folgt.
+> Stand: läuft auf einem Linux-Mint-Laptop. Ein frischer Ubuntu-Server lässt sich mit einem Befehl genauso
+> einrichten (siehe [Installation](#installation)).
 
 ## Inhalt
 
@@ -18,13 +19,21 @@ Update per Knopfdruck mit Backup und Rollback, Block-Statistik pro Spieler, Welt
 
 ## Installation
 
-Auf einem frischen Ubuntu 24.04 (oder neuer), mit eigenem Seed (`123456789` ersetzen, ohne `--seed` wird gefragt):
+Auf einem frischen **Ubuntu 24.04** (oder neuer, auch Linux Mint 22+, 64 Bit x86) im Terminal diese eine Zeile
+ausführen:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y git && git clone https://github.com/tianvay/mcfs.git ~/mcfs && sudo bash ~/mcfs/mcportal/provision/setup.sh --install --seed 123456789
+sudo apt-get update && sudo apt-get install -y git && { git clone https://github.com/tianvay/mcfs.git ~/mcfs || git -C ~/mcfs pull; } && sudo bash ~/mcfs/mcportal/provision/setup.sh --install
 ```
 
-Details: [Installation auf einem frischen Server](docs/15-installation.md).
+Das Script fragt nach **Servername**, **Weltname** und **Seed**. Mit Enter gilt der Vorschlag: „Family and
+Friends“, „FAF“ und ein zufälliger Seed. Am Ende fragt es nach dem **Admin-Passwort** fürs Portal.
+
+Danach läuft der neueste Bedrock-Server als Benutzer `minecraft` mit allen Packs (Statistik, Wegpunkte, Events,
+Erfolge, Spawnfackel, Blaupause), dazu das Portal unter `http://<IP des Servers>:8080`. Beide starten beim
+Hochfahren von selbst.
+
+Details und Optionen: [Installation auf einem frischen Server](docs/15-installation.md).
 
 ## Dokumentation
 

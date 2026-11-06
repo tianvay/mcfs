@@ -3,8 +3,8 @@
 # Personal data (whitelist, operators) does NOT belong here - see import-players.sh.
 
 # --- names (shown in the server list / used as world folder) ---
-SERVER_NAME=Family Server
-WORLD_NAME=Bedrock level
+SERVER_NAME=Family and Friends
+WORLD_NAME=FAF
 
 # --- world generation (only used when the world is created) ---
 # empty = random seed
@@ -12,7 +12,7 @@ LEVEL_SEED=
 
 # --- game ---
 GAMEMODE=survival
-DIFFICULTY=easy
+DIFFICULTY=normal
 MAX_PLAYERS=10
 VIEW_DISTANCE=32
 TICK_DISTANCE=4

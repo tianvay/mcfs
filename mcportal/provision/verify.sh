@@ -139,7 +139,9 @@ PY
 )"; then ok "Update-Prüfung geht (läuft ${CURRENT:-?}, neueste $LATEST)"
 else bad "Update-Prüfung fehlgeschlagen: $(tail -n 1 <<<"$LATEST")"; fi
 LARAVEL="$(curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1/ || true)"
-if [[ -z "$LARAVEL_EXPECT" ]]; then info "Laravel: HTTP $LARAVEL (Vergleich mit --laravel CODE)"
+if [[ -z "$LARAVEL_EXPECT" ]]; then
+  # only the family laptop has Laravel/XAMPP on port 80; on a fresh server nothing answers there
+  [[ "$LARAVEL" == 000 ]] || info "Laravel: HTTP $LARAVEL (Vergleich mit --laravel CODE)"
 elif [[ "$LARAVEL" == "$LARAVEL_EXPECT" ]]; then ok "Laravel antwortet wie vorher (HTTP $LARAVEL)"
 else bad "Laravel: HTTP $LARAVEL, vorher $LARAVEL_EXPECT"; fi
 

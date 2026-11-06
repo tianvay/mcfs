@@ -3,6 +3,7 @@
     python3 properties.py conf      <server.conf>                         -> checked KEY=value lines
     python3 properties.py merge     <server.properties> <overrides> <server.conf>   (file changed in place)
     python3 properties.py render    <template> <server.conf> [KEY=value ...]       -> rendered text on stdout
+    python3 properties.py check     <KEY> <value>                         -> exit 0 if the value is allowed
 
 Values are checked strictly, because they end up in a systemd unit and in server.properties.
 """
@@ -63,6 +64,14 @@ def read_conf(text: str) -> dict[str, str]:
     return conf
 
 
+def check(key: str, value: str) -> None:
+    """One value as typed during setup.sh --install (same rule as in server.conf)."""
+    if key not in RULES:
+        raise ConfError(f"unbekannte Einstellung {key}")
+    if value != value.strip() or not re.fullmatch(RULES[key], value):
+        raise ConfError(f"ungültiger Wert für {key}: {value!r}")
+
+
 def render(template: str, values: dict[str, str]) -> str:
     """Replace @KEY@; every placeholder must be known (a typo must not end up in a file)."""
     def sub(m: re.Match) -> str:
@@ -116,6 +125,8 @@ def main(argv: list[str]) -> int:
                 k, v = extra.split("=", 1)
                 values[k] = v
             sys.stdout.write(render(Path(argv[2]).read_text(encoding="utf-8"), values))
+        elif argv[1] == "check":
+            check(argv[2], argv[3])
         else:
             raise ConfError(f"unbekannter Befehl {argv[1]}")
     except (ConfError, OSError, IndexError) as e:

@@ -87,6 +87,11 @@ It:
 5. waits for `Server started.` **and** the pack's startup line, otherwise rolls back automatically.
 Give each new change a number (M6, M7, …) and document it like `docs/03-block-statistik.md`.
 
+**Fresh installs must get it too:** add every new pack (behavior and resource) to `mcportal/provision/packs.list`
+in the same change, new game rules to `provision/gamerules.list`, new `server.properties` values to
+`provision/server.properties.overrides`, and mention it in `docs/15-installation.md`. The one-line install from the
+README (`provision/setup.sh --install`) has to set up a server exactly like the running one.
+
 ### 6. Wire it into the portal
 
 Follow the stats implementation:

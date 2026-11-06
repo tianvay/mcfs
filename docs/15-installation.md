@@ -1,40 +1,48 @@
 # Installation auf einem frischen Server (Änderung M16)
 
-Stand: 2026-11-02 · `provision/setup.sh --install` · getestet auf Ubuntu 24.04 LTS
+Stand: 2026-11-06 · `provision/setup.sh --install` · getestet auf Ubuntu 24.04 LTS
 
 Mit einem Befehl wird ein frisch installierter Ubuntu-Server zum Familienserver, so wie er hier läuft. Dazu gehören
 der Bedrock-Server als Dienst, das Portal, die Startprüfung, die Konsole, die Karte, der Zugang von außen, alle Packs
-und die Spielregeln. Die Welt entsteht neu, wahlweise mit eigenem Seed.
+und die Spielregeln. Die Welt entsteht neu. Name, Weltname und Seed fragt das Script ab.
 
 ## Voraussetzungen
 
-- **Ubuntu 24.04 LTS oder neuer** (Server oder Desktop, 64 Bit x86). Ältere Versionen haben ein polkit ohne
-  JavaScript-Regeln, dann gehen die Knöpfe im Portal nicht.
-- Ein Benutzer mit `sudo`, Internet (minecraft.net, Ubuntu-Paketquellen, PyPI), etwa 3 GB frei unter `/opt`.
-- `git` (ist bei Ubuntu Server dabei; sonst installiert der Befehl unten es mit).
+- **Ubuntu 24.04 LTS oder neuer** (Server oder Desktop, 64 Bit x86), auch **Linux Mint 22+** (gleiche Basis).
+  Ältere Versionen haben ein polkit ohne JavaScript-Regeln, dann gehen die Knöpfe im Portal nicht. Das Script prüft
+  das am Anfang.
+- Ein Benutzer mit `sudo`, Internet (minecraft.net, Ubuntu-Paketquellen, PyPI, GitHub), etwa 3 GB frei unter `/opt`.
 
 ## Installieren
 
-Mit eigenem Seed (hier `123456789` durch den gewünschten ersetzen):
+Eine Zeile im Terminal:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y git && git clone https://github.com/tianvay/mcfs.git ~/mcfs && sudo bash ~/mcfs/mcportal/provision/setup.sh --install --seed 123456789
+sudo apt-get update && sudo apt-get install -y git && { git clone https://github.com/tianvay/mcfs.git ~/mcfs || git -C ~/mcfs pull; } && sudo bash ~/mcfs/mcportal/provision/setup.sh --install
 ```
 
-Ohne `--seed` fragt das Script nach dem Seed, Enter heißt zufällig. Ohne Terminal (z. B. über ein Script) gibt es
-ohne Nachfrage einen zufälligen Seed:
+Gibt es `~/mcfs` schon (zweiter Versuch), holt die Zeile nur den neuesten Stand. Das Script fragt dann:
 
-```bash
-sudo apt-get update && sudo apt-get install -y git && git clone https://github.com/tianvay/mcfs.git ~/mcfs && sudo bash ~/mcfs/mcportal/provision/setup.sh --install
+```text
+    Servername (Anzeige in der Serverliste) [Family and Friends]:
+    Weltname (Ordner der Welt) [FAF]:
+    Seed [zufällig]:
 ```
 
-Weitere Angaben, alle freiwillig:
+Mit Enter gilt der Vorschlag in Klammern. Ungültige Eingaben (z. B. `;` im Namen oder zwei Wörter als Seed) werden
+noch einmal abgefragt. Ohne Terminal (z. B. über ein Script) gibt es keine Fragen, dann gelten die Vorschläge.
+
+Die Antworten kann man auch gleich mitgeben, dann entfällt die jeweilige Frage:
 
 | Angabe | Wirkung |
 |---|---|
-| `--seed <seed>` | Seed der neuen Welt: Zahl (z. B. `-1234567890`) oder Wort (Buchstaben, Ziffern, `_`, bis 30 Zeichen). `--seed ""` = zufällig ohne Nachfrage |
-| `--name "<Name>"` | Servername in der Serverliste (Standard `Family Server`) |
+| `--name "<Name>"` | Servername in der Serverliste (Vorschlag `Family and Friends`, bis 40 Zeichen) |
+| `--world "<Name>"` | Weltname = Ordner `worlds/<Name>` (Vorschlag `FAF`, bis 40 Zeichen) |
+| `--seed <seed>` | Seed der neuen Welt: Zahl (z. B. `-1234567890`) oder Wort (Buchstaben, Ziffern, `_`, bis 30 Zeichen). `--seed ""` = zufällig |
 | `--conf <Datei>` | eigene Einstellungen statt `/etc/mcportal/server.conf` (Vorlage: `mcportal/provision/server.conf.example`) |
+
+Die übrigen Einstellungen kommen aus der Vorlage, so wie auf dem Laptop: Überleben, Schwierigkeit Normal, 10
+Spieler, Sichtweite 32, Ports 19132/19133.
 
 Am Ende fragt das Script nach dem **Admin-Passwort fürs Portal**. Ohne Passwort sind Whitelist, Events und die
 Server-Seite gesperrt. Später setzen:
@@ -50,12 +58,12 @@ Danach ist das Portal unter `http://<IP des Servers>:8080` erreichbar, nur aus d
 
 | Schritt | Was | Baustein |
 |---|---|---|
-| 1 | Pakete: `python3-venv`, `acl`, `curl`, `polkitd`, `libcurl` (nur fehlende) | neu |
-| 2 | `/etc/mcportal/server.conf` aus der Vorlage, Seed und Name eintragen | neu |
+| 1 | System prüfen (Ubuntu 24.04+/Mint 22+, x86_64), Pakete: `python3-venv`, `acl`, `curl`, `polkitd`, `libcurl` (nur fehlende) | neu |
+| 2 | `/etc/mcportal/server.conf` aus der Vorlage, Servername, Weltname und Seed abfragen und eintragen | neu |
 | 3–7 | Prüfungen, Benutzer `minecraft`, neuester Bedrock-Server nach `/opt/minecraft/bedrock`, `server.properties`, alle Packs aus `provision/packs.list` in die Welt (vor dem ersten Start) | wie `--prepare` |
 | 8 | `minecraft-bedrock.service` (Sandbox), Konsole (`.socket`, `10-portal.conf`), Router für die öffentliche IP (`31-router.conf`) | wie `--switch` |
 | 9 | `deploy/install.sh`: Portal, Startprüfung, öffentliche IP, Update-Knopf, polkit, Firewall fürs Portal | unverändert |
-| 10 | Firewall (nur wenn `ufw` aktiv ist): 19132, 19133 und 19140–19149/udp; kein Ruhezustand (`no-suspend.sh`), kein WLAN-Stromsparen (`wifi-no-powersave.sh`) | neu / unverändert |
+| 10 | Firewall (nur wenn `ufw` aktiv ist): 19132, 19133 und 19140–19149/udp; kein Ruhezustand (`no-suspend.sh`) | neu / unverändert |
 | 11 | Erster Start, die Welt entsteht. Danach Seed anzeigen, Spielregeln aus `gamerules.list` setzen | wie `--switch` |
 | 12 | Rechte prüfen, dann `verify.sh`: Dienste, Port, jedes Pack mit Version und Startzeile, keine Script-Fehler, Portal, Update-Prüfung | unverändert |
 
@@ -75,11 +83,28 @@ Installieren wird dafür das Standard-Gateway eingetragen (`31-router.conf`). Da
 anderen Routern meldet `verify.sh` nur einen Hinweis. Die Portfreigaben (TCP+UDP 19132, UDP 19140–19149) richtet
 man im Router von Hand ein, siehe [Zugang von außen](12-zugang-von-aussen.md).
 
+**Autostart:** `minecraft-bedrock.service` und `mcportal.service` sind aktiviert und starten beim Hochfahren von
+selbst. Die Konsole (`minecraft-bedrock.socket`) startet mit Minecraft.
+
 ## Was nicht mitkommt
 
 - **Whitelist und Operatoren:** Die neue Welt startet leer. Spieler trägt man im Portal ein.
 - **Die Welt dieses Servers:** Ein Umzug wäre ein eigener Schritt.
 - **Laravel/XAMPP:** gehört nicht zum Minecraft-Server.
+- **Was nur für den Laptop gilt:**
+  - WLAN-Stromsparen aus (`deploy/wifi-no-powersave.sh`): gegen Aussetzer des Realtek-WLAN-Chips im Laptop.
+    Bei Bedarf von Hand: `sudo bash ~/mcfs/mcportal/deploy/wifi-no-powersave.sh apply`
+  - Feste IP: stellt man im Router ein (Fritzbox: „Diesem Netzwerkgerät immer die gleiche IPv4-Adresse zuweisen“).
+  - Portfreigaben im Router: von Hand, siehe [Zugang von außen](12-zugang-von-aussen.md). Ohne Freigaben spielt
+    man nur im Heimnetz. `mc-public-ip` läuft trotzdem mit und blockiert nichts.
+
+## Bei Änderungen am Server
+
+`--install` muss immer den aktuellen Stand des Familienservers aufbauen. Wer ein neues Pack, ein neues
+`deploy/`-Script, eine Unit oder ein Systempaket einführt, trägt es auch hier ein: Packs in
+`provision/packs.list`, Spielregeln in `provision/gamerules.list`, `server.properties`-Werte in
+`provision/server.properties.overrides`, alles andere in `provision/setup.sh` (Schritte 1–11). Danach diese Seite
+anpassen.
 
 ## Erneut ausführen
 
@@ -89,7 +114,8 @@ Der Befehl darf noch einmal laufen, z. B. nach einem Abbruch:
 sudo bash ~/mcfs/mcportal/provision/setup.sh --install
 ```
 
-Eine Welt, die es schon gibt, bleibt samt Packs unverändert. Ein Seed ändert dann nichts mehr. Läuft der Server,
+Eine Welt, die es schon gibt, bleibt samt Packs unverändert. Dann fragt das Script nicht mehr nach Weltname und Seed;
+ein `--seed` ändert nichts mehr, ein anderer `--world` bricht ab (sonst entstünde eine zweite Welt). Läuft der Server,
 wird er nicht neu gestartet. Steht die Unit auf einem anderen Ordner (alte Installation), bricht `--install` ab. Für
 diesen Fall gibt es `--prepare`/`--switch` ([Reproduzierbarer Aufbau](04-reproduzierbarer-aufbau.md)).
 
