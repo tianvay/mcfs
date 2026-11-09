@@ -55,6 +55,10 @@ class EventControlIn(BaseModel):
     type: str | None = None
 
 
+class EventEveryIn(BaseModel):
+    minutes: int
+
+
 class GiftIn(BaseModel):
     player: str
     item: str
@@ -289,6 +293,12 @@ def create_app(cfg: Config) -> FastAPI:
         require_events_pack()
         await game_events.undo(body.value, user)
         return {"accepted": body.value}
+
+    @app.post("/api/gameevents/every", status_code=202)
+    async def game_events_every(body: EventEveryIn, user: str = Depends(require_admin)):
+        require_events_pack()
+        await game_events.set_every(body.minutes, user)
+        return {"accepted": body.minutes}
 
     @app.post("/api/gameevents/{action}", status_code=202)
     async def game_events_control(action: str, body: EventControlIn, user: str = Depends(require_admin)):

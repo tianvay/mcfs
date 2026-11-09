@@ -71,5 +71,8 @@ class BedrockAdapter:
     def event_control_live(self, action: str, event_type: str | None = None) -> None:
         console.send(self.fifo, commands.event_control(action, event_type))
 
+    def event_every_live(self, minutes: int) -> None:
+        console.send(self.fifo, commands.event_every(minutes))
+
     def world_save_live(self, step: str) -> None:
         console.send(self.fifo, commands.world_save(step))

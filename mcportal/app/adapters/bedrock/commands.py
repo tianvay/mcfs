@@ -96,6 +96,16 @@ def world_control(kind: str, value: str) -> str:
     raise ValueError("unknown world setting")
 
 
+EVERY_MIN, EVERY_MAX = 60, 240  # one automatic event every 60-240 minutes of shared online time
+
+
+def event_every(minutes: int) -> str:
+    """How often automatic events come (minutes of shared online time); same range as the events pack."""
+    if type(minutes) is not int or not EVERY_MIN <= minutes <= EVERY_MAX:
+        raise ValueError("invalid event interval")
+    return f"scriptevent mcfs:event every {minutes}"
+
+
 def event_control(action: str, event_type: str | None = None) -> str:
     if action in ("start", "stop"):
         if event_type not in EVENT_TYPES:

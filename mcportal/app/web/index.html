@@ -95,6 +95,14 @@
         </div>
         <p id="events-missing" class="note small">Das Events-Pack ist noch nicht installiert.</p>
         <div id="events-body" hidden>
+          <div id="events-every-box" class="events-every">
+            <label for="events-every">Automatisch ein Event alle <strong id="events-every-text"></strong>
+              gemeinsamer Spielzeit</label>
+            <input id="events-every" type="range" min="60" max="240" step="15">
+            <div class="events-every-scale"><span>1 Std.</span><span>2 Std.</span><span>3 Std.</span><span>4 Std.</span></div>
+          </div>
+          <p id="events-every-old" class="note small" hidden>Den Abstand der Events kann man einstellen, sobald das
+            Events-Pack 1.5.0 läuft (<code>world-pack.sh mcportal_events apply</code>).</p>
           <ul id="events-running" class="events-list"></ul>
           <h3 class="events-sub">Event starten</h3>
           <div id="events-start" class="events-start"></div>

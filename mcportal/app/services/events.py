@@ -1,7 +1,7 @@
 """Timed events of the events pack (minecraft-pack/mcportal_events), as seen by the portal.
 
 The pack writes
-  [mcportal-events] {"v":1,"event":"state","auto":..,"online":..,"active":[{type,remaining,total,by}],"next_in":..,
+  [mcportal-events] {"v":1,"event":"state","auto":..,"every":..,"online":..,"active":[{type,remaining,total,by}],"next_in":..,
                      "last":..,"register":..,"types":[..]}      (start, every change, every 10 online minutes)
   [mcportal-events] {"v":1,"event":"started","type":..,"by":..,"duration":..}
   [mcportal-events] {"v":1,"event":"ended","type":..,"by":..,"ran":..,"participants":[..]}
@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 
 from ..adapters.base import MinecraftAdapter
-from ..adapters.bedrock.commands import DAYTIME, EVENT_TYPES, REGISTER_BATCH, WEATHER
+from ..adapters.bedrock.commands import DAYTIME, EVENT_TYPES, EVERY_MAX, EVERY_MIN, REGISTER_BATCH, WEATHER
 from ..adapters.bedrock.logparse import LogLine, parse_events
 from ..audit import AuditLog
 from .logcursor import LogCursor
@@ -101,7 +101,7 @@ class EventsService:
         event = p.get("event")
         etype = p.get("type")
         if event == "state" and isinstance(p.get("active"), list):
-            d["state"] = {k: p.get(k) for k in ("auto", "online", "active", "next_in", "last", "register", "types", "undo")}
+            d["state"] = {k: p.get(k) for k in ("auto", "every", "online", "active", "next_in", "last", "register", "types", "undo")}
             d["state_at"] = ts
         elif event == "started" and isinstance(etype, str):
             d["started"][etype] = {"at": ts, "by": p.get("by")}
@@ -137,6 +137,8 @@ class EventsService:
         return {
             "installed": d["state"] is not None,
             "auto": state.get("auto"),
+            "every": state.get("every"),  # None: pack older than 1.5.0 (no setting yet)
+            "every_range": [EVERY_MIN, EVERY_MAX],
             "online": state.get("online"),
             "active": active,
             "next_in": state.get("next_in"),
@@ -224,17 +226,34 @@ class EventsService:
             raise PortalError(f"Befehl fehlgeschlagen: {e}", 500)
         self.audit.write(action, "SUCCESS", user, value=value)
 
-    async def control(self, action: str, event_type: str | None, user: str) -> None:
-        if action not in ACTIONS:
-            raise PortalError("Unbekannte Aktion", 400)
-        if action in ("start", "stop") and event_type not in EVENT_TYPES:
-            raise PortalError("Unbekanntes Event", 400)
+    def _require_console(self) -> None:
         if self.data["state"] is None:
             raise PortalError("Das Events-Pack hat sich noch nicht gemeldet.", 409)
         if self.mc.status_word() != "online":
             raise PortalError("Der Server ist nicht online.", 409)
         if not self.a.console_available():
             raise PortalError("Server-Konsole nicht verfügbar.", 409)
+
+    async def set_every(self, minutes: int, user: str) -> None:
+        """How often automatic events come: one every `minutes` of shared online time (60-240)."""
+        if type(minutes) is not int or not EVERY_MIN <= minutes <= EVERY_MAX:
+            raise PortalError(f"Abstand muss zwischen {EVERY_MIN} und {EVERY_MAX} Minuten liegen.", 400)
+        self._require_console()
+        try:
+            await asyncio.to_thread(self.a.event_every_live, minutes)
+        except Exception as e:
+            self.audit.write("EVENT_EVERY", "FAILED", user, value=minutes, error=str(e))
+            raise PortalError(f"Befehl fehlgeschlagen: {e}", 500)
+        self.audit.write("EVENT_EVERY", "SUCCESS", user, value=minutes)
+        if self.data["state"] is not None:  # show it at once; the pack's next state line confirms it
+            self.data["state"]["every"] = minutes
+
+    async def control(self, action: str, event_type: str | None, user: str) -> None:
+        if action not in ACTIONS:
+            raise PortalError("Unbekannte Aktion", 400)
+        if action in ("start", "stop") and event_type not in EVENT_TYPES:
+            raise PortalError("Unbekanntes Event", 400)
+        self._require_console()
         try:
             await asyncio.to_thread(self.a.event_control_live, action, event_type)
         except Exception as e:

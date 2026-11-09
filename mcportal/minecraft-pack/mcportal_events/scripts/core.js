@@ -1,10 +1,14 @@
 // Timed events - pure logic without Minecraft imports (tested with node --test tests/core.test.mjs).
 //
 // Time is counted in "online minutes": the clock only runs while at least one player is online.
-// Every online minute adds 1 / interval(players) to a credit; at 1.0 an event is due (after a random
-// delay of 0-10 minutes), but never earlier than MIN_GAP minutes after the last automatic start.
+// Every online minute adds 1 / every to a credit (every = minutes of shared online time per event, set by the
+// admin in the portal, 60-240); at 1.0 an event is due (after a random delay of 0-10 minutes), but never earlier
+// than MIN_GAP minutes after the last automatic start.
 
 export const MIN_GAP = 60;           // minutes between automatic starts (= at most one per hour)
+export const EVERY_MIN = 60;         // admin setting: one event every 60 ...
+export const EVERY_MAX = 240;        // ... to 240 minutes of shared online time
+export const EVERY_DEFAULT = 90;
 export const MAX_DELAY = 10;         // random delay after the credit is full
 export const PARTICIPATION = 5 * 60; // seconds online during an event to count as "took part"
 
@@ -303,22 +307,20 @@ export function nightStep(a, timeOfDay) {
   return null;
 }
 
-// minutes of shared online time per event, by number of players online (index = players)
-const INTERVALS = [Infinity, 180, 150, 120, 105, 90, 75, 75, 60, 60, 60];
-
-export function intervalMinutes(players) {
-  if (players <= 0) return Infinity;
-  return INTERVALS[Math.min(players, INTERVALS.length - 1)];
+/** minutes of shared online time per event (the admin setting; old or broken values fall back to the default) */
+export function intervalMinutes(s) {
+  const every = s?.every;
+  return Number.isInteger(every) && every >= EVERY_MIN && every <= EVERY_MAX ? every : EVERY_DEFAULT;
 }
 
 export function newSchedule() {
-  return { auto: true, clock: 0, credit: 0, delay: null, lastStart: -MIN_GAP, last: null };
+  return { auto: true, every: EVERY_DEFAULT, clock: 0, credit: 0, delay: null, lastStart: -MIN_GAP, last: null };
 }
 
 /**
  * One online minute. Returns true when an automatic event should start now.
  * @param {object} s schedule (changed in place)
- * @param {number} players online
+ * @param {number} players online (the clock only runs with at least one)
  * @param {() => number} rand random in [0, 1)
  */
 export function scheduleMinute(s, players, rand) {
@@ -326,8 +328,8 @@ export function scheduleMinute(s, players, rand) {
   s.clock += 1;
   if (!s.auto) return false;
   if (s.delay === null) {
-    s.credit += 1 / intervalMinutes(players);
-    if (s.credit >= 1 - 1e-9) { // 180 x (1/180) is slightly below 1 in floating point
+    s.credit += 1 / intervalMinutes(s);
+    if (s.credit >= 1 - 1e-9) { // 90 x (1/90) is slightly below 1 in floating point
       s.credit = 0;
       s.delay = Math.floor(rand() * (MAX_DELAY + 1));
     }
@@ -344,12 +346,11 @@ export function scheduleMinute(s, players, rand) {
 }
 
 /** rough "next event in" for the portal (online minutes), null if automatic events are off */
-export function estimateNext(s, players) {
+export function estimateNext(s) {
   if (!s.auto) return null;
   const gap = Math.max(0, MIN_GAP - (s.clock - s.lastStart));
   if (s.delay !== null) return Math.max(gap, s.delay);
-  const iv = intervalMinutes(Math.max(players, 1));
-  return Math.max(gap, Math.ceil((1 - s.credit) * iv));
+  return Math.max(gap, Math.ceil((1 - s.credit) * intervalMinutes(s)));
 }
 
 /** random type that is implemented, not running and not the last one */
@@ -427,6 +428,10 @@ export function parseControl(message) {
   if ((verb === "start" || verb === "stop") && arg in TYPES) return { verb, type: arg };
   if (verb === "auto" && (arg === "on" || arg === "off")) return { verb, on: arg === "on" };
   if (verb === "state" && !arg) return { verb };
+  if (verb === "every" && /^\d{1,3}$/.test(arg ?? "")) {
+    const minutes = Number(arg);
+    return minutes >= EVERY_MIN && minutes <= EVERY_MAX ? { verb, minutes } : null;
+  }
   return null;
 }
 

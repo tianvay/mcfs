@@ -122,6 +122,41 @@ async function eventCommand(action, type, question) {
   } catch (e) { toast(e.message, true); }
 }
 
+// slider "one event every 1-4 hours of shared online time"; sent when let go, not on every step
+let everyDragging = false;
+
+function renderEvery(d) {
+  const box = $("#events-every-box");
+  box.hidden = d.every == null; // events pack older than 1.5.0
+  $("#events-every-old").hidden = d.every != null;
+  if (d.every == null) return;
+  const input = $("#events-every");
+  const [lo, hi] = d.every_range || [60, 240];
+  input.min = lo;
+  input.max = hi;
+  if (!everyDragging) input.value = d.every;
+  const show = () => { $("#events-every-text").textContent = evMinutes(Number(input.value) * 60); };
+  show();
+  box.classList.toggle("off", d.auto === false);
+  box.title = d.auto === false ? "Die Automatik ist aus – der Abstand gilt, sobald sie wieder an ist." : "";
+  input.oninput = () => { everyDragging = true; show(); };
+  input.onchange = async () => {
+    everyDragging = false;
+    const minutes = Number(input.value);
+    if (minutes === d.every) return;
+    try {
+      await api("POST", "/api/gameevents/every", { minutes });
+      d.every = minutes;
+      toast(`Events alle ${evMinutes(minutes * 60)} gemeinsamer Spielzeit`);
+      setTimeout(loadEvents, 1500);
+    } catch (e) {
+      toast(e.message, true);
+      input.value = d.every;
+      show();
+    }
+  };
+}
+
 async function worldCommand(kind, value, question) {
   if (!(await dialog(question))) return;
   try {
@@ -142,6 +177,7 @@ function renderEvents(d) {
   auto.className = "btn small" + (d.auto ? " on" : "");
   auto.onclick = () => eventCommand(d.auto ? "auto_off" : "auto_on", null,
     d.auto ? "Automatische Events ausschalten? Laufende Events laufen zu Ende." : null);
+  renderEvery(d);
 
   const running = $("#events-running");
   if (d.active.length) {

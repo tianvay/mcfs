@@ -107,6 +107,11 @@ h2 { font-size: 1.05rem; margin: 0 0 12px; }
 /* seven tabs for the admin: two rows (4 + 3) instead of squeezing or hiding some; visitors see one row */
 .tabs { flex-wrap: wrap; }
 .tabs button { flex: 1 1 22%; }
+.events-every { margin: 0 0 12px; }
+.events-every label { display: block; font-size: .95rem; margin-bottom: 4px; }
+.events-every input { width: 100%; accent-color: var(--accent); margin: 0; }
+.events-every-scale { display: flex; justify-content: space-between; font-size: .8rem; color: var(--muted); }
+.events-every.off { opacity: .55; }
 .events-sub { font-size: .95rem; margin: 4px 0 6px; color: var(--muted); }
 
 /* map: wider than the other cards on large screens */

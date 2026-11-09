@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  activeMinute, chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, intervalMinutes, isNaturalTop,
+  activeMinute, chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, EVERY_DEFAULT, intervalMinutes, isNaturalTop,
   isBed, isLeftover, isNight, isRushOre, lightningOffset, MIN_GAP, mobTag, newActive, newSchedule, nightStep, packSize,
   parseControl, participants, ranSeconds, ringOffset, scheduleMinute, secondsUntilDawn, secondsUntilNight,
   shouldDouble, TYPES, xpBonus, invasionLoot, invasionMob, invasionTargets, waveSize, ZOMBIES,
@@ -79,22 +79,26 @@ test("event mobs: tags and tidying up", () => {
 
 const always = (v) => () => v;
 
-function minutesUntilStart(players, limit = 2000) {
+function minutesUntilStart(players, every, limit = 2000) {
   const s = newSchedule();
+  if (every !== undefined) s.every = every;
   s.lastStart = 0; // like right after an event
   for (let m = 1; m <= limit; m++) if (scheduleMinute(s, players, always(0))) return m;
   return null;
 }
 
-test("more players, more events; never more than one per hour", () => {
-  assert.equal(intervalMinutes(0), Infinity);
-  assert.equal(intervalMinutes(1), 180);
-  assert.equal(intervalMinutes(3), 120);
-  assert.equal(intervalMinutes(10), 60);
-  assert.equal(intervalMinutes(25), 60, "more than max-players behaves like full");
-  assert.equal(minutesUntilStart(1), 180);
-  assert.equal(minutesUntilStart(3), 120);
-  assert.equal(minutesUntilStart(10), 60);
+test("admin sets the interval (60-240 shared online minutes); never more than one per hour", () => {
+  assert.equal(EVERY_DEFAULT, 90);
+  assert.equal(intervalMinutes(newSchedule()), 90);
+  assert.equal(intervalMinutes({ every: 240 }), 240);
+  for (const bad of [undefined, 30, 241, 90.5, "120", null]) {
+    assert.equal(intervalMinutes({ every: bad }), 90, String(bad));
+  }
+  assert.equal(intervalMinutes({}), 90, "saved schedule from before the setting");
+  assert.equal(minutesUntilStart(1), 90);
+  assert.equal(minutesUntilStart(5), 90, "the number of players does not matter");
+  assert.equal(minutesUntilStart(2, 60), 60);
+  assert.equal(minutesUntilStart(2, 240), 240);
   // even with a full credit the gap holds
   const s = newSchedule();
   s.lastStart = 0;
@@ -104,13 +108,25 @@ test("more players, more events; never more than one per hour", () => {
   assert.ok(starts <= 10, `${starts} starts in 10 hours`);
 });
 
+test("estimate: rest of the credit, at least the gap", () => {
+  const s = newSchedule();
+  s.lastStart = -1000;
+  s.every = 120;
+  s.credit = 0.5;
+  assert.equal(estimateNext(s), 60);
+  s.every = 60; // shorter interval: the credit stays, the next event comes closer
+  assert.equal(estimateNext(s), 30);
+  s.lastStart = s.clock - 10;
+  assert.equal(estimateNext(s), 50, "gap of 60 minutes after the last automatic start");
+});
+
 test("the clock stands still without players and when switched off", () => {
   const s = newSchedule();
   for (let m = 0; m < 500; m++) assert.equal(scheduleMinute(s, 0, always(0)), false);
   assert.equal(s.clock, 0);
   s.auto = false;
   for (let m = 0; m < 500; m++) assert.equal(scheduleMinute(s, 10, always(0)), false);
-  assert.equal(estimateNext(s, 3), null);
+  assert.equal(estimateNext(s), null);
 });
 
 test("random delay of up to 10 minutes after the credit is full", () => {
@@ -152,6 +168,11 @@ test("control commands from console and portal", () => {
   assert.deepEqual(parseControl(" stop  mining_rush "), { verb: "stop", type: "mining_rush" });
   assert.deepEqual(parseControl("auto off"), { verb: "auto", on: false });
   assert.deepEqual(parseControl("state"), { verb: "state" });
+  assert.deepEqual(parseControl("every 60"), { verb: "every", minutes: 60 });
+  assert.deepEqual(parseControl("every 240"), { verb: "every", minutes: 240 });
+  for (const bad of ["every", "every 59", "every 241", "every 1e2", "every -90", "every 90.5", "every 90 x", "every 0090"]) {
+    assert.equal(parseControl(bad), null, bad);
+  }
   assert.deepEqual(parseControl("register o1,2;o-3,-4;e10,0"), { verb: "register", keys: ["o1,2", "o-3,-4", "e10,0"] });
   assert.deepEqual(parseControl("undo meteor-17"), { verb: "undo", id: "meteor-17" });
   const many = Array.from({ length: 201 }, (_, i) => `o${i},0`).join(";");

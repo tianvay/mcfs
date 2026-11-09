@@ -140,7 +140,7 @@ class FakeAdapter:
         self._log("Player connected: Steve, xuid: 2535400000000001", ts=ts + 60)
         self._online = ["Steve"]
         # events pack: one finished storm in the past, nothing running
-        self._ev_auto, self._ev_active = True, {}
+        self._ev_auto, self._ev_active, self._ev_every = True, {}, 90
         # sent a few seconds after the portal started (follow_log): a fresh dev data dir has no
         # catch-up position, and lines from before the portal start would only arrive through it
         self._ev_boot_due = time.time() + 3
@@ -316,7 +316,8 @@ class FakeAdapter:
                    "coven": {"x": 140, "y": 68, "z": 33, "left": 2, "total": 4} if t == "witch_coven" else None}
                   for t, r in self._ev_active.items()]
         self._ev_log({"event": "state", "auto": self._ev_auto, "online": len(self._online), "active": active,
-                      "next_in": 95 if self._ev_auto else None, "last": "storm", "register": getattr(self, "_ev_register", 12),
+                      "every": self._ev_every,
+                      "next_in": min(95, self._ev_every) if self._ev_auto else None, "last": "storm", "register": getattr(self, "_ev_register", 12),
                       "types": ["storm", "mining_rush", "lucky_day", "blood_moon", "zombie_invasion", "bounty",
                                 "meteor", "shooting_stars", "treasure", "haunted", "creeper_chaos", "witch_coven"],
                       "undo": getattr(self, "_ev_undo", ["meteor-3"])}, ts)
@@ -338,6 +339,12 @@ class FakeAdapter:
         elif action == "state":
             for t in self._ev_active:
                 self._ev_active[t] = max(60, self._ev_active[t] - 300)
+        self._ev_state()
+
+    def event_every_live(self, minutes: int) -> None:
+        from .bedrock.commands import event_every
+        event_every(minutes)  # same validation as the real console command
+        self._ev_every = minutes
         self._ev_state()
 
     def event_undo_live(self, undo_id: str) -> None:

@@ -15,7 +15,8 @@
 //  * Mobs spawned by events carry the tag "mcfs_ev" + "mcfs_ev_<type>" and are removed when their event is over.
 //  * Build register: every chunk a player placed a block in is remembered; world-changing effects
 //    (lightning now, meteors later) stay away from it.
-//  * Control (console / portal / operators): /scriptevent mcfs:event start|stop <type> | auto on|off | state
+//  * Control (console / portal / operators): /scriptevent mcfs:event start|stop <type> | auto on|off | every <60-240>
+//    | state
 //  * Log lines for the portal: [mcportal-events] {"v":1,"event":"started"|"ended"|"state",...}
 //  * Other packs (achievements) get the same news via system.sendScriptEvent("mcfs:event_news", json).
 // Uses only the stable @minecraft/server API - no experiments in the world.
@@ -28,7 +29,7 @@ import {
   isMeteorReplaceable, linePoints, planCrater, shootingStarPath, STAR_TAG, starLoot, TREASURE_DEPTH, TREASURE_DISTANCE,
   treasureHint, treasureLoot, HAUNT_GOAL, HAUNT_RADIUS, hauntLoot, hauntMob, hauntWaveSize, CHARGED_CHANCE, covenLoot,
   covenSize, creeperGroup, bountyHunters, chooseBoss, healthBoostLevel,
-  chooseType, chunkKey, decodeRegister, encodeRegister, estimateNext, formatMinutes, invasionLoot,
+  chooseType, chunkKey, intervalMinutes, decodeRegister, encodeRegister, estimateNext, formatMinutes, invasionLoot,
   invasionMob, invasionTargets, isBed, isGround, isLeftover, isNaturalTop, isRushOre, lightningOffset, MOB_TAG, mobTag, newActive,
   newSchedule, nightStep, packSize, parseControl, participants, ranSeconds, ringOffset, scheduleMinute, shouldDouble,
   TYPES, waveSize, xpBonus, ZOMBIES,
@@ -1455,7 +1456,7 @@ function logState() {
         : undefined,
       boss: a.boss ? { name: a.boss.name, x: Math.round(a.boss.x), y: Math.round(a.boss.y ?? 0), z: Math.round(a.boss.z) }
         : undefined })),
-    next_in: estimateNext(schedule, online), last: schedule.last, register: register?.size ?? 0,
+    every: intervalMinutes(schedule), next_in: estimateNext(schedule), last: schedule.last, register: register?.size ?? 0,
     types: IMPLEMENTED, undo: undoIds(),
   });
   news({ event: "state", active: active.map((a) => a.type) });
@@ -1497,7 +1498,7 @@ system.afterEvents.scriptEventReceive.subscribe((ev) => {
     if (ev.sourceEntity instanceof Player) ev.sourceEntity.sendMessage(msg);
     else log({ event: "control", message: msg });
   };
-  if (!cmd) return reply(`Aufruf: start|stop <${IMPLEMENTED.join("|")}>, auto on|off, state`);
+  if (!cmd) return reply(`Aufruf: start|stop <${IMPLEMENTED.join("|")}>, auto on|off, every <60-240>, state`);
   const by = fromConsole ? "console" : `player:${ev.sourceEntity?.name ?? "?"}`;
   if (cmd.verb === "start") {
     if (!HANDLERS[cmd.type]) return reply(`${cmd.type} gibt es noch nicht.`);
@@ -1514,6 +1515,13 @@ system.afterEvents.scriptEventReceive.subscribe((ev) => {
     saveState();
     logState();
     return reply(`Automatische Events ${cmd.on ? "an" : "aus"}.`);
+  }
+  if (cmd.verb === "every") {
+    // the credit collected so far stays: a shorter interval brings the next event closer at once
+    schedule.every = cmd.minutes;
+    saveState();
+    logState();
+    return reply(`Automatische Events alle ${formatMinutes(cmd.minutes * 60)} gemeinsamer Spielzeit.`);
   }
   if (cmd.verb === "register") {
     // chunks with builds found by the map reader (also builds from before the register existed)

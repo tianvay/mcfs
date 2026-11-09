@@ -54,7 +54,8 @@ Details und Optionen: [Installation auf einem frischen Server](docs/15-installat
 14. [Blaupause](docs/14-blaupause.md) – Bereiche speichern und einmal einsetzen, M15
 15. [Installation auf einem frischen Server](docs/15-installation.md) – ein Befehl, eigener Seed, M16
 16. [Funktionen ein- und ausschalten](docs/16-funktionen-schalten.md) – Packs im Portal, auch reines Vanilla, M17
-17. [To-dos](docs/TODO.md)
+17. [Wie oft kommen Events?](docs/17-event-haeufigkeit.md) – Schieberegler 1–4 Stunden gemeinsamer Spielzeit, M18
+18. [To-dos](docs/TODO.md)
 
 ## Grundsätze
 

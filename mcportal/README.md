@@ -118,7 +118,7 @@ Wegpunkten, Spawnfackel und Blaupause warnt das Portal: Minecraft löscht deren 
 | Whitelist und Operatoren | – | ✅ |
 | Funktionen: was läuft, mit Rezepten | ✅ | ✅ |
 | Funktionen ein-/ausschalten (auch ausgeschaltete sehen) | – | ✅ |
-| Events (ansehen, starten, Hinweis auf der Übersicht; Tab fehlt, wenn das Events-Pack aus ist) | – | ✅ |
+| Events (ansehen, starten, Abstand 1–4 Std. einstellen, Hinweis auf der Übersicht; Tab fehlt, wenn das Events-Pack aus ist) | – | ✅ |
 | Welt: Wetter und Tageszeit | – | ✅ |
 | Server: Start/Stop/Neustart/Update, Protokoll | – | ✅ |
 

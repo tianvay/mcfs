@@ -7,6 +7,8 @@ Stand: 2026-11-03 (mit dem Server abgeglichen: Log, sudo-Verlauf, Prüfsummen vo
 
 ### Im Spiel ansehen
 
+- [ ] **Event-Abstand (M18, Events 1.5.0)** (`docs/17-event-haeufigkeit.md`): auf dem Laptop installieren, im Events-Tab
+      den Regler verschieben; der Hinweis „Nächstes Event in ca. …“ muss sich ändern.
 - [ ] **Statistik 2.0.1** (Essen vollständig, `docs/03-block-statistik.md`): auf dem Laptop installieren, dann ein Steak
       essen und im Tab „Statistik“ nachsehen.
 - [ ] **Funktionen ein/aus (M17)** (`docs/16-funktionen-schalten.md`): auf dem Laptop `sudo bash ~/mcportal-src/deploy/install.sh`,

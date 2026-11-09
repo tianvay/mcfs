@@ -4,7 +4,8 @@ Stand: 2026-10-26 · Status: **installiert** 2026-10-26 15:34 (Portal, Events-Pa
 
 ## Ziel
 
-Zufällige Ereignisse beleben den Server. Je mehr Spieler online sind, desto häufiger; höchstens eins pro Stunde
+Zufällige Ereignisse beleben den Server. Wie oft, stellt der Admin im Portal ein (seit M18: alle 1–4 Stunden
+gemeinsamer Spielzeit); höchstens eins pro Stunde
 (bei vollem Server). Paket 1 bringt das Grundgerüst, das Bau-Register, die Portal-Kachel „Events“, drei Events
 und Erfolge dafür. Pakete 2 und 3 (Nachtgefahren, Welt verändert sich) stehen in `docs/TODO.md`.
 
@@ -26,16 +27,12 @@ zwischendurch die Restzeit in der Aktionsleiste; am Ende „Mining Rush ist vorb
 
 ## Wann kommt ein Event?
 
-- Die Uhr läuft **nur, solange jemand online ist**. Pro Minute sammelt der Server „Event-Guthaben“ –
-  umso mehr, je mehr Spieler online sind. Bei 1,0 startet ein zufälliges Event (nach 0–10 Min. Zufallsverzug).
+- Die Uhr läuft **nur, solange jemand online ist**. Pro Minute sammelt der Server „Event-Guthaben“.
+  Bei 1,0 startet ein zufälliges Event (nach 0–10 Min. Zufallsverzug).
+- **Abstand einstellbar** (seit M18, [17-event-haeufigkeit.md](17-event-haeufigkeit.md)): Schieberegler im
+  Events-Tab, ein Event alle 60–240 Minuten gemeinsamer Spielzeit, Standard 90. Die Spielerzahl spielt keine
+  Rolle mehr. (Bis Pack 1.4.1 hing der Abstand an der Spielerzahl: 180 Min. bei 1 Spieler bis 60 Min. ab 8.)
 - **Nie öfter als eines pro Stunde.**
-- Vorschlag (im Pack als Tabelle, leicht änderbar):
-
-  | Spieler online | 1 | 2 | 3 | 4 | 5 | 6–7 | 8–10 |
-  |---|---|---|---|---|---|---|---|
-  | etwa alle … Minuten Spielzeit | 180 | 150 | 120 | 105 | 90 | 75 | 60 |
-
-  Bei 3 Kindern also ungefähr alle 2 Stunden gemeinsamer Spielzeit, bei vollem Server (10) stündlich.
 - Auswahl zufällig, aber nie zweimal hintereinander dasselbe. Verschiedene Events dürfen sich überlappen
   (z. B. Unwetter während Mining Rush), dasselbe Event nie doppelt.
 - **Restzeiten laufen nur, solange jemand online ist** – loggen sich alle aus, pausiert das Event und geht beim
@@ -148,7 +145,8 @@ Nach jedem Schritt zeige ich das Ergebnis; installiert wird erst in E5 (mit dein
 - `app/services/events.py`: liest `[mcportal-events]`-Zeilen (Zustand, Starts, Enden mit Teilnehmern), Verlauf
   der letzten 100 Events, Teilnahmen je Spieler; Daten in `/var/lib/mcportal/events.json`, Leseposition wie bei
   den anderen Pack-Diensten (nichts doppelt nach Portal-Neustart).
-- API: `GET /api/gameevents`, `POST /api/gameevents/{start|stop|auto_on|auto_off}` mit `{"type": …}`
+- API: `GET /api/gameevents`, `POST /api/gameevents/{start|stop|auto_on|auto_off}` mit `{"type": …}`,
+  `POST /api/gameevents/every` mit `{"minutes": 60–240}` (M18)
   (`/api/events` ist schon der Live-Strom). Das Portal schickt nur feste Konsolenbefehle
   (`scriptevent mcfs:event start storm` …, `commands.event_control`); unbekannte Aktionen/Events → Fehler.
 - Beim Öffnen fragt das Portal höchstens alle 30 s per `scriptevent mcfs:event state` frische Restzeiten ab.

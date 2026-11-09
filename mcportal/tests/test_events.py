@@ -53,6 +53,9 @@ class FakeAdapter:
     def event_control_live(self, action, event_type=None):
         self.sent.append(commands.event_control(action, event_type))
 
+    def event_every_live(self, minutes):
+        self.sent.append(commands.event_every(minutes))
+
 
 class Audit:
     def __init__(self):
@@ -119,6 +122,26 @@ class EventsTest(unittest.TestCase):
                 asyncio.run(s.control(action, etype, "admin"))
         with self.assertRaises(ValueError):
             commands.event_control("start", "storm\nstop")
+
+    def test_every_sets_the_interval_only_within_60_to_240(self):
+        s, mc, adapter = self.service(LINES)
+        self.assertIsNone(s.summary()["every"], "older pack without the setting")
+        self.assertEqual(s.summary()["every_range"], [60, 240])
+        asyncio.run(s.set_every(150, "admin"))
+        self.assertEqual(adapter.sent[-1], "scriptevent mcfs:event every 150")
+        sent = len(adapter.sent)
+        self.assertEqual(s.summary()["every"], 150, "shown before the pack confirms")
+        self.feed(mc, ev(4000.0, {**STATE, "every": 60}))
+        self.assertEqual(s.summary()["every"], 60)
+        for bad in (59, 241, 0, -90, True, 90.0, "90"):
+            with self.assertRaises(PortalError):
+                asyncio.run(s.set_every(bad, "admin"))
+            with self.assertRaises(ValueError):
+                commands.event_every(bad)
+        self.assertEqual([c for c in adapter.sent[sent:] if "every" in c], [])
+        s2, _, _ = self.service(LINES, mc=FakeMc("offline"))
+        with self.assertRaises(PortalError):
+            asyncio.run(s2.set_every(120, "admin"))
 
     def test_control_needs_a_running_server_and_the_pack(self):
         s, _, _ = self.service([])
