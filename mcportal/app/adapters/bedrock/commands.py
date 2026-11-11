@@ -141,5 +141,30 @@ def tell_gift(name: str, item_name: str, count: int) -> str:
     return f"tellraw {_target(name)} {raw}"
 
 
+# Sterntaler (pack mcportal_shop): the amount is a checked number, the name a checked gamertag - no free text
+SHOP_GRANT_MAX = 999
+
+
+def _shop_name(name: str) -> str:
+    # the pack takes the rest of the line as the name, so no quotes here
+    if not valid_player_name(name):
+        raise ValueError("Ungültiger Spielername")
+    return name
+
+
+def shop_grant(name: str, amount: int) -> str:
+    """Give (or with a negative amount take) Sterntaler by hand."""
+    if type(amount) is not int or amount == 0 or abs(amount) > SHOP_GRANT_MAX:
+        raise ValueError("invalid amount")
+    return f"scriptevent mcfs:shop grant {amount} {_shop_name(name)}"
+
+
+def shop_seed(name: str, amount: int) -> str:
+    """Start credit for events from before the shop; the pack books it once per player."""
+    if type(amount) is not int or not 1 <= amount <= SHOP_GRANT_MAX:
+        raise ValueError("invalid amount")
+    return f"scriptevent mcfs:shop seed {amount} {_shop_name(name)}"
+
+
 def allowlist_remove(name: str) -> str:
     return f"allowlist remove {_name_arg(name)}"

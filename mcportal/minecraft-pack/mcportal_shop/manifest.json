@@ -1,0 +1,58 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Family Portal Sterntaler",
+    "description": "Sterntaler bei Events verdienen und mit /shop besondere Werkzeuge kaufen.",
+    "uuid": "ae43baa4-447e-4bc4-b04c-7a9b8cf301d1",
+    "version": [
+      1,
+      0,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      21,
+      0
+    ]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "deeda601-accb-4c3b-ab91-9ef3c5d5c807",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "81df43df-3356-45bb-b7f5-a0663de128ce",
+      "version": [
+        1,
+        0,
+        0
+      ],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "@SERVER_API@"
+    },
+    {
+      "module_name": "@minecraft/server-ui",
+      "version": "2.2.0"
+    },
+    {
+      "uuid": "f8fcda08-6131-4133-8b32-e2246ce648b0",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    }
+  ]
+}

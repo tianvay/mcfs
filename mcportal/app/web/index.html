@@ -23,6 +23,7 @@
     <button role="tab" data-tab="home" aria-selected="true">Übersicht</button>
     <button role="tab" class="admin-only" data-tab="allow" aria-selected="false">Whitelist</button>
     <button role="tab" data-tab="stats" aria-selected="false">Statistik</button>
+    <button role="tab" data-tab="taler" aria-selected="false">Sterntaler</button>
     <button role="tab" class="admin-only" data-tab="events" aria-selected="false">Events</button>
     <button role="tab" class="admin-only" data-tab="world" aria-selected="false">Welt</button>
     <button role="tab" class="admin-only" data-tab="donate" aria-selected="false">Spenden</button>
@@ -118,6 +119,45 @@
         <ul id="events-undo" class="events-list"></ul>
         <p class="note small">Was Events in der Welt verändert haben (z. B. Meteoritenkrater), lässt sich hier
           rückgängig machen.</p>
+      </div>
+    </section>
+
+    <!-- Sterntaler: balances, shop and how to earn for everyone; ledger and giving by hand for the admin (M19) -->
+    <section id="tab-taler" class="tab" hidden>
+      <p id="taler-missing" class="note">Das Sterntaler-Pack hat sich noch nicht gemeldet.</p>
+      <div id="taler-body" hidden>
+        <div class="card">
+          <h2>⭐ Sterntaler</h2>
+          <p class="note small">Sterntaler gibt es für die Events auf dem Server. Ausgegeben werden sie im Spiel:
+            <code>/shop</code> in den Chat tippen.</p>
+          <ol id="taler-rank" class="taler-rank"></ol>
+        </div>
+        <div class="card">
+          <h2>🛒 Im Shop</h2>
+          <div id="taler-shop"></div>
+        </div>
+        <div class="card">
+          <h2>So verdient man Sterntaler</h2>
+          <ul id="taler-rewards" class="taler-rewards"></ul>
+        </div>
+        <div class="card admin-only">
+          <h2>Gutschreiben oder abziehen</h2>
+          <form id="taler-form" class="add-form" autocomplete="off">
+            <label for="taler-player">Spieler und Betrag (mit Minus wird abgezogen, nie unter 0)</label>
+            <div class="row">
+              <input id="taler-player" list="taler-names" maxlength="36" required placeholder="Spieler">
+              <datalist id="taler-names"></datalist>
+              <input id="taler-amount" class="taler-amount" type="number" inputmode="numeric" min="-999" max="999"
+                     step="1" required placeholder="z. B. 5">
+              <button class="btn primary" type="submit">Buchen</button>
+            </div>
+          </form>
+          <p id="taler-seed" class="note small"></p>
+        </div>
+        <div class="card admin-only">
+          <h2>Kontobuch</h2>
+          <ul id="taler-ledger" class="taler-ledger"></ul>
+        </div>
       </div>
     </section>
 
@@ -283,6 +323,7 @@
   <script src="/static/events.js"></script>
   <script src="/static/donate.js"></script>
   <script src="/static/packs.js"></script>
+  <script src="/static/sterntaler.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

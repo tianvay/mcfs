@@ -1,0 +1,42 @@
+{
+  "format_version": "1.21.50",
+  "minecraft:item": {
+    "description": {
+      "identifier": "mcfs:holzfaeller",
+      "menu_category": {
+        "category": "equipment"
+      }
+    },
+    "components": {
+      "minecraft:icon": "mcfs_holzfaeller",
+      "minecraft:display_name": {
+        "value": "Holzfäller-Axt"
+      },
+      "minecraft:max_stack_size": 1,
+      "minecraft:hand_equipped": true,
+      "minecraft:glint": true,
+      "minecraft:durability": {
+        "max_durability": 2000
+      },
+      "minecraft:damage": 6,
+      "minecraft:digger": {
+        "use_efficiency": true,
+        "destroy_speeds": [
+          {
+            "block": {
+              "tags": "query.any_tag('minecraft:is_axe_item_destructible')"
+            },
+            "speed": 8
+          }
+        ]
+      },
+      "minecraft:tags": {
+        "tags": [
+          "minecraft:is_axe",
+          "minecraft:is_tool",
+          "minecraft:diamond_tier"
+        ]
+      }
+    }
+  }
+}

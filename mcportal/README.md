@@ -97,14 +97,21 @@ es geht keine Chat-Nachricht raus). Jede Spende steht im Protokoll (`DONATE`).
   `/var/lib/mcportal/item-icons/<release>/`. Ohne Internet oder ohne passende Textur zeigt der Tab einen
   Platzhalter. Laub und Gras sind grau, weil Minecraft sie erst im Spiel einfärbt.
 
+## Sterntaler
+
+Tab „Sterntaler“: Kontostände aller Spieler, das Angebot des Shops und wofür es Sterntaler gibt – für alle. Der
+Admin sieht dazu das Kontobuch und kann Sterntaler gutschreiben oder abziehen. Verdient wird bei den Events,
+gekauft im Spiel mit `/shop`. Die Konten führt das Pack `mcportal_shop` in der Welt; das Portal liest sie aus dem
+Log (`/var/lib/mcportal/sterntaler.json`). Details: [docs/18-sterntaler-shop.md](../docs/18-sterntaler-shop.md).
+
 ## Funktionen ein- und ausschalten
 
 Tab „Funktionen“: Ohne Anmeldung sieht man, welche Erweiterungen laufen, bei eigenen Gegenständen mit dem Rezept
 (Werkbank-Raster mit Bildern). Der Admin sieht alle und hat einen Schalter pro Erweiterung (Statistik, Erfolge,
-Wegpunkte, Events, Spawnfackel, Blaupause). Alles aus heißt reines Minecraft. Statistik und Erfolge allein bringen keine eigenen
+Wegpunkte, Events, Spawnfackel, Blaupause, Sterntaler). Alles aus heißt reines Minecraft. Statistik und Erfolge allein bringen keine eigenen
 Gegenstände mit. Das Portal ändert nur `world_behavior_packs.json`/`world_resource_packs.json` der Welt (vorher
 gesichert), die Pack-Ordner bleiben liegen. Wirksam wird das nach dem nächsten Neustart. Vor dem Ausschalten von
-Wegpunkten, Spawnfackel und Blaupause warnt das Portal: Minecraft löscht deren Gegenstände dauerhaft. Details:
+Wegpunkten, Spawnfackel, Blaupause und Sterntalern warnt das Portal: Minecraft löscht deren Gegenstände dauerhaft. Details:
 [docs/16-funktionen-schalten.md](../docs/16-funktionen-schalten.md).
 
 ## Wer was sieht (Admin-Anmeldung)

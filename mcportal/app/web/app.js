@@ -15,7 +15,7 @@ const AUDIT_TEXT = {
   WHITELIST_ADD: "Whitelist: hinzugefügt", WHITELIST_REMOVE: "Whitelist: entfernt", LOGIN: "Admin-Anmeldung",
   OPERATOR_GRANT: "Operator-Rechte vergeben", OPERATOR_REVOKE: "Operator-Rechte entzogen",
   UPDATE: "Server-Update", GAMEMODE_SURVIVAL: "Spielmodus auf Überleben gesetzt", MAP: "Karte gezeichnet", EVENT: "Event", WORLD_WEATHER: "Wetter", WORLD_TIME: "Tageszeit", EVENT_UNDO: "Event rückgängig",
-  DONATE: "Gespendet", PACK_ON: "Funktion eingeschaltet", PACK_OFF: "Funktion ausgeschaltet",
+  DONATE: "Gespendet", STERNTALER: "Sterntaler", PACK_ON: "Funktion eingeschaltet", PACK_OFF: "Funktion ausgeschaltet",
 };
 
 let state = null;
@@ -139,6 +139,7 @@ function showTab(name) {
   if (name === "donate" && admin) loadDonate();
   if (name === "server" && admin) loadAudit();
   if (name === "features") loadPacks();
+  if (name === "taler") loadTaler();
 }
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
 document.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.goto)));
@@ -188,8 +189,9 @@ function render(s) {
   eventsOnState(s);
   donateOnState(s);
   packsOnState(s);
+  talerOnState(s);
   const statsKey = `${s.stats && s.stats.updated}|${s.achievements && s.achievements.updated}`
-    + `|${s.waypoints && s.waypoints.updated}`;
+    + `|${s.waypoints && s.waypoints.updated}|${s.sterntaler && s.sterntaler.updated}|${talerOff(s)}`;
   if (statsKey !== lastStatsUpdate && lastStatsUpdate !== null && !$("#tab-stats").hidden) loadStats();
   lastStatsUpdate = statsKey;
 
@@ -444,7 +446,8 @@ function waypointDetails(own) {
     })));
 }
 
-function playerCard(p, ach, wps) {
+function playerCard(p, ach, wps, taler) {
+  const account = taler && taler.players.find((t) => t.name === p.name);
   const unlocked = (ach.players && ach.players[p.name]) || [];
   const own = (wps.players && wps.players[p.name]) || [];
   const fav = p.food_by.length ? `Lieblingsessen: ${label(p.food_by[0][0])}` : "";
@@ -456,6 +459,8 @@ function playerCard(p, ach, wps) {
       ach.total ? tile("🏆", "Erfolge", `${unlocked.length} / ${ach.total}`, unlocked[0] ? `zuletzt: ${unlocked[0].name}` : "") : "",
       wps.list_at ? tile("📍", "Wegpunkte", fmtNum(own.length),
         own.length ? `${own.filter((w) => w.public).length} öffentlich` : "") : "",
+      taler ? tile("⭐", taler.currency, fmtNum(account ? account.balance : 0),
+        account ? `verdient ${fmtNum(account.earned)}` : "") : "",
       tile("💀", "Tode", fmtNum(p.deaths)),
       tile("⚔️", "Mobs besiegt", fmtNum(p.kills)),
       tile("💎", "Diamanten", fmtNum(p.diamonds), "Diamanterz abgebaut"),
@@ -491,10 +496,12 @@ async function loadStats() {
   let data;
   let ach;
   let wps;
+  let taler;
   try {
-    [data, ach, wps] = await Promise.all([api("GET", "/api/stats"), api("GET", "/api/achievements"),
-      api("GET", "/api/waypoints")]);
+    [data, ach, wps, taler] = await Promise.all([api("GET", "/api/stats"), api("GET", "/api/achievements"),
+      api("GET", "/api/waypoints"), api("GET", "/api/sterntaler")]);
   } catch (e) { toast(e.message, true); return; }
+  if (!taler.installed || talerOff(state)) taler = null;  // no tile without the shop pack
   const open = new Set([...document.querySelectorAll("#stats-list details[open]")].map((d) => d.dataset.key));
   const note = $("#stats-note");
   if (!data.pack_seen && !data.since) {
@@ -508,7 +515,7 @@ async function loadStats() {
     list.replaceChildren(el("p", { className: "empty", textContent: "Noch nichts gezählt." }));
     return;
   }
-  list.replaceChildren(recentAchievements(ach), ...data.players.map((p) => playerCard(p, ach, wps)));
+  list.replaceChildren(recentAchievements(ach), ...data.players.map((p) => playerCard(p, ach, wps, taler)));
   // keep opened sections open across live refreshes (summary text without the changing counts)
   list.querySelectorAll(".stat-player").forEach((card) => {
     const who = card.querySelector("h3 span")?.textContent || "";

@@ -72,12 +72,16 @@ Danach ist das Portal unter `http://<IP des Servers>:8080` erreichbar, nur aus d
 Einen Probestart mit Kopie wie bei `--prepare` gibt es hier nicht. Es läuft noch kein Server, den man schützen
 müsste. Der echte Start wird genauso geprüft.
 
-**Packs:** Statistik, Wegpunkte, Events, Erfolge, Spawnfackel, Blaupause (Verhalten) sowie Wegpunkte-, Events-,
-Spawnfackel- und Blaupause-Grafik. Die Blaupause steht jetzt auch in `packs.list`, also prüft `verify.sh` sie auch
+**Packs:** Statistik, Wegpunkte, Events, Erfolge, Spawnfackel, Blaupause, Sterntaler-Shop (Verhalten) sowie
+Wegpunkte-, Events-, Spawnfackel-, Blaupause- und Sterntaler-Grafik. Die Blaupause steht jetzt auch in `packs.list`, also prüft `verify.sh` sie auch
 auf dem echten Server.
 Neue Welten starten mit automatischen Events **alle 90 Minuten gemeinsamer Spielzeit** (Standard im Events-Pack).
 Ändern lässt sich das danach im Portal, Tab „Events“ (Schieberegler 1–4 Stunden, M18). Die Installation braucht
 dafür keinen eigenen Schritt.
+Der **Sterntaler-Shop** (M19, [Sterntaler und Shop](18-sterntaler-shop.md)) kommt über `packs.list` mit: Konten
+und `/shop` sind vom ersten Start an da, das Portal zeigt den Tab „Sterntaler“. Er braucht keine Spielregel, keinen
+`server.properties`-Wert und kein Systempaket. Eine neue Welt hat keine Event-Geschichte, also auch kein
+Startguthaben.
 
 **`server.properties`:** Mojangs Datei plus `provision/server.properties.overrides`, darunter `allow-cheats=true`,
 `content-log-console-output-enabled=true`, `content-log-level=warning` und `texturepack-required=true`. Dazu kommen

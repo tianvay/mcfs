@@ -89,8 +89,12 @@ class GroupTest(unittest.TestCase):
             files, _ = make_world(Path(d))
             features = {f["id"]: f for f in group_features(files.installed_packs())}
         self.assertEqual(set(features), {"mcportal_achievements", "mcportal_blueprint", "mcportal_events",
-                                         "mcportal_spawntorch", "mcportal_stats", "mcportal_waypoints"},
-                         "six switches - every resource pack belongs to its behavior pack")
+                                         "mcportal_shop", "mcportal_spawntorch", "mcportal_stats",
+                                         "mcportal_waypoints"},
+                         "seven switches - every resource pack belongs to its behavior pack")
+        self.assertEqual([p["folder"] for p in features["mcportal_shop"]["packs"]], ["mcportal_shop", "mcportal_shop_rp"])
+        self.assertEqual(features["mcportal_shop"]["name"], "Sterntaler")
+        self.assertTrue(features["mcportal_shop"]["items"], "the shop's tools go when it is switched off")
         self.assertEqual([p["folder"] for p in features["mcportal_waypoints"]["packs"]],
                          ["mcportal_waypoints", "mcportal_waypoints_rp"])
         self.assertEqual(features["mcportal_waypoints"]["name"], "Wegpunkte")
@@ -173,6 +177,8 @@ class SwitchTest(unittest.IsolatedAsyncioTestCase):
                          "no versions, states or switches for everyone")
         self.assertEqual(pub["mcportal_spawntorch"]["recipes"][0]["result"]["name"], "Spawnfackel")
         self.assertTrue(self.svc.icon_path("mcfs.spawn_torch").is_file())
+        for item in ("bergbrecher", "holzfaeller", "magnet", "erntesichel"):   # pictures of the Sterntaler shop
+            self.assertTrue(self.svc.icon_path(f"mcfs.{item}").is_file(), item)
         for bad in ("mcfs.blueprint", "mcfs.nope", "../x", "mcfs:waypoint"):
             with self.assertRaises(PortalError, msg=bad):
                 self.svc.icon_path(bad)
@@ -224,7 +230,7 @@ class SwitchTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(ids.count(self.packs["mcportal_stats"]["uuid"]), 1)
 
     async def test_vanilla_with_statistics_and_achievements(self):
-        for f in ("mcportal_waypoints", "mcportal_events", "mcportal_spawntorch", "mcportal_blueprint"):
+        for f in ("mcportal_waypoints", "mcportal_events", "mcportal_spawntorch", "mcportal_blueprint", "mcportal_shop"):
             await self.svc.set_enabled(f, False, "admin")
         self.restart()
         self.assertEqual(self.files.read_world_packs("resource"), [], "no resource packs = no extra items/looks")

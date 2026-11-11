@@ -192,6 +192,10 @@ class FakeAdapter:
                 self._ev_log({"event": "started", "type": "storm", "by": "auto", "duration": 2400})
                 self._ev_log({"event": "ended", "type": "storm", "by": "time", "ran": 2400, "participants": ["Steve"]})
                 self._ev_state()
+                self._shop_boot_due = time.time() + 2   # the shop pack came later than this storm: start credit
+            if getattr(self, "_shop_boot_due", None) and time.time() > self._shop_boot_due:
+                self._shop_boot_due = None
+                self._shop_boot()
             if self._state == "active" and time.time() - last_stats > 8:
                 last_stats = time.time()
                 self._emit_stats()
@@ -334,12 +338,69 @@ class FakeAdapter:
         elif action == "stop" and event_type in self._ev_active:
             ran = {"storm": 2400}.get(event_type, 7200) - self._ev_active.pop(event_type)
             self._ev_log({"event": "ended", "type": event_type, "by": "console", "ran": ran, "participants": list(self._online)})
+            for n in self._online:   # like the shop pack: taking part is worth 5 Sterntaler
+                self._shop_book(n, 5, "participation", event_type)
         elif action in ("auto_on", "auto_off"):
             self._ev_auto = action == "auto_on"
         elif action == "state":
             for t in self._ev_active:
                 self._ev_active[t] = max(60, self._ev_active[t] - 300)
         self._ev_state()
+
+    # ---------- Sterntaler shop pack ----------
+
+    FAKE_SHOP = [
+        {"id": "mcfs:bergbrecher", "name": "Bergbrecher", "price": 20,
+         "desc": "Spitzhacke, die 3 × 3 × 3 Blöcke Gestein und Erz auf einmal abbaut. Schleichen: nur ein Block."},
+        {"id": "mcfs:holzfaeller", "name": "Holzfäller-Axt", "price": 15,
+         "desc": "Fällt einen ganzen Baum mit einem Schlag. Schleichen: nur ein Block."},
+        {"id": "mcfs:magnet", "name": "Magnet-Amulett", "price": 20,
+         "desc": "Zieht herumliegende Gegenstände aus 8 Blöcken an, solange es in der Schnellleiste oder Zweithand liegt."},
+        {"id": "mcfs:erntesichel", "name": "Ernte-Sichel", "price": 15,
+         "desc": "Erntet reife Feldfrüchte in 3 × 3 und pflanzt gleich neu."},
+    ]
+
+    def _shop_log(self, payload: dict) -> None:
+        self._log("[Scripting] [mcportal-shop] " + json.dumps({"v": 1, **payload}, ensure_ascii=False))
+
+    def _shop_boot(self) -> None:
+        """Like the shop pack at every start: catalog, all balances, startup line - plus a little history."""
+        self._shop = getattr(self, "_shop", {"Alex": {"b": 22, "e": 42}})
+        self._shop_log({"event": "catalog", "currency": "Sterntaler", "items": self.FAKE_SHOP,
+                        "rewards": {"participation": 5, "bounty": 5, "treasure_found": 5, "coven_defeated": 3,
+                                    "curse_broken": 3, "meteor_hit": 2, "lightning_survived": 2, "star": 1}})
+        self._shop_log({"event": "balances",
+                        "players": {n: {"balance": a["b"], "earned": a["e"]} for n, a in self._shop.items()}})
+        self._shop_log({"started": True})
+        if self._shop["Alex"]["b"] >= 15:
+            self._shop_book("Alex", -15, "buy", "mcfs:holzfaeller")
+        self._shop_book("Steve", 1, "star")
+
+    def _shop_book(self, name: str, amount: int, reason: str, detail: str | None = None) -> None:
+        shop = getattr(self, "_shop", None)
+        if shop is None:
+            return   # the pack has not started yet
+        a = shop.setdefault(name, {"b": 0, "e": 0})
+        if reason == "seed" and a.get("s"):
+            return self._shop_log({"event": "seed_skipped", "player": name})
+        delta = max(amount, -a["b"])
+        a["b"] += delta
+        if delta > 0 and reason != "admin":
+            a["e"] += delta
+        if reason == "seed":
+            a["s"] = 1
+        self._shop_log({"event": "booking", "player": name, "delta": delta, "reason": reason,
+                        **({"detail": detail} if detail else {}), "balance": a["b"], "earned": a["e"]})
+
+    def shop_grant_live(self, name: str, amount: int) -> None:
+        from .bedrock.commands import shop_grant
+        shop_grant(name, amount)  # same validation as the real console command
+        self._shop_book(name, amount, "admin")
+
+    def shop_seed_live(self, name: str, amount: int) -> None:
+        from .bedrock.commands import shop_seed
+        shop_seed(name, amount)  # same validation as the real console command
+        self._shop_book(name, amount, "seed")
 
     def event_every_live(self, minutes: int) -> None:
         from .bedrock.commands import event_every

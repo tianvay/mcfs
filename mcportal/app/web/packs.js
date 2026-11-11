@@ -10,12 +10,14 @@ const PACK_STATE = {
   failed: ["✗ nicht gestartet", "failed"],
 };
 let packsKey = null;
+let packsShop = null;   // what the Sterntaler shop sells, shown with its feature
 
 function packsVisible() { return !$("#tab-features").hidden; }
 
 async function loadPacks() {
   const err = $("#packs-error");
   try {
+    packsShop = await api("GET", "/api/sterntaler").catch(() => null);
     if (admin) renderPacks(await api("GET", "/api/packs"));
     else renderPacks({ ...(await api("GET", "/api/features")), writable: true, restart_needed: false, public: true });
   } catch (e) {
@@ -91,6 +93,11 @@ function renderPacks(data) {
       title.append(btn);   // in the title row, so a recipe keeps the full width
     }
     if (f.recipes && f.recipes.length) main.append(el("div", { className: "recipes" }, ...f.recipes.map(recipeView)));
+    // the shop's items have no recipe: they are bought with Sterntaler (/shop in the game)
+    if (f.id === SHOP_PACK && packsShop && packsShop.items.length && (data.public || f.state === "on" || f.state === "pending_off")) {
+      main.append(el("p", { className: "recipe-legend", textContent: "Gekauft wird im Spiel mit /shop:" }),
+        shopOffer(packsShop.items, packsShop.currency));
+    }
     return li;
   }));
 }

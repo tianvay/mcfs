@@ -24,17 +24,20 @@ from .services.events import EventsService
 from .services.minecraft import MinecraftService, PortalError
 from .services.packs import PacksService
 from .services.stats import StatsService
+from .services.sterntaler import SterntalerService
 from .services.update import UpdateService
 from .services.waypoints import WaypointsService
 
 WEB_DIR = Path(__file__).parent / "web"
 SESSION_COOKIE = "mcportal_session"
 EVENTS_PACK = "mcportal_events"
+SHOP_PACK = "mcportal_shop"
 SSE_PING_SECONDS = 15
 # Status fields everyone may see; everything else (seed, whitelist, update, events, errors ...) is admin only.
 # A list of what is allowed, so a new field stays hidden until it is added here.
 PUBLIC_STATUS = {"server_name", "status", "active_state", "started_at", "last_start", "version", "last_update",
-                 "players", "max_players", "busy", "map", "stats", "achievements", "waypoints", "packs", "now"}
+                 "players", "max_players", "busy", "map", "stats", "achievements", "waypoints", "packs", "sterntaler",
+                 "now"}
 # Set by the server on SIGTERM/SIGINT so open live streams end by themselves
 SHUTTING_DOWN = threading.Event()
 
@@ -63,6 +66,11 @@ class GiftIn(BaseModel):
     player: str
     item: str
     count: int
+
+
+class GrantIn(BaseModel):
+    player: str
+    amount: int
 
 
 class WorldIn(BaseModel):
@@ -116,6 +124,8 @@ def create_app(cfg: Config) -> FastAPI:
     world_map = MapService(adapter, mc, audit, cfg.data_dir)
     game_events = EventsService(adapter, mc, audit, cfg.data_dir)
     donate = DonateService(adapter, mc, audit, cfg.data_dir)
+    # start credit: the events that ran before the shop existed (history of the events service)
+    sterntaler = SterntalerService(adapter, mc, audit, cfg.data_dir, lambda: game_events.data["history"])
     packs = PacksService(adapter, mc, audit, cfg.data_dir, cfg.backup_dir)
     world_map.after_render.append(game_events.sync_register)  # builds found on the map -> build register
     sessions = Sessions(cfg.data_dir / "sessions.json", cfg.password_hash)
@@ -129,6 +139,7 @@ def create_app(cfg: Config) -> FastAPI:
         await achievements.startup()
         await waypoints.startup()
         await game_events.startup()
+        await sterntaler.startup()
         await update.startup()
         await world_map.startup()
         await donate.startup()
@@ -310,6 +321,20 @@ def create_app(cfg: Config) -> FastAPI:
     async def world_control(kind: str, body: WorldIn, user: str = Depends(require_admin)):
         await game_events.world(kind, body.value, user)
         return {"accepted": kind}
+
+    # ---------- Sterntaler (pack mcportal_shop) ----------
+
+    @app.get("/api/sterntaler")
+    async def sterntaler_summary(request: Request):
+        # for everyone: balances, shop, how to earn; the admin also gets the ledger
+        return await asyncio.to_thread(sterntaler.summary, is_admin(request))
+
+    @app.post("/api/sterntaler/grant", status_code=202)
+    async def sterntaler_grant(body: GrantIn, user: str = Depends(require_admin)):
+        if not packs.active(SHOP_PACK):
+            raise PortalError("Die Sterntaler sind ausgeschaltet (Tab Funktionen).", 409)
+        await sterntaler.grant(body.player, body.amount, user)
+        return {"accepted": body.amount}
 
     # ---------- features = packs of the world (tab "Server") ----------
 

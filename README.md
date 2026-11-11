@@ -2,7 +2,8 @@
 
 Self-hosted Minecraft-Bedrock-Server fürs Heimnetz mit einem kleinen Webportal
 (`http://<server>:8080`): Status, Spieler online, Start/Stop, Whitelist mit Operator-Status,
-Update per Knopfdruck mit Backup und Rollback, Block-Statistik pro Spieler, Weltkarte.
+Update per Knopfdruck mit Backup und Rollback, Block-Statistik pro Spieler, Weltkarte, Events mit
+Sterntalern und Shop.
 
 > Stand: läuft auf einem Linux-Mint-Laptop. Ein frischer Ubuntu-Server lässt sich mit einem Befehl genauso
 > einrichten (siehe [Installation](#installation)).
@@ -12,7 +13,7 @@ Update per Knopfdruck mit Backup und Rollback, Block-Statistik pro Spieler, Welt
 | Pfad | Was |
 |---|---|
 | [`mcportal/`](mcportal/) | Webportal (Python/FastAPI), Installations- und Änderungs-Scripts, Tests – [README](mcportal/README.md) |
-| [`mcportal/minecraft-pack/`](mcportal/minecraft-pack/) | Behavior Packs: Statistik, Erfolge, Wegpunkte (+ Grafik-Pack) |
+| [`mcportal/minecraft-pack/`](mcportal/minecraft-pack/) | Behavior Packs: Statistik, Erfolge, Wegpunkte, Events, Spawnfackel, Blaupause, Sterntaler-Shop (+ Grafik-Packs) |
 | [`docs/`](docs/) | Analyse, Architektur, Änderungen M1–M9, To-dos |
 | [`analyse/inspect.sh`](analyse/inspect.sh) | Read-only Bestandsaufnahme eines Servers |
 | [`.claude/skills/bedrock-behavior-pack/`](.claude/skills/bedrock-behavior-pack/) | Skill für Claude Code: Behavior Packs für diesen Server bauen, testen, installieren und ans Portal anbinden |
@@ -30,7 +31,7 @@ Das Script fragt nach **Servername**, **Weltname**, **Seed** und der **Höchstza
 Vorschlag: „Family and Friends“, „FAF“, ein zufälliger Seed und 10 Spieler. Am Ende fragt es nach dem **Admin-Passwort** fürs Portal.
 
 Danach läuft der neueste Bedrock-Server als Benutzer `minecraft` mit allen Packs (Statistik, Wegpunkte, Events,
-Erfolge, Spawnfackel, Blaupause), dazu das Portal unter `http://<IP des Servers>:8080`. Beide starten beim
+Erfolge, Spawnfackel, Blaupause, Sterntaler-Shop), dazu das Portal unter `http://<IP des Servers>:8080`. Beide starten beim
 Hochfahren von selbst. Im Portal lassen sich die Erweiterungen einzeln abschalten (Tab „Funktionen“), bis hin
 zu reinem Vanilla-Minecraft mit Statistik und Erfolgen.
 
@@ -55,7 +56,8 @@ Details und Optionen: [Installation auf einem frischen Server](docs/15-installat
 15. [Installation auf einem frischen Server](docs/15-installation.md) – ein Befehl, eigener Seed, M16
 16. [Funktionen ein- und ausschalten](docs/16-funktionen-schalten.md) – Packs im Portal, auch reines Vanilla, M17
 17. [Wie oft kommen Events?](docs/17-event-haeufigkeit.md) – Schieberegler 1–4 Stunden gemeinsamer Spielzeit, M18
-18. [To-dos](docs/TODO.md)
+18. [Sterntaler und Shop](docs/18-sterntaler-shop.md) – bei Events verdienen, mit `/shop` Werkzeuge kaufen, M19
+19. [To-dos](docs/TODO.md)
 
 ## Grundsätze
 

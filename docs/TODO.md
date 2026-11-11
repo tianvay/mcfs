@@ -7,6 +7,10 @@ Stand: 2026-11-03 (mit dem Server abgeglichen: Log, sudo-Verlauf, Prüfsummen vo
 
 ### Im Spiel ansehen
 
+- [ ] **Sterntaler und Shop (M19)** (`docs/18-sterntaler-shop.md`): auf dem Laptop installieren, dann im Spiel `/shop`
+      öffnen und kaufen; Bergbrecher (3 × 3 × 3, fällt beim Zielblock das Richtige? Tempo wie Diamant?), Axt an einem
+      Baum und an einer Blockhütte, Magnet in Schnellleiste und Zweithand, Sichel auf dem Feld, Abnutzung. Im Log
+      nach `"event":"hedge"` sehen. Kommt nach einem Event `+5` im Chat und im Portal?
 - [ ] **Event-Abstand (M18, Events 1.5.0)** (`docs/17-event-haeufigkeit.md`): auf dem Laptop installieren, im Events-Tab
       den Regler verschieben; der Hinweis „Nächstes Event in ca. …“ muss sich ändern.
 - [ ] **Statistik 2.0.1** (Essen vollständig, `docs/03-block-statistik.md`): auf dem Laptop installieren, dann ein Steak

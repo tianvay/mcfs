@@ -59,6 +59,12 @@ class BedrockAdapter:
     def tell_gift_live(self, name: str, item_name: str, count: int) -> None:
         console.send(self.fifo, commands.tell_gift(name, item_name, count))
 
+    def shop_grant_live(self, name: str, amount: int) -> None:
+        console.send(self.fifo, commands.shop_grant(name, amount))
+
+    def shop_seed_live(self, name: str, amount: int) -> None:
+        console.send(self.fifo, commands.shop_seed(name, amount))
+
     def event_undo_live(self, undo_id: str) -> None:
         console.send(self.fifo, commands.event_undo(undo_id))
 

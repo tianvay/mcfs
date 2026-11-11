@@ -1,0 +1,18 @@
+{
+  "resource_pack_name": "mcportal_shop_rp",
+  "texture_name": "atlas.items",
+  "texture_data": {
+    "mcfs_bergbrecher": {
+      "textures": "textures/items/mcfs_bergbrecher"
+    },
+    "mcfs_holzfaeller": {
+      "textures": "textures/items/mcfs_holzfaeller"
+    },
+    "mcfs_magnet": {
+      "textures": "textures/items/mcfs_magnet"
+    },
+    "mcfs_erntesichel": {
+      "textures": "textures/items/mcfs_erntesichel"
+    }
+  }
+}

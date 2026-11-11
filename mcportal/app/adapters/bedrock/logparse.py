@@ -207,6 +207,11 @@ def parse_events(line: LogLine) -> dict | None:
     return parse_pack_line(line, "mcportal-events")
 
 
+def parse_shop(line: LogLine) -> dict | None:
+    """Line of the Sterntaler shop pack (minecraft-pack/mcportal_shop)."""
+    return parse_pack_line(line, "mcportal-shop")
+
+
 def parse_achievements(line: LogLine) -> dict | None:
     """Line of the achievements pack (minecraft-pack/mcportal_achievements)."""
     return parse_pack_line(line, "mcportal-ach")
